@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://www.strava.com; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Local Legend Watch</title>
+  <meta name="description" content="See which Strava Local Legend titles you're about to lose, which ones are within reach, and how your running mileage compares with your normal.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2410c'/%3E%3Cpath d='M9 22l5-12 4 8 2-4 3 8' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <h1>Local Legend Watch</h1>
+      <div class="status" id="status" aria-live="polite">
+        <span id="statusText"></span>
+        <progress id="progress" hidden></progress>
+        <button type="button" id="refreshBtn" class="btn small" hidden>Refresh now</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Setup: shown until this browser is connected -->
+    <section id="setup" hidden>
+      <p class="lede">Before a run: which Local Legend titles are about to slip and which are within reach. After a run: how your mileage compares with your normal.</p>
+
+      <div class="privacy">
+        <strong>Your keys and data stay in this browser.</strong>
+        This page has no server. It talks to Strava directly from your browser, and nothing is sent to the site owner or anyone else. Disconnect wipes everything.
+      </div>
+
+      <h2>Connect your Strava (about 3 minutes, once per browser)</h2>
+      <p class="hint">Each runner uses their own free Strava API app. That's what keeps everyone's keys and data separate.</p>
+      <ol class="steps">
+        <li>Open <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener noreferrer">strava.com/settings/api</a> on a computer and log in.</li>
+        <li>Fill in the form:
+          <dl class="fields">
+            <dt>Application Name</dt><dd>Anything, such as “My Legend Watch”</dd>
+            <dt>Category</dt><dd>Visualizer</dd>
+            <dt>Website</dt><dd><code id="siteUrl"></code> <button type="button" class="btn tiny" data-copy="siteUrl">Copy</button></dd>
+            <dt>Authorization Callback Domain</dt><dd><code id="cbDomain"></code> <button type="button" class="btn tiny" data-copy="cbDomain">Copy</button><br><span class="hint">Just the domain, no https:// and no path.</span></dd>
+          </dl>
+        </li>
+        <li>Agree to Strava's terms, click <em>Create</em>, then upload any small image as the app icon.</li>
+        <li>On the “My API Application” page, copy your <em>Client ID</em> and <em>Client Secret</em> (click “show”) and paste them below.</li>
+        <li>On Strava's approval screen, leave both boxes ticked, including <em>View data about your private activities</em>, so your mileage is complete. Private runs never count toward Local Legends here.</li>
+      </ol>
+
+      <form id="connectForm" class="connect" novalidate>
+        <label>Client ID
+          <input id="clientId" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="123456">
+        </label>
+        <label>Client Secret
+          <input id="clientSecret" type="password" autocomplete="off" spellcheck="false" placeholder="40 characters from Strava">
+        </label>
+        <p class="error" id="setupError" role="alert" hidden></p>
+        <div class="row">
+          <button type="submit" class="btn primary">Connect with Strava</button>
+          <button type="button" class="btn" id="demoBtn">Try the demo</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="dash" hidden>
+      <div class="banner" id="demoBanner" hidden>
+        <span>Demo with sample data. Nothing here is real.</span>
+        <button type="button" class="btn small" id="exitDemoBtn">Connect your Strava</button>
+      </div>
+      <p class="error" id="scopeWarn" hidden></p>
+
+      <div class="bans">
+        <article class="card hero" id="riskCard">
+          <p class="label">Titles at risk this week</p>
+          <p class="num" id="riskN">…</p>
+          <p class="sub" id="riskS">Loading Local Legend counts</p>
+        </article>
+        <article class="card" id="reachCard">
+          <p class="label">Within reach</p>
+          <p class="num" id="reachN">…</p>
+          <p class="sub" id="reachS">Segments where you're 3 or fewer efforts behind</p>
+        </article>
+        <article class="card" id="heldCard">
+          <p class="label">Titles held</p>
+          <p class="num" id="heldN">…</p>
+          <p class="sub" id="heldS">Local Legend titles you hold now</p>
+        </article>
+        <article class="card mini">
+          <p class="label">This week</p>
+          <p class="num" id="weekN">…</p>
+          <p class="sub" id="weekS">Monday to today, runs only</p>
+        </article>
+        <article class="card mini">
+          <p class="label">Year to date</p>
+          <p class="num" id="ytdN">…</p>
+          <p class="sub" id="ytdS">Since January 1, runs only</p>
+        </article>
+      </div>
+
+      <details id="dMap">
+        <summary>Map</summary>
+        <div id="map" role="region" aria-label="Map of your tracked segments"></div>
+        <p class="legend"><span class="sw risk"></span>At risk <span class="sw reach"></span>Within reach <span class="sw held"></span>Held <span class="sw other"></span>Other</p>
+      </details>
+      <details id="dDefend">
+        <summary>Defend: titles you hold</summary>
+        <div id="defend"></div>
+      </details>
+      <details id="dAttack">
+        <summary>Attack: titles to chase</summary>
+        <div id="attack"></div>
+      </details>
+      <details id="dMiles">
+        <summary>Mileage detail</summary>
+        <div id="miles"></div>
+      </details>
+      <details id="dStatus">
+        <summary>Data status</summary>
+        <div id="dataStatus"></div>
+        <div class="row end">
+          <button type="button" class="btn danger" id="disconnectBtn">Disconnect and wipe this browser</button>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <p>Compatible with Strava. Not affiliated with or endorsed by Strava. Local Legend leader counts come from an undocumented Strava field and may stop working without notice. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</p>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous" defer></script>
+  <script src="app.js?v=1" defer></script>
+</body>
+</html>
