@@ -23,7 +23,7 @@
 - **No new outside host in this phase.** The content security policy at the end of this phase is exactly: `default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://www.strava.com; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'`.
 - **No Races tab yet.** Navigation shows Hub and Legends only. `#races` and `#race/<id>` fall back to the hub until phase 2.
 - **Owner stop points.** Ask before downloading the font files. Show the icon artwork before committing it. Never push, merge to `main` or deploy without the owner saying so; `main` is the live site.
-- **Local test harness.** `mock.html` and `mock-fetch.js` are gitignored and exist only in the owner's main checkout. Copy both into any other checkout before using them. `mock.html` is a copy of `index.html` with `<script src="mock-fetch.js"></script>` placed before the app's script tag; regenerate it whenever `index.html` changes.
+- **Local test harness.** `mock.html` and `mock-fetch.js` are gitignored and exist only in the owner's main checkout. Copy both into any other checkout before using them. `mock.html` is a copy of `index.html` with `<script src="mock-fetch.js"></script>` placed before the app's script tag; regenerate it whenever `index.html` changes. The mock leaves a fake connection in that origin's `localStorage`; clear the `lw.*` keys before opening `index.html` or `?demo` on the same origin, or the page will try the fake token against Strava.
 - **Run tests with** `node --test` from the repository root. Serve locally with `python -m http.server 8080`.
 
 ## Review Focus

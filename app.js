@@ -1,4 +1,5 @@
-'use strict';
+import { probeFields } from './js/probe.js';
+
 /*
  * Local Legend Watch: a static, browser-only Strava dashboard.
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
@@ -19,7 +20,7 @@
   const MANUAL_MAX_AGE = 15 * 60e3;
   const DAY = 864e5;
   const Q = 15 * 60e3;
-  const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState' };
+  const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState', probe: 'lw.probe' };
 
   const $ = (id) => document.getElementById(id);
 
@@ -36,6 +37,7 @@
   const S = {
     demo: false, cache: null, athleteId: null, syncing: false, progress: null,
     error: null, warn: null, pausedUntil: 0, resumeTimer: null, map: null, layers: {},
+    probe: null, probeBusy: false, probeError: null,
   };
 
   // ---------- dates: Strava's start_date_local ends in "Z" but is local wall time ----------
@@ -566,6 +568,67 @@
     ];
     if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
     box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
+    if (!S.demo && token()) box.append(...probePanel());
+  }
+
+  // ---------- field check: which Strava fields this connection receives (counts only, never values) ----------
+  const standalone = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  const probeContext = () => [
+    `Strava permissions granted: ${(token() || {}).scope || 'unknown'}`,
+    `Home-screen app: ${standalone() ? 'yes' : 'no'}`,
+  ];
+  function probeResult(r) {
+    if (!r.of) return 'not checked';
+    if (!r.returned) return 'not returned';
+    if (!r.filled) return 'returned but empty';
+    return `filled on ${r.filled} of ${r.of}`;
+  }
+  const probeText = (p) => [
+    ...p.rows.map((r) => `${r.source}.${r.field}: returned ${r.returned}, filled ${r.filled} of ${r.of}`),
+    ...probeContext(),
+  ].join('\n');
+
+  async function runProbe() {
+    if (S.probeBusy) return;
+    S.probeBusy = true; S.probeError = null;
+    render();
+    try {
+      const athlete = await api('/athlete');
+      const list = (await api('/athlete/activities?per_page=30&page=1')) || [];
+      const runs = list.filter((a) => RUN_TYPES.includes(a.sport_type || a.type));
+      const pick = runs.find((a) => a.workout_type === 1) || runs[0];
+      const detail = pick ? await api(`/activities/${pick.id}`) : null;
+      S.probe = { at: Date.now(), rows: probeFields(athlete, runs, detail) };
+      store.set(K.probe, S.probe);   // shown below whether or not this browser lets it be saved
+    } catch (e) {
+      if (e instanceof RateLimited) S.probeError = `Paused for Strava's rate limit. Try again at ${timeLabel(e.until)}.`;
+      else if (e instanceof UserError) S.probeError = e.message;
+      else { S.probeError = 'The field check failed. Try again.'; console.error(e); }
+    } finally {
+      S.probeBusy = false;
+      render();
+    }
+  }
+
+  function probePanel() {
+    const p = S.probe || store.get(K.probe);
+    const copy = async (ev) => {
+      const b = ev.currentTarget;
+      try { await navigator.clipboard.writeText(probeText(p)); b.textContent = 'Copied'; }
+      catch { b.textContent = 'Select the text below and copy'; }
+    };
+    return [
+      h('p', { class: 'chart-title' }, 'Field check: which Strava fields your connection receives. It records counts only, never the values.'),
+      h('div', { class: 'row' },
+        h('button', { type: 'button', class: 'btn small', disabled: S.probeBusy, onclick: runProbe }, S.probeBusy ? 'Checking…' : 'Run field check (3 Strava requests)'),
+        p ? h('button', { type: 'button', class: 'btn small', onclick: copy }, 'Copy results') : null),
+      S.probeError ? h('p', { class: 'error', role: 'alert' }, S.probeError) : null,
+      ...probeContext().map((t) => h('p', { class: 'note' }, t)),
+      p ? h('p', { class: 'note' }, `Checked ${ago(p.at)}`) : null,
+      p ? h('div', { class: 'probe' }, table(['Field', 'From', 'Result'], p.rows.map((r) => h('tr', null,
+        h('td', null, r.field), h('td', { class: 'n' }, r.source), h('td', { class: 'n' }, probeResult(r)))))) : null,
+      p ? h('textarea', { class: 'probe-text', readonly: true, 'aria-label': 'Field check results as text' }, probeText(p)) : null,
+    ].filter(Boolean);
   }
 
   // ---------- map ----------
@@ -690,9 +753,9 @@
     const id = (t && t.athleteId) || S.athleteId;
     store.del(rateKey());
     if (id) store.del(`lw.cache.${id}`);
-    store.del(K.token); store.del(K.creds); store.del(K.state);
+    store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe);
     clearTimeout(S.resumeTimer);
-    Object.assign(S, { cache: null, athleteId: null, error: null, warn: null, pausedUntil: 0 });
+    Object.assign(S, { cache: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
     if (S.map) { S.map.remove(); S.map = null; }
     render();
     window.scrollTo(0, 0);
