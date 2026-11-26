@@ -179,6 +179,19 @@ All computed in the browser from Strava fields; none is stored at Strava.
 - whether the home-screen app shares storage with Safari (if not, the app needs its own connection and hand-added races do not cross over);
 - whether Strava's approval screen returns into the home-screen app or into Safari.
 
+**Field probe results (owner's browser, live site, 2026-11-26; permissions `read,activity:read_all`; 17 recent runs and 1 activity checked).**
+
+| Field | Result | Consequence |
+|---|---|---|
+| `bio` on the athlete | returned and filled | The bio reader goes ahead. No extra Strava permission is needed. |
+| `measurement_preference` on the athlete | not returned | The app cannot read the athlete's units with its current permission, and today it silently shows miles to everyone. Units become a setting on Data (miles by default), decided when phase 2 is planned. |
+| `workout_type`, `start_latlng`, `map.summary_polyline` on list results | returned (`workout_type` filled on 16 of 17) | Races can be found and drawn from the activity list alone. |
+| `suffer_score`, `pr_count`, `average_heartrate`, `max_heartrate` on list results and on an activity | returned and filled | Relative effort, Strava PRs and heart rate are shown as designed. |
+| `location_city`, `location_state` | returned but always empty | Place names come from Nominatim, as approved. |
+| `description`, `calories`, `splits_standard` on an activity | returned (`description` empty on the one checked) | Age-group place, calories and splits work as designed. |
+
+Still open from this checkpoint: whether the iPhone home-screen app shares the Safari connection, and where Strava's sign-in returns to.
+
 **Race scan.** Legends sync stops at 1 January of last year and prunes anything older (`app.js`, `syncActivities`). Races need all history and must not be touched by that prune, so they get their own pass and their own cache.
 - First run: list all activities, newest first, 200 per page, keeping only races. A few thousand activities cost about 15 requests.
 - Afterwards: races are picked out of the activity lists the existing sync already fetches, at no extra cost. The existing daily 95-day re-list catches recent edits. "Rescan all history" on Data repeats the full pass for older edits.
