@@ -124,7 +124,14 @@ export async function api(path, retried) {
   return res.json();
 }
 
-// Best effort: revoke this page's access at Strava.
+// Revoke this app's access at Strava. True only when Strava accepted it.
 export async function revoke(accessToken) {
-  try { await fetch(DEAUTH_URL, { method: 'POST', body: new URLSearchParams({ access_token: accessToken }) }); } catch { /* ignore */ }
+  try { return (await fetch(DEAUTH_URL, { method: 'POST', body: new URLSearchParams({ access_token: accessToken }) })).ok; } catch { return false; }
+}
+
+// "Disconnect everywhere": Strava only accepts a current access token, so refresh a stale one first.
+export async function revokeEverywhere() {
+  let t;
+  try { t = await ensureToken(false); } catch { return false; }
+  return revoke(t.access_token);
 }

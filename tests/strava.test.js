@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { applySetup, ensureToken } from '../js/strava.js';
+import { applySetup, ensureToken, revokeEverywhere } from '../js/strava.js';
 
 const FIELDS = { clientId: '123456', clientSecret: 'secret-abc', refreshToken: 'refresh-xyz', athleteId: 42, scope: 'read,activity:read_all' };
 let mem;
@@ -47,4 +47,28 @@ test('being offline is not reported as a dead link or a revoked connection', asy
   globalThis.fetch = async () => { throw new TypeError('offline'); };
   await assert.rejects(ensureToken(false), (e) => !e.linkDead && /^Couldn't reach Strava\./.test(e.message));
   assert.equal(saved('lw.token').fromLink, true);   // still link-seeded, to be tried again
+});
+
+// "Disconnect everywhere" must really reach Strava: it is the only way to cancel a stray setup link.
+const strava = (answers) => {
+  const seen = [];
+  globalThis.fetch = async (url, init) => { const path = new URL(url).pathname; seen.push([path, Object.fromEntries(init.body)]); return answers[path](); };
+  return seen;
+};
+test('revokeEverywhere refreshes a stale token first, then revokes with the fresh one', async () => {
+  applySetup(FIELDS);   // no usable access token yet
+  const seen = strava({ '/oauth/token': answer(200, { access_token: 'access-new', refresh_token: 'refresh-new', expires_at: 2000000000 }), '/oauth/deauthorize': answer(200, {}) });
+  assert.equal(await revokeEverywhere(), true);
+  assert.deepEqual(seen.map((s) => s[0]), ['/oauth/token', '/oauth/deauthorize']);
+  assert.deepEqual(seen[1][1], { access_token: 'access-new' });
+});
+test('revokeEverywhere reports false when Strava does not accept the revoke', async () => {
+  applySetup(FIELDS);
+  strava({ '/oauth/token': answer(200, { access_token: 'access-new', refresh_token: 'refresh-new', expires_at: 2000000000 }), '/oauth/deauthorize': answer(401, {}) });
+  assert.equal(await revokeEverywhere(), false);
+});
+test('revokeEverywhere reports false when Strava cannot be reached', async () => {
+  applySetup(FIELDS);
+  globalThis.fetch = async () => { throw new TypeError('offline'); };
+  assert.equal(await revokeEverywhere(), false);
 });

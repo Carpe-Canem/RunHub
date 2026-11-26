@@ -5,7 +5,7 @@
  */
 import { S, K, bus, store, UserError, timeLabel, ago } from './core.js';
 import { $ } from './dom.js';
-import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revoke, ensureToken, applySetup, LINK_DEAD } from './strava.js';
+import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { sync } from './legends-sync.js';
@@ -117,8 +117,11 @@ async function leave(everywhere) {
   if (!window.confirm(everywhere
     ? 'Revoke access at Strava and wipe this browser? Every device you connected is signed out and every setup link stops working.'
     : 'Remove your Strava keys and all cached data from this browser? Your other devices stay connected.')) return;
-  const t = token();
-  if (everywhere && t && t.access_token) await revoke(t.access_token);
+  if (everywhere && token() && !(await revokeEverywhere())) {
+    // Nothing is wiped, so the button can be pressed again. Saying "done" here would leave a stray link working.
+    window.alert('Strava did not confirm the disconnect, so your other devices and any setup links still work. Nothing was removed from this browser. Try again, or remove the app at strava.com/settings/apps. To wipe only this browser, use “Forget this browser”.');
+    return;
+  }
   wipe();
   render();
   window.scrollTo(0, 0);
