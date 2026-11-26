@@ -7,7 +7,7 @@ export function renderHub(model) {
   const rs = model ? riskSummary(model) : { count: 0, sub: 'Loading your runs from Strava', loading: true };
   const num = rs.loading ? '--' : String(rs.count).padStart(2, '0');
   $('view-hub').replaceChildren(
-    h('h2', { class: 'hub-title' }, 'Run Board'),
+    h('h2', { class: 'hub-title' }, 'Run Hub'),
     h('a', { class: 'rowlink', href: '#legends' },
       h('span', { class: 'rowlink-text' },
         h('strong', null, 'Local Legends'),

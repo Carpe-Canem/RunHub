@@ -11,7 +11,7 @@ These began as the builder's proposals. The owner approved all five on 2026-11-2
 | # | Decision | Why it was put to the owner |
 |---|---|---|
 | 1 | The look is "Finish Clock" with route thumbnails in the results list, as in the private mockup. | The owner asked for the mockup and chose a map for it, but never said "this is the one". |
-| 2 | The app is called **Run Board**. | The name was invented for the mockup. |
+| 2 | The app is called **Run Hub**. | The owner chose this name on 2026-11-26. The mockup's "Run Hub" was the builder's invention and is dropped. |
 | 3 | Place names ("Riverbend, CO"): first check whether Strava returns them. Only if it does not, use OpenStreetMap's Nominatim lookup, under the conditions in "Place names" below. | Nominatim is a new outside service with a usage policy the owner must read and accept personally. Without it, races show weather and a map but no place name. |
 | 4 | The Legends map switches to the same CARTO navy map as the race page. | The owner chose that map for the race page only. |
 | 5 | Disconnect also removes races added by hand, after offering an export. | It keeps the existing "wipes this browser" promise literal. |
@@ -323,7 +323,7 @@ No host receives names, times, tokens or the athlete's identity. Leader anonymit
 
 ### Home-screen app
 
-- Manifest: name and short name "Run Board" (decision 2), `background_color` and `theme_color` `#0C1424`, `display: standalone`.
+- Manifest: name and short name "Run Hub" (decision 2), `background_color` and `theme_color` `#0C1424`, `display: standalone`.
 - `viewport-fit=cover`, the Apple web-app meta tags, safe-area insets on the tab bar, top bar and sheets.
 - New icons in the clock look at 180 and 512 px plus SVG, replacing the current uncommitted set. The owner sees them before they are committed.
 

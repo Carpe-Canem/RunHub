@@ -1,8 +1,8 @@
-# Run Board Phase 1 (Shell and Look) Implementation Plan
+# Run Hub Phase 1 (Shell and Look) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the one-page Local Legend Watch into the Run Board shell: a field check the owner can run, hash-routed views (Hub, Legends, Data), the dark Finish Clock look, and home-screen app identity, with Legends behaving exactly as before.
+**Goal:** Turn the one-page Local Legend Watch into the Run Hub shell: a field check the owner can run, hash-routed views (Hub, Legends, Data), the dark Finish Clock look, and home-screen app identity, with Legends behaving exactly as before.
 
 **Architecture:** `index.html` becomes a shell whose views are switched by the address hash. `app.js` is split into ES modules loaded directly by the browser, with pure logic kept apart from DOM code so it runs under Node's test runner. No build step and no new runtime dependency.
 
@@ -279,7 +279,7 @@ test('routeHref round-trips', () => {
   - `render()` computes the model once and calls `renderHub`, `renderLegends`, `renderData` for the visible view only.
   - Move `renderDataStatus` and the field-check UI into `js/data-view.js` as `renderData`.
 
-- [ ] **Step 7: Implement `js/hub.js`.** `renderHub(model)` fills `#view-hub` with: a heading "Run Board"; one link card to `#legends` titled "Local Legends" showing `riskSummary(model).count` as a two-digit number (`--` while `loading`) and `.sub` beneath; and a link "Data and connection" to `#data`.
+- [ ] **Step 7: Implement `js/hub.js`.** `renderHub(model)` fills `#view-hub` with: a heading "Run Hub"; one link card to `#legends` titled "Local Legends" showing `riskSummary(model).count` as a two-digit number (`--` while `loading`) and `.sub` beneath; and a link "Data and connection" to `#data`.
 
 - [ ] **Step 8: Check in a browser** (regenerate `mock.html` first).
   - `?demo` opens on the hub; the Local Legends card shows `02` and "Creekside Path North loses 3 efforts and Library Hill loses 1 this week".
@@ -343,17 +343,17 @@ test('ghost turns every digit into 8 and keeps the rest', () => {
 **Files:**
 - Modify: `manifest.webmanifest`, `icon.svg`, `icon-180.png`, `icon-512.png`, `index.html` (title, meta), `README.md`, `js/main.js` header comment
 
-- [ ] **Step 1: Manifest.** `name` and `short_name` "Run Board"; `start_url` "./"; `display` "standalone"; `background_color` and `theme_color` `#0C1424`; the same three icon entries.
+- [ ] **Step 1: Manifest.** `name` and `short_name` "Run Hub"; `start_url` "./"; `display` "standalone"; `background_color` and `theme_color` `#0C1424`; the same three icon entries.
 
-- [ ] **Step 2: Head of `index.html`.** Title "Run Board". Viewport `width=device-width, initial-scale=1, viewport-fit=cover`. Add `<meta name="apple-mobile-web-app-capable" content="yes">`, `<meta name="mobile-web-app-capable" content="yes">`, `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`, `<meta name="apple-mobile-web-app-title" content="Run Board">`. Description: "A personal running board: Local Legend titles to defend and chase, and your mileage against your normal."
+- [ ] **Step 2: Head of `index.html`.** Title "Run Hub". Viewport `width=device-width, initial-scale=1, viewport-fit=cover`. Add `<meta name="apple-mobile-web-app-capable" content="yes">`, `<meta name="mobile-web-app-capable" content="yes">`, `<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">`, `<meta name="apple-mobile-web-app-title" content="Run Hub">`. Description: "A personal running board: Local Legend titles to defend and chase, and your mileage against your normal."
 
 - [ ] **Step 3: Icons.** Draw `icon.svg` (512 viewBox): a `--board` rounded square with a `--line` inner border and a finish-clock motif in `--led`, legible at 60 px. Render `icon-180.png` and `icon-512.png` from it with a headless browser screenshot of the SVG at exactly those pixel sizes. **Owner stop point:** show the owner the 180 px render before committing.
 
-- [ ] **Step 4: Words.** README: rename to Run Board, describe the hub and that Legends is one of its pages, keep every privacy statement and the Strava setup steps as they are (no host changed in this phase). `js/main.js` header comment: same statement of destinations as the old `app.js` header. Footer unchanged.
+- [ ] **Step 4: Words.** README: rename to Run Hub, describe the hub and that Legends is one of its pages, keep every privacy statement and the Strava setup steps as they are (no host changed in this phase). `js/main.js` header comment: same statement of destinations as the old `app.js` header. Footer unchanged.
 
-- [ ] **Step 5: Check.** `?demo` in a browser: the tab title is "Run Board"; the manifest loads without console errors; the icon shows in the tab.
+- [ ] **Step 5: Check.** `?demo` in a browser: the tab title is "Run Hub"; the manifest loads without console errors; the icon shows in the tab.
 
-- [ ] **Step 6: Commit** "Rename to Run Board and refresh app identity".
+- [ ] **Step 6: Commit** "Rename to Run Hub and refresh app identity".
 
 ---
 
