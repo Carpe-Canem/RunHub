@@ -1,6 +1,6 @@
-# Local Legend Watch
+# Run Hub
 
-A Strava dashboard for runners that you can open before a run or after one.
+A Strava dashboard for runners that you can open before a run or after one. It opens on a hub, a short board that links to its pages. Local Legends is the first of those pages.
 
 - **Before a run:** see which Local Legend titles are about to slip and which ones are within reach.
 - **After a run:** see your daily, weekly, monthly and year-to-date mileage next to your own normal.
@@ -9,7 +9,7 @@ Live at **https://carpe-canem.github.io/Strava-Dashboard/**. To try it without c
 
 ## Privacy
 
-- **No server.** The page is static: HTML, CSS and one JavaScript file. Your browser talks to `www.strava.com` directly.
+- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly.
 - **Everything stays in your browser.** Your Client ID, Client Secret, tokens and cached data are kept in that browser's `localStorage`. Nothing is sent to the site owner or anyone else.
 - **Each runner brings their own Strava API app**, so everyone's keys, data and rate limits are separate.
 - **Leaders stay anonymous.** The page keeps only the Local Legend leader's athlete ID, to tell whether the leader is you, and their effort count. It never stores or shows their name or photo.

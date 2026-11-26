@@ -1,5 +1,5 @@
 /*
- * Local Legend Watch: a static, browser-only Strava dashboard.
+ * Run Hub: a static, browser-only Strava dashboard.
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
  * The only network destinations are www.strava.com (API + OAuth) and OpenStreetMap tiles.
  */
