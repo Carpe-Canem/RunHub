@@ -13,7 +13,7 @@ Live at **https://carpe-canem.github.io/Strava-Dashboard/**. To try it without c
 - **Everything stays in your browser.** Your Client ID, Client Secret, tokens and cached data are kept in that browser's `localStorage`. Nothing is sent to the site owner or anyone else.
 - **Each runner brings their own Strava API app**, so everyone's keys, data and rate limits are separate.
 - **Leaders stay anonymous.** The page keeps only the Local Legend leader's athlete ID, to tell whether the leader is you, and their effort count. It never stores or shows their name or photo.
-- **Disconnect** wipes everything from that browser and revokes the page's access at Strava.
+- **Two ways out, on the Data page.** "Forget this browser" wipes everything from that browser and leaves your other devices connected. "Disconnect everywhere" also revokes the page's access at Strava, which signs out every device.
 - **Note for the site owner:** every GitHub Pages project site on this account shares the origin `carpe-canem.github.io`, and so shares `localStorage`. Only host pages you trust under this account. Better still, use a custom domain for this dashboard.
 
 ## Connecting (each runner, once per browser)
@@ -26,6 +26,17 @@ Live at **https://carpe-canem.github.io/Strava-Dashboard/**. To try it without c
 3. Open the dashboard, paste them in, click **Connect with Strava**, and approve on Strava's screen.
 
 The page asks Strava for `read,activity:read_all`. Private runs count toward your mileage, but only public runs (visible to "Everyone") count toward Local Legends.
+
+## Setting up another device
+
+Every browser keeps its own storage, and so does the iPhone home-screen app, so each one asks for the keys again. A setup link carries them across.
+
+1. On a connected device, open **Data**, find **Set up another device** and press **Create setup link**.
+2. Open the link on the other device. For the home-screen app, paste it into the box on its setup screen, because a link always opens in the browser.
+
+**A setup link is as sensitive as a password.** It holds your Client ID, Client Secret and Strava refresh token. Anyone holding it can read all of your Strava activities, private ones included, until you use "Disconnect everywhere". Send it only to yourself. The page does not store the link, and it rides after the `#` in the address, which browsers do not send to any site.
+
+The link is for your own devices. A friend connects with their own Strava app, as above.
 
 ## How the numbers are counted
 

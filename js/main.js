@@ -5,11 +5,12 @@
  */
 import { S, K, bus, store, UserError, timeLabel, ago } from './core.js';
 import { $ } from './dom.js';
-import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revoke } from './strava.js';
+import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revoke, ensureToken, applySetup, LINK_DEAD } from './strava.js';
+import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { sync } from './legends-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
-import { renderData } from './data-view.js';
+import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
 import { startRouter, current } from './router.js';
 
@@ -53,14 +54,16 @@ function render() {
     if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
   $('demoBanner').hidden = !S.demo;
-  $('disconnectBtn').textContent = S.demo ? 'Leave the demo' : 'Disconnect and wipe this browser';
+  $('disconnectBtn').textContent = S.demo ? 'Leave the demo' : 'Disconnect everywhere';
+  $('forgetBtn').hidden = S.demo;
+  $('leaveNote').hidden = S.demo;
   renderStatus();
   if (!connected) return;
   const c = S.cache;
   const scope = (token() || {}).scope || '';
   const sw = $('scopeWarn');
   sw.hidden = S.demo || !scope || /activity:read_all/.test(scope);
-  sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Disconnect and connect again to fix this.';
+  sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Use “Forget this browser” on the Data page, then connect again to fix this.';
   const ready = !!(c && c.athlete);   // false until the first sync has loaded the athlete
   if (view === 'hub') { renderHub(ready ? compute(c) : null); return; }
   if (!ready) return;
@@ -77,6 +80,7 @@ function render() {
 // Called by the router at start and on every hash change.
 function onRoute(route, prev) {
   if (prev) scrolls[prev.view] = window.scrollY;
+  if (prev && prev.view === 'data') hideSetupLink();   // a setup link is not left on screen
   render();
   if (route.view === 'legends' && S.map) S.map.invalidateSize();
   if (prev) window.scrollTo(0, scrolls[route.view] || 0);
@@ -94,12 +98,9 @@ function exitDemo() {
   window.scrollTo(0, 0);
 }
 
-async function disconnect() {
-  if (!window.confirm('Remove your Strava keys and all cached data from this browser? You can connect again any time.')) return;
+// Remove everything this browser holds. Sends nothing to Strava.
+function wipe() {
   const t = token();
-  if (t && t.access_token) {
-    await revoke(t.access_token);
-  }
   const id = (t && t.athleteId) || S.athleteId;
   store.del(rateKey());
   if (id) store.del(`lw.cache.${id}`);
@@ -107,8 +108,60 @@ async function disconnect() {
   clearTimeout(S.resumeTimer);
   Object.assign(S, { cache: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }
+  hideSetupLink();
+}
+
+// "Forget this browser" wipes here only. "Disconnect everywhere" also revokes the grant at Strava,
+// which signs out every device and cancels every setup link.
+async function leave(everywhere) {
+  if (!window.confirm(everywhere
+    ? 'Revoke access at Strava and wipe this browser? Every device you connected is signed out and every setup link stops working.'
+    : 'Remove your Strava keys and all cached data from this browser? Your other devices stay connected.')) return;
+  const t = token();
+  if (everywhere && t && t.access_token) await revoke(t.access_token);
+  wipe();
   render();
   window.scrollTo(0, 0);
+}
+
+// Show the connected page for whatever token is now stored, and sync.
+function enter() {
+  const t = token();
+  S.demo = false; S.error = null;
+  S.athleteId = t.athleteId;
+  S.cache = loadCache(t.athleteId);
+  if (location.hash) history.replaceState(null, '', location.pathname);   // a new connection opens on the hub
+  render();
+  window.scrollTo(0, 0);
+  sync(false);
+}
+
+const putBack = (was) => { store.set(K.creds, was.creds); store.set(K.token, was.token); };
+
+// Take a setup link (a whole link or just the code). Returns true when this browser is now connected by it.
+async function useSetup(text) {
+  const fail = (msg) => { if (token()) window.alert(msg); else S.showLinkError(msg); return false; };
+  const f = decodeSetup(text);
+  if (!f) return fail(LINK_DEAD);
+  const was = { creds: creds(), token: token() };
+  const other = !!was.token && !sameAthlete(was.token.athleteId, f.athleteId);
+  if (other && !window.confirm('This browser is connected as a different Strava athlete. Replace that connection with the one in the setup link?')) return false;
+  const keep = !other && !!was.token && !!was.creds;   // same athlete already here: put it back if the link fails
+  if (other) wipe();
+  if (!applySetup(f)) {
+    if (keep) putBack(was);
+    return fail("This browser is blocking storage, so it can't remember your keys. Allow site data for this page and try again.");
+  }
+  try {
+    await ensureToken(false);
+  } catch (e) {
+    if (e.linkDead) {
+      if (keep) putBack(was); else wipe();
+      return fail(LINK_DEAD);
+    }
+    // Strava could not be reached: keep what the link gave. The sync says why and tries again.
+  }
+  return true;
 }
 
 function wireSetup() {
@@ -140,13 +193,35 @@ function wireSetup() {
   $('demoBtn').addEventListener('click', startDemo);
   $('exitDemoBtn').addEventListener('click', exitDemo);
   $('refreshBtn').addEventListener('click', () => sync(true));
-  $('disconnectBtn').addEventListener('click', () => (S.demo ? exitDemo() : disconnect()));
+  $('disconnectBtn').addEventListener('click', () => (S.demo ? exitDemo() : leave(true)));
+  $('forgetBtn').addEventListener('click', () => leave(false));
+  const linkErr = $('linkError');
+  S.showLinkError = (msg) => { linkErr.textContent = msg; linkErr.hidden = !msg; };
+  $('setupLink').addEventListener('input', () => S.showLinkError(''));
+  $('linkForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const box = $('setupLink'); const btn = $('linkBtn');
+    const text = box.value;
+    box.value = ''; btn.disabled = true; S.showLinkError('');
+    try { if (await useSetup(text)) enter(); } finally { btn.disabled = false; }
+  });
   $('dMap').addEventListener('toggle', () => { if ($('dMap').open && S.cache && S.cache.athlete) renderMap(compute(S.cache)); });
   S.showSetupError = showErr;
 }
 
+// A setup link is read and taken out of the address bar at once, valid or not.
+async function linkFromAddress() {
+  if (!location.hash.startsWith('#setup=')) return false;
+  const text = location.hash;
+  history.replaceState(null, '', location.pathname);
+  return useSetup(text);
+}
+
 async function init() {
   wireSetup();
+  await linkFromAddress();   // before anything else
+  // The same link arriving in a page that is already open (no reload happens for a change after the #).
+  window.addEventListener('hashchange', async () => { if (await linkFromAddress()) enter(); });
   try {
     await handleCallback();
   } catch (e) {

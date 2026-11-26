@@ -357,6 +357,32 @@ test('ghost turns every digit into 8 and keeps the rest', () => {
 
 ---
 
+### Task 5b: Setup link (added 2026-11-26, design approved by the owner)
+
+Spec: "Setup link". A link that carries the keys and the refresh token so another browser, or the home-screen app, connects without typing them.
+
+**Files:**
+- Create: `js/setup-link.js`, `tests/setup-link.test.js`, `tests/strava.test.js`
+- Modify: `js/strava.js`, `js/main.js`, `js/data-view.js`, `index.html`, `styles.css`, `README.md`
+
+**Interfaces (produces):**
+- `js/setup-link.js` (pure): `encodeSetup({clientId, clientSecret, refreshToken, athleteId, scope}): string` (base64url of `{"v":1,"i","s","r","a","p"}`); `decodeSetup(text): fields|null` (whole link or bare code; null for garbage, a wrong version or a missing field; `athleteId` comes back as a number); `sameAthlete(a, b): boolean` (number or string).
+- `js/strava.js`: `applySetup(fields): boolean` stores `lw.creds` and an `lw.token` with `expires_at: 0` and `fromLink: true`. `ensureToken` drops `fromLink` on the first successful refresh; when Strava refuses a link-seeded token it throws a `UserError` with `linkDead: true` and the spec's message; when Strava cannot be reached it says so instead of "expired or revoked".
+
+- [ ] **Step 1: Write the failing tests** for `encodeSetup`, `decodeSetup`, `sameAthlete`, `applySetup` and the `ensureToken` outcomes (refreshed, refused, unreachable). Invented values only.
+- [ ] **Step 2: Run them.** `node --test` → FAIL, module not found.
+- [ ] **Step 3: Implement** `js/setup-link.js` and the `js/strava.js` changes. `node --test` → PASS.
+- [ ] **Step 4: Use a link.** At the very top of `init()`, before `handleCallback` and the router, an address starting `#setup=` is read and removed with `history.replaceState`, valid or not. Connected as a different athlete: ask before replacing. The setup screen gains "Have a setup link? Paste it here", which runs the same code. Failure message: "This setup link no longer works. Create a new one on a connected device." A dead link leaves the browser not connected.
+- [ ] **Step 5: Make a link.** Data gains "Set up another device": the warning, then "Create setup link", then the link in a read-only box with Copy. Connected and not demo only. The link is never stored or logged.
+- [ ] **Step 6: Two ways out.** "Forget this browser" wipes this browser and does not call Strava. "Disconnect everywhere" revokes at Strava and wipes. The demo keeps its single "Leave the demo". Update the page copy and error strings that say "Disconnect".
+- [ ] **Step 7: README.** The warning, how to make and use a link, and the two ways out.
+- [ ] **Step 8: Check in a browser** on `mock.html`: create a link; clear `lw.*`; open `#setup=<code>` → the address is clean, the hub shows and a sync runs, and Back does not bring the link back; a garbage code → setup screen with the message; the paste box with a whole link and with a bare code; a link for another athlete → the question; "Forget this browser" sends no request to Strava.
+- [ ] **Step 9: Commit** "Add setup link and split Disconnect".
+
+**For the owner (cannot be checked from here):** whether Strava issues a new refresh token when a second device refreshes, which would sign the first one out.
+
+---
+
 ### Task 6: Final checks and hand-back
 
 - [ ] **Step 1:** `node --test` → all pass.

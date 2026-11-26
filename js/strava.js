@@ -29,7 +29,9 @@ async function tokenRequest(params) {
   const body = await r.json().catch(() => ({}));
   if (!r.ok) {
     if (r.status === 400 || r.status === 401) {
-      throw new UserError('Strava rejected these credentials. Check the Client ID and Client Secret, then connect again.');
+      const e = new UserError('Strava rejected these credentials. Check the Client ID and Client Secret, then connect again.');
+      e.refused = true;   // Strava answered and said no, as opposed to not being reachable
+      throw e;
     }
     throw new UserError(`Strava returned an error (${r.status}). Try again in a few minutes.`);
   }
@@ -68,11 +70,25 @@ export async function ensureToken(force) {
   try {
     nt = await tokenRequest({ client_id: c.clientId, client_secret: c.clientSecret, grant_type: 'refresh_token', refresh_token: t.refresh_token });
   } catch (e) {
-    throw new UserError('Strava access expired or was revoked. Disconnect, then connect again.');
+    if (!e.refused) throw e;   // offline or a Strava fault: say that, the connection may be fine
+    if (!t.fromLink) throw new UserError('Strava access expired or was revoked. Use “Forget this browser” on the Data page, then connect again.');
+    const dead = new UserError(LINK_DEAD); dead.linkDead = true;
+    throw dead;
   }
-  const merged = { ...t, access_token: nt.access_token, refresh_token: nt.refresh_token || t.refresh_token, expires_at: nt.expires_at };
+  const { fromLink, ...rest } = t;   // a token that has refreshed once is an ordinary one
+  const merged = { ...rest, access_token: nt.access_token, refresh_token: nt.refresh_token || t.refresh_token, expires_at: nt.expires_at };
   store.set(K.token, merged);  // refresh tokens rotate: always keep the newest
   return merged;
+}
+
+export const LINK_DEAD = 'This setup link no longer works. Create a new one on a connected device.';
+
+// Store what a setup link carried. The expiry of zero makes the first request refresh the token.
+export function applySetup(f) {
+  const ok = store.set(K.creds, { clientId: f.clientId, clientSecret: f.clientSecret })
+    && store.set(K.token, { access_token: '', refresh_token: f.refreshToken, expires_at: 0, athleteId: f.athleteId, scope: f.scope, fromLink: true });
+  if (!ok) { store.del(K.creds); store.del(K.token); }
+  return ok;
 }
 
 export const rateKey = () => `lw.rate.${(creds() || {}).clientId || 'none'}`;
@@ -102,7 +118,7 @@ export async function api(path, retried) {
     throw new RateLimited(r.until);
   }
   if (res.status === 401 && !retried) return api(path, true);
-  if (res.status === 401) throw new UserError('Strava refused access. Disconnect, then connect again.');
+  if (res.status === 401) throw new UserError('Strava refused access. Use “Forget this browser” on the Data page, then connect again.');
   if (res.status === 404) return null;
   if (!res.ok) throw new UserError(`Strava returned an error (${res.status}). Try again later.`);
   return res.json();

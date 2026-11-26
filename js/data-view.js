@@ -1,7 +1,8 @@
-// Data: sync and storage status, and the field check (counts only, never values).
+// Data: sync and storage status, the field check (counts only, never values) and the setup link.
 import { S, K, bus, store, RUN_TYPES, WINDOW, LIMIT_15, LIMIT_DAY, UserError, RateLimited, dayOf, todayIdx, timeLabel, ago } from './core.js';
 import { $, h, table } from './dom.js';
-import { api, token, rateState } from './strava.js';
+import { api, token, creds, redirectUri, rateState } from './strava.js';
+import { encodeSetup } from './setup-link.js';
 import { probeFields } from './probe.js';
 
 export function renderData(model, c) {
@@ -25,6 +26,36 @@ export function renderData(model, c) {
   if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(...probePanel());
+  const lp = $('linkPanel');
+  lp.hidden = S.demo || !token() || !creds();
+  lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
+}
+
+// The setup link is built when asked for and kept nowhere: not in storage, not in state, not in the log.
+let linkShown = false;
+
+export function hideSetupLink() { linkShown = false; }
+
+function linkPanel() {
+  const t = token(); const c = creds();
+  const link = linkShown
+    ? redirectUri() + '#setup=' + encodeSetup({ clientId: c.clientId, clientSecret: c.clientSecret, refreshToken: t.refresh_token, athleteId: t.athleteId, scope: t.scope })
+    : null;
+  const show = (on) => () => { linkShown = on; bus.emit('data'); };
+  const copy = async (ev) => {
+    const b = ev.currentTarget;
+    try { await navigator.clipboard.writeText(link); b.textContent = 'Copied'; }
+    catch { b.textContent = 'Select the link below and copy'; }
+  };
+  return [
+    h('h3', { class: 'sub-title' }, 'Set up another device'),
+    h('p', { class: 'note' }, 'Each browser, and the home-screen app, keeps its own storage. A setup link connects another one of yours without typing the keys again: open it there, or paste it into the setup screen of the home-screen app.'),
+    h('p', { class: 'warn', role: 'note' }, 'Anyone holding the link can read all of your Strava activities, private ones included, until “Disconnect everywhere” is used. Send it only to yourself.'),
+    h('div', { class: 'row' },
+      link ? h('button', { type: 'button', class: 'btn small', onclick: copy }, 'Copy') : h('button', { type: 'button', class: 'btn small', onclick: show(true) }, 'Create setup link'),
+      link ? h('button', { type: 'button', class: 'btn small', onclick: show(false) }, 'Hide') : null),
+    link ? h('textarea', { class: 'probe-text link-text', readonly: true, 'aria-label': 'Setup link' }, link) : null,
+  ].filter(Boolean);
 }
 
 const standalone = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);

@@ -16,7 +16,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0C1424">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
   <header class="top">
@@ -42,7 +42,7 @@
 
       <div class="privacy">
         <strong>Your keys and data stay in this browser.</strong>
-        This page has no server. It talks to Strava directly from your browser, and nothing is sent to the site owner or anyone else. Disconnect wipes everything.
+        This page has no server. It talks to Strava directly from your browser, and nothing is sent to the site owner or anyone else. “Forget this browser” wipes everything here.
       </div>
 
       <h2>Connect your Strava (about 3 minutes, once per browser)</h2>
@@ -73,6 +73,17 @@
         <div class="row">
           <button type="submit" class="btn primary">Connect with Strava</button>
           <button type="button" class="btn" id="demoBtn">Try the demo</button>
+        </div>
+      </form>
+
+      <form id="linkForm" class="connect" novalidate>
+        <label>Have a setup link? Paste it here
+          <input id="setupLink" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="The link, or just its code">
+        </label>
+        <p class="hint">Made on a device that is already connected, under Data, “Set up another device”.</p>
+        <p class="error" id="linkError" role="alert" hidden></p>
+        <div class="row">
+          <button type="submit" class="btn" id="linkBtn">Use setup link</button>
         </div>
       </form>
     </section>
@@ -139,8 +150,13 @@
         <h2 class="view-title">Data and connection</h2>
         <div class="panel">
           <div id="dataStatus"></div>
+        </div>
+        <div class="panel" id="linkPanel" hidden></div>
+        <div class="panel">
+          <p class="note" id="leaveNote"><strong>Forget this browser</strong> wipes your keys and cached data here and leaves your other devices connected. <strong>Disconnect everywhere</strong> also revokes access at Strava, which signs out every device and cancels every setup link.</p>
           <div class="row end">
-            <button type="button" class="btn danger" id="disconnectBtn">Disconnect and wipe this browser</button>
+            <button type="button" class="btn" id="forgetBtn">Forget this browser</button>
+            <button type="button" class="btn danger" id="disconnectBtn">Disconnect everywhere</button>
           </div>
         </div>
       </section>
@@ -152,6 +168,6 @@
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous" defer></script>
-  <script type="module" src="js/main.js?v=6"></script>
+  <script type="module" src="js/main.js?v=8"></script>
 </body>
 </html>

@@ -231,7 +231,7 @@ Every access stays guarded as today. If storage is full, details are dropped bef
 - A race whose date has passed leaves "Up next" on its own.
 - **Export and import** on Data: a JSON file where the browser allows a download, and copy and paste as text everywhere, since iPhone home-screen apps restrict downloads.
 
-### Setup link (added 2026-11-26, awaiting the owner's approval)
+### Setup link (added and approved by the owner 2026-11-26)
 
 **Why.** Every browser, and the iPhone home-screen app, keeps its own storage, so each one asks for the Client ID and Secret again. The owner moves between several and asked for a link that carries the connection. Offered a keys-only link or one that also signs in, the owner chose the one that signs in, accepting that such a link is as sensitive as a password.
 
