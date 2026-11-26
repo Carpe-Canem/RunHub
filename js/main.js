@@ -8,7 +8,14 @@ import { $ } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revoke } from './strava.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { sync } from './legends-sync.js';
-import { renderLegends, renderDataStatus, renderMap } from './legends-view.js';
+import { renderLegends, renderMap } from './legends-view.js';
+import { renderData } from './data-view.js';
+import { renderHub } from './hub.js';
+import { startRouter, current } from './router.js';
+
+// Views that exist so far. Phase 2 adds 'races' and 'race'.
+const ENABLED = ['hub', 'legends', 'data'];
+const scrolls = {};
 
 function renderStatus() {
   const text = $('statusText'); const prog = $('progress'); const btn = $('refreshBtn');
@@ -38,6 +45,13 @@ function render() {
   const connected = S.demo || !!token();
   $('setup').hidden = connected;
   $('dash').hidden = !connected;
+  $('nav').hidden = !connected;
+  $('dataLink').hidden = !connected;
+  const view = current().view;
+  for (const v of ENABLED) $(`view-${v}`).hidden = v !== view;
+  for (const a of document.querySelectorAll('#nav a')) {
+    if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  }
   $('demoBanner').hidden = !S.demo;
   $('disconnectBtn').textContent = S.demo ? 'Leave the demo' : 'Disconnect and wipe this browser';
   renderStatus();
@@ -47,12 +61,25 @@ function render() {
   const sw = $('scopeWarn');
   sw.hidden = S.demo || !scope || /activity:read_all/.test(scope);
   sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Disconnect and connect again to fix this.';
-  if (!c || !c.athlete) return;
+  const ready = !!(c && c.athlete);   // false until the first sync has loaded the athlete
+  if (view === 'hub') { renderHub(ready ? compute(c) : null); return; }
+  if (!ready) return;
 
-  const model = compute(c); const mi = miles(c);
-  renderLegends(model, mi);
-  renderDataStatus(model, c);
-  if ($('dMap').open) renderMap(model);
+  const model = compute(c);
+  if (view === 'legends') {
+    renderLegends(model, miles(c));
+    if ($('dMap').open) renderMap(model);
+  } else if (view === 'data') {
+    renderData(model, c);
+  }
+}
+
+// Called by the router at start and on every hash change.
+function onRoute(route, prev) {
+  if (prev) scrolls[prev.view] = window.scrollY;
+  render();
+  if (route.view === 'legends' && S.map) S.map.invalidateSize();
+  if (prev) window.scrollTo(0, scrolls[route.view] || 0);
 }
 
 function startDemo() {
@@ -130,13 +157,12 @@ async function init() {
   if (t) {
     S.athleteId = t.athleteId;
     S.cache = loadCache(t.athleteId);
-    render();
-    sync(false);
   } else if (new URLSearchParams(location.search).has('demo')) {
-    startDemo();
-  } else {
-    render();
+    S.demo = true; S.cache = demoCache(); S.error = null;
   }
+  // After handleCallback, which strips the sign-in code (and any hash) from the address.
+  startRouter({ enabled: ENABLED, onRoute });   // draws the first view
+  if (t) sync(false);
   setInterval(renderStatus, 60e3);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !S.demo && token() && S.cache && Date.now() - (S.cache.lastSync || 0) > 15 * 60e3) sync(false);

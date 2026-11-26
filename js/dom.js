@@ -36,3 +36,9 @@ export function svg(tag, attrs, ...kids) {
   }
   return el;
 }
+
+export function table(head, rows) {
+  return h('div', { class: 'tablewrap' }, h('table', null,
+    h('thead', null, h('tr', null, head.map((x) => h('th', { scope: 'col' }, x)))),
+    h('tbody', null, rows)));
+}

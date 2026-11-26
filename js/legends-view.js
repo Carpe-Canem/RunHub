@@ -1,9 +1,7 @@
-// Local Legends: drawing the headline cards, tables, map and Data status.
-import { S, K, bus, store, RUN_TYPES, WINDOW, REACH_GAP, LIMIT_15, LIMIT_DAY, UserError, RateLimited, dayOf, todayIdx, dayLabel, timeLabel, ago, fmt1, fmt0, plural } from './core.js';
-import { $, h } from './dom.js';
-import { api, token, rateState } from './strava.js';
+// Local Legends: drawing the headline cards, tables and map.
+import { S, REACH_GAP, dayLabel, fmt1, fmt0, plural } from './core.js';
+import { $, h, table } from './dom.js';
 import { compute, decodePolyline, kind, statusText, riskSummary } from './legends-model.js';
-import { probeFields } from './probe.js';
 
 function setCard(prefix, num, sub) { $(`${prefix}N`).textContent = num; $(`${prefix}S`).textContent = sub; }
 
@@ -40,12 +38,6 @@ function segCell(r) {
   const name = h('button', { type: 'button', class: 'linkish', title: 'Show on map', onclick: () => focusSegment(r.id) }, r.name);
   const link = S.demo ? null : h('a', { href: `https://www.strava.com/segments/${encodeURIComponent(r.id)}`, target: '_blank', rel: 'noopener noreferrer', class: 'ext', 'aria-label': `Open ${r.name} on Strava` }, '↗');
   return h('td', { class: 'seg' }, name, ' ', link);
-}
-
-function table(head, rows) {
-  return h('div', { class: 'tablewrap' }, h('table', null,
-    h('thead', null, h('tr', null, head.map((x) => h('th', { scope: 'col' }, x)))),
-    h('tbody', null, rows)));
 }
 
 function renderDefend(model) {
@@ -92,91 +84,6 @@ function renderMiles(mi) {
       h('div', { class: 'avg', style: `bottom:${(mi.weekAvg / max) * 100}%`, title: `12-week average ${fmt1(mi.weekAvg)} ${u}` }),
       bars),
     h('div', { class: 'bar-axis' }, h('span', null, dayLabel(mi.ws - 12 * 7)), h('span', null, 'This week')));
-}
-
-export function renderDataStatus(model, c) {
-  const box = $('dataStatus'); box.replaceChildren();
-  const r = rateState();
-  const fetched = model.rows.length - model.pending;
-  const withLL = model.rows.filter((x) => x.status !== 'pending' && x.status !== 'unknown').length;
-  const checked = model.held.filter((x) => x.stravaCount != null);
-  const matches = checked.filter((x) => x.stravaCount === x.mine).length;
-  const runs90 = Object.values(c.acts).filter((a) => dayOf(a.d) >= todayIdx() - (WINDOW - 1)).length;
-  const vis = { everyone: 0, followers_only: 0, only_me: 0 };
-  for (const a of Object.values(c.acts)) vis[a.v] = (vis[a.v] || 0) + 1;
-  const items = [
-    ['Last synced', c.lastSync ? ago(c.lastSync) : 'Not yet'],
-    ['Runs cached', `${Object.keys(c.acts).length} since Jan 1 last year · ${runs90} in the last 90 days`],
-    ['Runs by visibility', `${vis.everyone} everyone · ${vis.followers_only} followers · ${vis.only_me} only you (only “everyone” counts toward Local Legends)`],
-    ['Segments tracked', `${model.rows.length} (leader count checked on ${fetched})`],
-    ['Local Legend field returned', fetched ? `${withLL} of ${fetched} segments${withLL === 0 && fetched > 3 ? '. Strava may have removed this field' : ''}` : '–'],
-    ['Your count vs Strava\'s, on titles you hold', checked.length ? `${matches} of ${checked.length} match` : '–'],
-  ];
-  if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
-  box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
-  if (!S.demo && token()) box.append(...probePanel());
-}
-
-const standalone = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
-
-const probeContext = () => [
-  `Strava permissions granted: ${(token() || {}).scope || 'unknown'}`,
-  `Home-screen app: ${standalone() ? 'yes' : 'no'}`,
-];
-
-function probeResult(r) {
-  if (!r.of) return 'not checked';
-  if (!r.returned) return 'not returned';
-  if (!r.filled) return 'returned but empty';
-  return `filled on ${r.filled} of ${r.of}`;
-}
-
-const probeText = (p) => [
-  ...p.rows.map((r) => `${r.source}.${r.field}: returned ${r.returned}, filled ${r.filled} of ${r.of}`),
-  ...probeContext(),
-].join('\n');
-
-export async function runProbe() {
-  if (S.probeBusy) return;
-  S.probeBusy = true; S.probeError = null;
-  bus.emit('data');
-  try {
-    const athlete = await api('/athlete');
-    const list = (await api('/athlete/activities?per_page=30&page=1')) || [];
-    const runs = list.filter((a) => RUN_TYPES.includes(a.sport_type || a.type));
-    const pick = runs.find((a) => a.workout_type === 1) || runs[0];
-    const detail = pick ? await api(`/activities/${pick.id}`) : null;
-    S.probe = { at: Date.now(), rows: probeFields(athlete, runs, detail) };
-    store.set(K.probe, S.probe);   // shown below whether or not this browser lets it be saved
-  } catch (e) {
-    if (e instanceof RateLimited) S.probeError = `Paused for Strava's rate limit. Try again at ${timeLabel(e.until)}.`;
-    else if (e instanceof UserError) S.probeError = e.message;
-    else { S.probeError = 'The field check failed. Try again.'; console.error(e); }
-  } finally {
-    S.probeBusy = false;
-    bus.emit('data');
-  }
-}
-
-function probePanel() {
-  const p = S.probe || store.get(K.probe);
-  const copy = async (ev) => {
-    const b = ev.currentTarget;
-    try { await navigator.clipboard.writeText(probeText(p)); b.textContent = 'Copied'; }
-    catch { b.textContent = 'Select the text below and copy'; }
-  };
-  return [
-    h('p', { class: 'chart-title' }, 'Field check: which Strava fields your connection receives. It records counts only, never the values.'),
-    h('div', { class: 'row' },
-      h('button', { type: 'button', class: 'btn small', disabled: S.probeBusy, onclick: runProbe }, S.probeBusy ? 'Checking…' : 'Run field check (3 Strava requests)'),
-      p ? h('button', { type: 'button', class: 'btn small', onclick: copy }, 'Copy results') : null),
-    S.probeError ? h('p', { class: 'error', role: 'alert' }, S.probeError) : null,
-    ...probeContext().map((t) => h('p', { class: 'note' }, t)),
-    p ? h('p', { class: 'note' }, `Checked ${ago(p.at)}`) : null,
-    p ? h('div', { class: 'probe' }, table(['Field', 'From', 'Result'], p.rows.map((r) => h('tr', null,
-      h('td', null, r.field), h('td', { class: 'n' }, r.source), h('td', { class: 'n' }, probeResult(r)))))) : null,
-    p ? h('textarea', { class: 'probe-text', readonly: true, 'aria-label': 'Field check results as text' }, probeText(p)) : null,
-  ].filter(Boolean);
 }
 
 const STYLE = { risk: { color: '#d03b3b', weight: 6 }, reach: { color: '#d98a00', weight: 5 }, held: { color: '#3f8f2f', weight: 5 }, other: { color: '#8a8984', weight: 3 } };
