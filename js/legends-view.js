@@ -86,14 +86,14 @@ function renderMiles(mi) {
     h('div', { class: 'bar-axis' }, h('span', null, dayLabel(mi.ws - 12 * 7)), h('span', null, 'This week')));
 }
 
-const STYLE = { risk: { color: '#d03b3b', weight: 6 }, reach: { color: '#d98a00', weight: 5 }, held: { color: '#3f8f2f', weight: 5 }, other: { color: '#8a8984', weight: 3 } };
+const STYLE = { risk: { color: '#FF7373', weight: 6 }, reach: { color: '#FFB52E', weight: 5 }, held: { color: '#35D69B', weight: 5 }, other: { color: '#8D9EC0', weight: 3 } };
 
 export function renderMap(model) {
   if (!window.L) { $('map').textContent = 'The map library didn\'t load. Check your connection and reload.'; return; }
   if (!S.map) {
     S.map = L.map('map', { scrollWheelZoom: false });
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19, className: 'map-navy', attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(S.map);
     S.group = L.featureGroup().addTo(S.map);
   }

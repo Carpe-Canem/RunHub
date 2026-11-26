@@ -73,6 +73,8 @@ export const fmt1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
 export const fmt0 = (x) => Math.round(x).toLocaleString();
 
 export const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+// The dim "all segments lit" backdrop for a clock readout: every digit becomes 8.
+export const ghost = (text) => String(text).replace(/[0-9]/g, '8');
 
 // Tiny event bus so data code can ask for a redraw without importing view code.
 const listeners = {};

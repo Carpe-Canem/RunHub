@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { store, dayOf, plural, bus } from '../js/core.js';
+import { store, dayOf, plural, bus, ghost } from '../js/core.js';
 
 test('dayOf reads the local date and ignores the Z', () => {
   assert.equal(dayOf('2026-03-01T23:30:00Z'), Date.UTC(2026, 2, 1) / 864e5);
@@ -17,4 +17,7 @@ test('store survives missing or throwing storage', () => {
 test('bus delivers to every listener', () => {
   let n = 0; bus.on('status', () => n++); bus.on('status', () => n++); bus.emit('status');
   assert.equal(n, 2);
+});
+test('ghost turns every digit into 8 and keeps the rest', () => {
+  assert.equal(ghost('1:02:33'), '8:88:88'); assert.equal(ghost('07'), '88'); assert.equal(ghost('--'), '--');
 });
