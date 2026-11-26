@@ -255,7 +255,7 @@ Every access stays guarded as today. If storage is full, details are dropped bef
 
 **Not for friends.** Giving someone the link gives them the owner's Strava access. A friend connects with their own Strava app, as now, and can then make links for their own devices.
 
-**Unverified.** Whether Strava issues a new refresh token when a second device refreshes, which would sign the first one out. If it does, that device shows the "no longer works" message and needs a fresh link. Check with the owner's two devices during the build.
+**Checked on the live site (owner, 2026-11-26).** On https://carpe-canem.github.io/RunHub/ a setup link opened on a second device connected and synced, and the first device was still signed in afterwards: a second device refreshing does not sign the first one out. The same check found the hub opening, the tab bar clearing the iPhone home indicator, and the Legends numbers matching. The "no longer works" message stays for a link whose token Strava does refuse (revoked, or "Disconnect everywhere").
 
 **Tests.** Two pure functions, `encodeSetup(fields)` and `decodeSetup(text)`. The second accepts a whole link or a bare code and returns nothing for garbage, a wrong version or a missing field.
 
