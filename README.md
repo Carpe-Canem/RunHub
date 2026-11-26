@@ -5,7 +5,7 @@ A Strava dashboard for runners that you can open before a run or after one. It o
 - **Before a run:** see which Local Legend titles are about to slip and which ones are within reach.
 - **After a run:** see your daily, weekly, monthly and year-to-date mileage next to your own normal.
 
-Live at **https://carpe-canem.github.io/Strava-Dashboard/**. To try it without connecting anything, add `?demo` to the end of the address.
+Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting anything, add `?demo` to the end of the address.
 
 ## Privacy
 
@@ -20,7 +20,7 @@ Live at **https://carpe-canem.github.io/Strava-Dashboard/**. To try it without c
 
 1. Go to <https://www.strava.com/settings/api> and create an app:
    - **Category:** Visualizer
-   - **Website:** `https://carpe-canem.github.io/Strava-Dashboard/`
+   - **Website:** `https://carpe-canem.github.io/RunHub/`
    - **Authorization Callback Domain:** `carpe-canem.github.io`
 2. Upload any icon, then copy the **Client ID** and **Client Secret**.
 3. Open the dashboard, paste them in, click **Connect with Strava**, and approve on Strava's screen.
