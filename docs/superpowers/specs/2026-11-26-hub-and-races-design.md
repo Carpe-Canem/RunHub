@@ -190,7 +190,7 @@ All computed in the browser from Strava fields; none is stored at Strava.
 | `location_city`, `location_state` | returned but always empty | Place names come from Nominatim, as approved. |
 | `description`, `calories`, `splits_standard` on an activity | returned (`description` empty on the one checked) | Age-group place, calories and splits work as designed. |
 
-Still open from this checkpoint: whether the iPhone home-screen app shares the Safari connection, and where Strava's sign-in returns to.
+iPhone, reported by the owner the same day: the home-screen app has its own storage, so it asks for the Client ID and Secret again; and Strava's sign-in returns into the home-screen app, not Safari. The setup screen needs no extra instruction. The first finding led to the setup link below.
 
 **Race scan.** Legends sync stops at 1 January of last year and prunes anything older (`app.js`, `syncActivities`). Races need all history and must not be touched by that prune, so they get their own pass and their own cache.
 - First run: list all activities, newest first, 200 per page, keeping only races. A few thousand activities cost about 15 requests.
@@ -230,6 +230,34 @@ Every access stays guarded as today. If storage is full, details are dropped bef
 - A hand-added race and a bio race on the same date with similar names are shown once.
 - A race whose date has passed leaves "Up next" on its own.
 - **Export and import** on Data: a JSON file where the browser allows a download, and copy and paste as text everywhere, since iPhone home-screen apps restrict downloads.
+
+### Setup link (added 2026-11-26, awaiting the owner's approval)
+
+**Why.** Every browser, and the iPhone home-screen app, keeps its own storage, so each one asks for the Client ID and Secret again. The owner moves between several and asked for a link that carries the connection. Offered a keys-only link or one that also signs in, the owner chose the one that signs in, accepting that such a link is as sensitive as a password.
+
+**What it carries.** Client ID, Client Secret, the Strava refresh token, the athlete ID and the granted permissions. Not the short-lived access token, and no cached data.
+
+**Shape.** `<site address>#setup=<code>`, where the code is base64url of `{"v":1,"i":clientId,"s":clientSecret,"r":refreshToken,"a":athleteId,"p":scope}`. It rides after the `#`, which browsers do not send to the site.
+
+**Making one.** Data gains "Set up another device": the warning below, then a "Create setup link" button. Pressing it shows the link in a read-only box with Copy. Nothing is created before the press and the link is not stored anywhere.
+
+**Using one in a browser.** On load, before anything else, an address starting `#setup=` is read and removed from the address bar at once, valid or not. If this browser is already connected as a different athlete, ask before replacing. Otherwise store the keys and the token with an expiry of zero, so the first request refreshes it, then show the hub and sync.
+
+**Using one in the home-screen app.** A link always opens in Safari, never in the home-screen app. So the setup screen gains one box, "Have a setup link? Paste it here", which accepts the whole link or just the code.
+
+**When it fails.** A code that does not decode, or a refresh that Strava refuses, shows "This setup link no longer works. Create a new one on a connected device."
+
+**Stopping it.** All devices that use one Strava app share one grant of access. Today's "Disconnect" revokes that grant at Strava, which signs out every device and kills every link. That becomes two choices on Data:
+- **Forget this browser** wipes this browser only.
+- **Disconnect everywhere** revokes access at Strava and wipes this browser. This is the way to cancel a link that has gone astray.
+
+**Said in the page and the README.** Anyone holding the link can read all of the athlete's Strava activities, private ones included, until "Disconnect everywhere" is used. Send it only to yourself.
+
+**Not for friends.** Giving someone the link gives them the owner's Strava access. A friend connects with their own Strava app, as now, and can then make links for their own devices.
+
+**Unverified.** Whether Strava issues a new refresh token when a second device refreshes, which would sign the first one out. If it does, that device shows the "no longer works" message and needs a fresh link. Check with the owner's two devices during the build.
+
+**Tests.** Two pure functions, `encodeSetup(fields)` and `decodeSetup(text)`. The second accepts a whole link or a bare code and returns nothing for garbage, a wrong version or a missing field.
 
 ### Weather
 
