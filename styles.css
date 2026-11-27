@@ -13,6 +13,8 @@
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --tab: 56px;
+  /* The top bar: its 60 px and the 1 px rule under it. */
+  --topbar: 61px;
   /* The top and bottom safe areas, as tokens so a check can set a phone's. */
   --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
 }
@@ -134,47 +136,84 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .note { font-size: 12px; color: var(--mut); }
 .note strong { color: var(--tx); }
 .sub-title { font-size: 15px; margin: 12px 0 6px; }
+.label { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
 .warn { font-size: 13px; color: var(--tx); border-left: 3px solid var(--slow); padding: 2px 0 2px 10px; margin: 10px 0; max-width: 70ch; }
 .link-text { height: 6em; overflow-wrap: anywhere; word-break: break-all; }
 #view-data .panel + .panel { margin-top: 12px; padding-top: 10px; }
 .empty { color: var(--mut); font-size: 14px; }
 .textlink { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; text-decoration: none; }
 
-/* Hub */
-/* The hub speaks in sentences: no cards, the numbers set into the line in clock digits. */
-.next-start { margin: 8px 0 26px; }
+/* Hub: read at a glance. The countdown is its only dot-matrix type. */
+/* The body is only there so the hub can redraw without touching what stands beside it. */
+.hub-body { display: contents; }
+/* On narrow screens the hub is a column at least as tall as the page between the top bar and the tab bar
+   (18px is main's top padding), so what ends it can stand on the tab bar. */
+@media (max-width: 859.98px) {
+  #view-hub { display: flex; flex-direction: column; min-height: calc(100dvh - var(--topbar) - var(--sat) - var(--tab) - var(--sab) - 18px); }
+}
+.next-start { margin: 0 0 18px; text-align: center; }
+.next-start .label { margin: 0 0 8px; }
+.next-start .empty { margin: 0; }
 .next-start .btn { margin-top: 12px; }
-.say { max-width: 21em; margin: 0 0 20px; font-size: clamp(21px, 5.8vw, 25px); font-weight: 800; line-height: 1.36; letter-spacing: -0.012em; text-wrap: pretty; overflow-wrap: break-word; }
-.say .led { font-size: 1.5em; line-height: .8; letter-spacing: 0; }
-.say .go { color: var(--go); }
-.say .slow { color: var(--slow); }
-.say.dim { color: var(--mut); }
-/* A linked sentence keeps the text colour; the underline marks it, and the padding makes each line 44 px to press. */
-.say a { color: inherit; padding: 7px 0; text-decoration: underline; text-decoration-color: var(--mut); text-decoration-thickness: 2px; text-underline-offset: .2em; }
-.say a:hover { text-decoration-color: var(--led); }
-.say-close { max-width: 34em; margin: -14px 0 20px; font-size: 14px; color: var(--mut); }
-.next-name { margin: 12px 0 18px; }
-.zg-note .say { margin-bottom: 0; }
-.hub-say .zg-note { margin-bottom: 20px; }
-details.weeks { max-width: 560px; margin: 4px 0 6px; }
-.weeks-more { font-size: 12px; color: var(--mut); margin-top: 10px; }
-.next-clock { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px clamp(10px, 3.5vw, 22px); }
-.cd-grp { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.next-clock { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 6px clamp(10px, 3.5vw, 22px); }
+.cd-grp { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
 .cd-grp .led { font-size: clamp(34px, 11vw, 64px); }
+/* No glow here: it smudged the digits. The lamp test still lights every segment. */
+.next-clock .led, .lamp .next-clock .led .gh { text-shadow: none; }
 .cd-unit { font-size: 13px; font-weight: 700; color: var(--mut); }
 .cd-today { font-family: var(--fl); font-weight: 900; font-size: clamp(30px, 9vw, 44px); color: var(--led); line-height: 1; }
-.hub-sec { margin-top: 14px; }
-.strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 4px; list-style: none; margin: 0; padding: 4px 4px 10px; overscroll-behavior-x: contain; }
-.strip > li { flex: none; scroll-snap-align: start; }
-.strip-card { display: flex; flex-direction: column; gap: 6px; width: 120px; min-height: 44px; padding: 10px; background: var(--panel); border-radius: var(--radius); color: inherit; text-decoration: none; }
-.strip-card:hover, .rec-tile:hover { background: color-mix(in srgb, var(--line) 35%, var(--panel)); }
-.sc-time .led { font-size: 22px; }
-.sc-meta { font-size: 12px; color: var(--mut); white-space: nowrap; }
-.rec-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; }
-@media (min-width: 600px) { .rec-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.rec-tile { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 44px; padding: 10px 12px; background: var(--panel); border-radius: var(--radius); color: inherit; text-decoration: none; }
-.rec-time .led { font-size: 26px; }
-.rec-date { font-size: 12px; color: var(--mut); }
+.next-race { margin: 10px 0 0; font-size: 18px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+.next-when { margin: 2px 0 0; font-size: 13px; color: var(--mut); }
+.hub-side { min-width: 0; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.tile { background: var(--panel); border-radius: var(--radius); padding: 12px; min-width: 0; }
+.tile-num { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.35; }
+.tile.dim .tile-num { color: var(--mut); }
+.tile-line { margin: 0; min-height: 18px; font-size: 12px; line-height: 1.5; color: var(--mut); }
+.tile-line.go { color: var(--go); }
+.tile-line.slow { color: var(--slow); }
+.meter { display: block; height: 5px; margin-top: 8px; border-radius: 3px; background: linear-gradient(var(--led), var(--led)) 0 0 / var(--w) 100% no-repeat var(--line); }
+.days { margin-top: 8px; padding: 10px 12px 8px; }
+.days-head { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 8px; }
+.days-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.day { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.day-bar { width: 100%; height: 34px; border-radius: 4px; background: linear-gradient(var(--led), var(--led)) 0 100% / 100% var(--h) no-repeat var(--line); }
+.day-letter { font-size: 10px; font-weight: 800; line-height: 1.4; color: var(--mut); }
+.day.today .day-letter { color: var(--led); }
+.day-num { min-height: 15px; font-size: 10px; font-weight: 800; line-height: 1.5; }
+/* Three rows under the days, divided by a rule: a title at the left, a short note at the right. */
+.hub-rows { margin-top: 6px; }
+.hub-rows > * + * { border-top: 1px solid var(--line); }
+.hub-rows .races-down { margin: 0; padding: 12px 4px; }
+.hub-rows details { background: none; border-radius: 0; margin: 0; }
+.hub-rows details > :not(summary) { margin-left: 0; margin-right: 0; }
+.hub-rows details > :last-child { margin-bottom: 12px; }
+.hub-rows .hub-row { display: flex; align-items: center; gap: 12px; min-height: 46px; margin: 0; padding: 0 4px; color: inherit; text-decoration: none; border-radius: 0; }
+.row-title { flex: none; font-size: 15px; font-weight: 800; }
+.row-note { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; color: var(--mut); }
+.hub-rows summary.hub-row::before { display: none; }
+/* A chevron marks the rows that go somewhere or unfold. */
+.hub-rows a.hub-row::after, .hub-rows summary.hub-row::after { content: ""; flex: none; width: 7px; height: 7px; border-top: 2px solid var(--mut); border-right: 2px solid var(--mut); transform: rotate(45deg); }
+.hub-rows details[open] > summary.hub-row::after { transform: rotate(135deg); }
+.hub-rows a.hub-row:hover, .hub-rows summary.hub-row:hover, .rec-row:hover { background: color-mix(in srgb, var(--line) 35%, transparent); }
+.hub-rows .bars { margin-top: 8px; }
+.weeks-more { font-size: 12px; color: var(--mut); margin-top: 10px; }
+.rec-list { list-style: none; padding: 0; margin-top: 0; }
+.rec-list li + li { border-top: 1px solid var(--line); }
+.rec-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 10px; align-items: center; min-height: 44px; padding: 0 4px; color: inherit; text-decoration: none; border-radius: 8px; }
+.rec-row .badge { justify-self: start; }
+.rec-date { font-size: 13px; color: var(--mut); }
+.rec-time { font-size: 15px; font-weight: 800; white-space: nowrap; }
+/* Wide screens: the clock on the left, everything else on the right. The right column spans both rows, so the
+   second row is free for what stands under the clock. */
+@media (min-width: 860px) {
+  #view-hub { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 40px; align-items: start; }
+  .next-start { grid-column: 1; grid-row: 1; text-align: left; }
+  .next-clock { justify-content: flex-start; }
+  .cd-grp { align-items: flex-start; }
+  .cd-grp .led { font-size: clamp(34px, 5.4vw, 64px); }
+  .hub-side { grid-column: 2; grid-row: 1 / span 2; }
+}
 
 /* Races */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
@@ -273,7 +312,6 @@ details.weeks { max-width: 560px; margin: 4px 0 6px; }
 @media (max-width: 479px) { .race-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .credit { color: var(--mut); font-size: 11px; margin: 8px 0 0; }
 .stat { background: var(--panel); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
-.stat .label { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
 .stat strong { display: block; font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
 .race-sec { margin-top: 20px; }
