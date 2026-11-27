@@ -3,8 +3,6 @@
 import { fmt0, fmt1 } from './core.js';
 import { fmtTime } from './races-model.js';
 
-export const NOTHING_ON = 'Nothing on the calendar.';
-
 const unitWord = (u) => (u === 'km' ? 'km' : 'miles');
 const t = (text, tone) => (tone ? { text, tone } : { text });
 
@@ -55,17 +53,4 @@ export function hubLines({ mi, stats, units }) {
 export function nextParts(r, kind) {
   const name = r.n || 'your next race';
   return [t(kind === 'today' ? 'at ' : 'to '), t(name), t(/[.!?]$/.test(name) ? '' : '.')];
-}
-
-// "Sat, Dec 12, 8:00 AM, Harbor City". The date and time are the ones typed, so they are read as UTC.
-export function startText(r, now = new Date(), locale) {
-  const day = new Date(`${r.date}T00:00:00Z`);
-  if (Number.isNaN(day.getTime())) return '';
-  const year = day.getUTCFullYear() === now.getFullYear() ? {} : { year: 'numeric' };
-  const out = [day.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric', ...year, timeZone: 'UTC' })];
-  if (/^\d{2}:\d{2}$/.test(r.time || '')) {
-    out.push(new Date(`${r.date}T${r.time}:00Z`).toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' }).replace(/ /g, ' '));
-  }
-  if (r.place) out.push(r.place);
-  return out.join(', ');
 }

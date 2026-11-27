@@ -8,7 +8,8 @@ import { hubStats, fmtTime } from './races-model.js';
 import { routeTile } from './race-draw.js';
 import { countdown, countdownLabel, tickAction } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
-import { mileLines, raceLines, nextParts, startText, NOTHING_ON } from './hub-lines.js';
+import { mileLines, raceLines, nextParts } from './hub-lines.js';
+import { startText, NOTHING_ON } from './hub-model.js';
 import { withZiggy } from './ziggy.js';
 
 // What Next start last drew: {id, kind}, id null for "Nothing on the calendar.", or null when it could not draw.

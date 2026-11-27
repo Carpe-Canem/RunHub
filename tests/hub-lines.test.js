@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hubLines, mileLines, raceLines, nextParts, startText, NOTHING_ON } from '../js/hub-lines.js';
+import { hubLines, mileLines, raceLines, nextParts } from '../js/hub-lines.js';
 
 const say = (line) => line.parts.map((p) => (p.led != null ? p.led : p.text)).join('');
 const tones = (line) => line.parts.filter((p) => p.tone).map((p) => [p.text, p.tone]);
@@ -88,7 +88,6 @@ test('loading and empty', () => {
   const none = raceLines(stats({ count: 0, podiums: 0, latest: [] }));
   assert.deepEqual(none.map(say), ['No races yet.']);
   assert.equal(none[0].key, 'none');
-  assert.equal(NOTHING_ON, 'Nothing on the calendar.');
 });
 
 test('hubLines: mileage first, then races, in reading order', () => {
@@ -101,14 +100,6 @@ test('next start: the sentence under the clock', () => {
   assert.equal(text(nextParts({ n: 'Harbor 10K' }, 'clock')), 'to Harbor 10K.');
   assert.equal(text(nextParts({ n: 'Harbor 10K' }, 'today')), 'at Harbor 10K.');
   assert.equal(text(nextParts({ n: 'Is it on?' }, 'clock')), 'to Is it on?');
-});
-
-test('next start: day, time and place without dot separators; the year only when it is not this one', () => {
-  const now = new Date(2026, 10, 27);
-  assert.equal(startText({ date: '2026-12-12', time: '08:00', place: 'Harbor City' }, now, 'en-US'), 'Sat, Dec 12, 8:00 AM, Harbor City');
-  assert.equal(startText({ date: '2026-12-12' }, now, 'en-US'), 'Sat, Dec 12');
-  assert.equal(startText({ date: '2027-01-09', time: '' }, now, 'en-US'), 'Sat, Jan 9, 2027');
-  assert.equal(startText({ date: 'soon' }, now, 'en-US'), '');
 });
 
 test('last out: a name that ends in a full stop does not get a second one', () => {

@@ -24,13 +24,13 @@ export function miles(c) {
   const ws = weekStart(t0);
   const lySame = Date.UTC(Y - 1, M, D) / DAY; const ly0 = Date.UTC(Y - 1, 0, 1) / DAY;
   const y0 = Date.UTC(Y, 0, 1) / DAY; const m0 = Date.UTC(Y, M, 1) / DAY;
-  const weeks = new Array(13).fill(0); const months = new Map();
+  const weeks = new Array(13).fill(0); const days = new Array(7).fill(0); const months = new Map();
   let today = 0; let runsToday = 0; let week = 0; let runsWeek = 0; let month = 0; let ytd = 0; let lytd = 0; let hasLastYear = false;
   for (const a of Object.values(c.acts)) {
     const di = dayOf(a.d); if (!(di <= t0)) continue;
     const x = a.m * f;
     if (di === t0) { today += x; runsToday++; }
-    if (di >= ws) { week += x; runsWeek++; }
+    if (di >= ws) { week += x; runsWeek++; days[di - ws] += x; }
     if (di >= m0) month += x;
     if (di >= y0) ytd += x;
     if (di < y0) hasLastYear = true;
@@ -41,7 +41,7 @@ export function miles(c) {
   }
   const weekAvg = weeks.slice(0, 12).reduce((s, v) => s + v, 0) / 12;
   let msum = 0; for (let k = 1; k <= 6; k++) msum += months.get(Y * 12 + M - k) || 0;
-  return { unit, today, runsToday, week, runsWeek, weekAvg, month, monthAvg: msum / 6, ytd, lytd, hasLastYear, weeks, ws, Y };
+  return { unit, today, runsToday, week, runsWeek, weekAvg, month, monthAvg: msum / 6, ytd, lytd, hasLastYear, weeks, ws, Y, days, dow: t0 - ws };
 }
 
 export function demoCache() {

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { todayIdx, DAY, setUnits } from '../js/core.js';
+import { todayIdx, weekStart, DAY, setUnits } from '../js/core.js';
 import { emptyCache, loadCache, miles, demoCache } from '../js/runs-model.js';
 
 const iso = (daysAgo) => `${new Date((todayIdx() - daysAgo) * DAY).toISOString().slice(0, 10)}T07:00:00Z`;
@@ -56,4 +56,26 @@ test('the demo cache has runs back to last year and nothing else', () => {
   assert.deepEqual(Object.keys(c).sort(), Object.keys(emptyCache()).sort());
   const m = miles(c);
   assert.ok(m.ytd > 0 && m.hasLastYear);
+});
+
+test("the week's seven daily sums", () => {
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
+  try {
+    setUnits('km');
+    const t0 = todayIdx(); const ws = weekStart(t0); const dow = t0 - ws;
+    const at = (di) => `${new Date(di * DAY).toISOString().slice(0, 10)}T07:00:00Z`;
+    const c = emptyCache(); c.athlete = { id: 1, units: 'km' };
+    c.acts.first = { s: 0, d: at(ws), m: 5000 };
+    c.acts.now = { s: 0, d: at(t0), m: 3000 };
+    if (dow < 6) c.acts.later = { s: 0, d: at(t0 + 1), m: 8000 };
+    const m = miles(c);
+    assert.equal(m.dow, dow);
+    assert.equal(m.days.length, 7);
+    // On a Monday the first day is today, so it holds both runs. Tomorrow's run is never counted.
+    assert.equal(m.days[0], dow === 0 ? 8 : 5);
+    assert.equal(m.days[dow], dow === 0 ? 8 : 3);
+    assert.deepEqual(m.days.slice(dow + 1), new Array(6 - dow).fill(0));
+    assert.equal(m.days.reduce((s, v) => s + v, 0), m.week);
+  } finally { delete globalThis.localStorage; }
 });
