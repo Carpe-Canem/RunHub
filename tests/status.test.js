@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { statusOf, statusRow } from '../js/status.js';
 
 const NOW = new Date(2026, 10, 27, 12, 0, 0).getTime();   // local noon, so "the same day" holds in any time zone
@@ -7,7 +8,7 @@ const base = { demo: false, connected: true, syncing: false, progress: null, err
 const clock = (t) => `at ${new Date(t).getHours()}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
 const st = (over) => statusOf({ ...base, ...over }, (t) => clock(t).slice(3), (t) => `Nov ${new Date(t).getDate()}`);
 
-test('status: idle shows how long ago in the strip and a clock time to screen readers', () => {
+test('status: idle shows how long ago on screen and a clock time to screen readers', () => {
   assert.deepEqual(st(), { state: 'idle', text: 'Synced 3 min ago', live: 'Synced at 11:57' });
 });
 
@@ -104,4 +105,10 @@ test('row: not connected, no row', () => {
 
 test('row: works out the status itself when it is not given', () => {
   assert.deepEqual(statusRow(base), synced);
+});
+
+test("sync's own error names the button as the row shows it", () => {
+  const sync = readFileSync(new URL('../js/sync.js', import.meta.url), 'utf8');
+  const said = /UserError \? e\.message : '([^']*)'/.exec(sync)[1];
+  assert.ok(said.includes(statusRow(base, { state: 'error', text: said }).text), said);
 });

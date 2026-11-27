@@ -12,7 +12,7 @@ const total = (seq) => seq.reduce((s, [, ms]) => s + ms, 0);
 const frames = (seq) => seq.map(([f]) => f);
 
 test('the timings', () => {
-  assert.deepEqual([TYPE_MS, TALK_MS, MOOD_MS], [1500, 130, 4000]);
+  assert.deepEqual([TYPE_MS, TALK_MS, MOOD_MS], [1500, 130, 3200]);
 });
 
 test("a fidget is always from the mood's set and never the same twice running", () => {
@@ -55,10 +55,13 @@ test('every fidget lasts 1 to 2 seconds and uses real frames', () => {
   }
 });
 
-test("a mood's movement is about 4 seconds, ends on its still, and nothing reaches 5", () => {
+// He types and then moves without a break, so the two together are what must stay under 5 s (WCAG 2.2.2). The
+// margin is for the stage's own timers, which run late by up to a quarter of a second over a line.
+test("a mood's movement is about 3 seconds, ends on its still, and with the typing stays under 5", () => {
   for (const mood of MOODS) {
     const seq = steps(mood, 'mood');
-    assert.ok(total(seq) >= 3500 && total(seq) <= 4500, `${mood}: ${total(seq)} ms`);
+    assert.ok(total(seq) >= 2500 && total(seq) <= MOOD_MS, `${mood}: ${total(seq)} ms`);
+    assert.ok(TYPE_MS + total(seq) <= 4700, `${mood}: ${TYPE_MS + total(seq)} ms of unbroken movement`);
     assert.equal(seq.at(-1)[0], mood);
     for (const move of ['talk', 'mood', ...FIDGETS[mood].filter((f) => f !== 'wander')]) {
       const s = steps(mood, move);
@@ -73,14 +76,14 @@ test('talking swaps the still and its talking frame; asleep breathes', () => {
     assert.deepEqual(steps(mood, 'talk'), [[mood, 130], [`${mood}-talk`, 130]]);
   }
   assert.deepEqual(steps('asleep', 'talk'), [['asleep-breathe', 1000], ['asleep', 1000], ['asleep-breathe', 1000], ['asleep', 1000]]);
-  assert.deepEqual(steps('asleep', 'mood'), steps('asleep', 'talk'));
+  assert.deepEqual(steps('asleep', 'mood'), [['asleep-breathe', 800], ['asleep', 800], ['asleep-breathe', 800], ['asleep', 800]]);
 });
 
 test('the sequences the owner approved', () => {
   assert.deepEqual(steps('happy', 'blink'), [['happy', 400], ['happy-blink', 120], ['happy', 220], ['happy-blink', 120], ['happy', 400]]);
   assert.deepEqual(steps('eager', 'tail').slice(0, 2), [['eager-tail', 150], ['eager', 150]]);
   assert.deepEqual(steps('thrilled', 'tail').slice(0, 2), [['thrilled-wag', 150], ['thrilled', 150]]);
-  assert.equal(steps('thrilled', 'mood').length, 32);
+  assert.equal(steps('thrilled', 'mood').length, 26);
   assert.deepEqual(steps('worried', 'sigh'), [['worried-low', 1300], ['worried', 300]]);
   assert.deepEqual(steps('curious', 'tilt'), [['curious-tilt', 1100], ['curious', 300]]);
   assert.deepEqual(steps('asleep', 'ear'), [['asleep-ear', 150], ['asleep', 150], ['asleep-ear', 150], ['asleep', 600]]);

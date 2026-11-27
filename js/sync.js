@@ -13,6 +13,8 @@ export async function sync(manual) {
   S.progress = { label: 'Checking for new runs', done: 0, total: 0 };
   bus.emit('status');
   const c = S.cache;
+  // The first sync has no runs to show yet. The views redraw now, so Ziggy can say he is fetching them.
+  if (!c.athlete) bus.emit('data');
   try {
     if (!c.athlete) {
       const a = await api('/athlete');
@@ -33,7 +35,7 @@ export async function sync(manual) {
       clearTimeout(S.resumeTimer);
       S.resumeTimer = setTimeout(() => sync(false), Math.max(5e3, e.until - Date.now() + 5e3));
     } else {
-      S.error = e instanceof UserError ? e.message : 'Something went wrong while syncing. Try Refresh now.';
+      S.error = e instanceof UserError ? e.message : 'Something went wrong while syncing. Press Retry to try again.';
       console.error(e);
     }
     saveCache();

@@ -3,7 +3,7 @@
 
 export const TYPE_MS = 1500;    // a line types out over this
 export const TALK_MS = 130;     // mouth open, mouth shut
-export const MOOD_MS = 4000;    // the mood's own movement after speaking
+export const MOOD_MS = 3200;    // the mood's own movement after speaking, at most: with the typing, under 5 s
 
 export const FIDGETS = {
   happy:    ['blink', 'ear', 'tail', 'yawn', 'shake', 'tilt', 'wander'],
@@ -31,42 +31,43 @@ export function pickFidget(mood, last, rnd = Math.random) {
 export const fidgetWait = (rnd = Math.random) => 6000 + Math.floor(rnd() * 8001);
 
 const times = (n, ...pair) => Array.from({ length: n }, () => pair).flat();
-const breathe = () => times(2, ['asleep-breathe', 1000], ['asleep', 1000]);
+const breathe = (ms) => times(2, ['asleep-breathe', ms], ['asleep', ms]);
 const talk = (m) => [[m, TALK_MS], [`${m}-talk`, TALK_MS]];
 const blink = (m) => [[m, 400], [`${m}-blink`, 120], [m, 220], [`${m}-blink`, 120], [m, 400]];
 const ear = (m) => [[m, 300], [`${m}-ear`, 200], [m, 150], [`${m}-ear`, 200], [m, 350]];
 const tail = (m) => times(4, [m === 'eager' ? 'eager-tail' : `${m}-wag`, 150], [m, 150]);
 const tilt = (m) => [[`${m}-tilt`, 1100], [m, 300]];
 
-// The sequences and timings the owner approved on the sprite sheets' review page.
+// The sequences and timings the owner approved on the sprite sheets' review page, the mood movements since cut
+// shorter (fewer repeats, same rhythm) so that typing and movement together stay under 5 s.
 const MOVES = {
   happy: {
-    talk: talk('happy'), mood: times(8, ['happy-wag', 250], ['happy', 250]),
+    talk: talk('happy'), mood: times(6, ['happy-wag', 250], ['happy', 250]),
     blink: blink('happy'), ear: ear('happy'), tail: tail('happy'), tilt: tilt('happy'),
     yawn: [['happy', 200], ['happy-yawn', 1000], ['happy', 300]],
     shake: [...times(6, ['happy-shake1', 90], ['happy-shake2', 90]), ['happy', 200]],
   },
   thrilled: {
-    talk: talk('thrilled'), mood: times(16, ['thrilled-wag', 120], ['thrilled', 120]),
+    talk: talk('thrilled'), mood: times(13, ['thrilled-wag', 120], ['thrilled', 120]),
     blink: blink('thrilled'), ear: ear('thrilled'), tail: tail('thrilled'),
   },
   eager: {
-    talk: talk('eager'), mood: times(13, ['eager-trot', 150], ['eager', 150]),
+    talk: talk('eager'), mood: times(10, ['eager-trot', 150], ['eager', 150]),
     blink: blink('eager'), ear: ear('eager'), tail: tail('eager'),
   },
   curious: {
     talk: talk('curious'),
-    mood: [['curious-tilt', 900], ['curious', 500], ['curious-tilt', 900], ['curious', 500], ['curious-tilt', 900], ['curious', 300]],
+    mood: [['curious-tilt', 900], ['curious', 500], ['curious-tilt', 900], ['curious', 300]],
     blink: blink('curious'), ear: ear('curious'), tilt: tilt('curious'),
   },
   worried: {
-    talk: talk('worried'), mood: [['worried-low', 1600], ['worried', 500], ['worried-low', 1600], ['worried', 300]],
+    talk: talk('worried'), mood: [['worried-low', 1200], ['worried', 500], ['worried-low', 1200], ['worried', 300]],
     sigh: [['worried-low', 1300], ['worried', 300]],
     glance: [['worried-glance', 1100], ['worried', 300]],
   },
   // A sleeping dog that talks reads wrong: while his line types he breathes.
   asleep: {
-    talk: breathe(), mood: breathe(),
+    talk: breathe(1000), mood: breathe(800),
     ear: [['asleep-ear', 150], ['asleep', 150], ['asleep-ear', 150], ['asleep', 600]],
     paw: [['asleep-paw', 180], ['asleep', 180], ['asleep-paw', 180], ['asleep', 500]],
   },

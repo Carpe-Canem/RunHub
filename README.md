@@ -1,10 +1,11 @@
 # Run Hub
 
-A Strava dashboard for runners that you can open before a run or after one. It opens on a hub that reads like a finish-line announcer: the countdown to your next start, then a few plain sentences with the numbers set in clock digits (this week against your usual week, this year against the same date last year, your last race, your totals), then your latest results and your records. Races is the other page.
+A Strava dashboard for runners that you can open before a run or after one. It opens on a hub made to be read at a glance: the countdown to your next start, two mileage tiles (this week and this year), the week's seven days, and three rows for the last 13 weeks, your latest results and your personal records. At its foot Ziggy, a pixel dog, says one line about where you stand. Races is the other page.
 
 - **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. Upcoming races are read from your Strava bio (one line per race, `MM/DD/YYYY Name`) or added by hand with "Add race", and show under "Up next" until their date has passed. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
-- **Your mileage:** on the hub, this week's and this year's mileage are sentences set next to your own normal. "Last 13 weeks" opens the weekly bars, with today's and this month's figures.
-- **The status strip:** the dot-matrix strip at the top says when the page last synced, what the next start is and the week so far; during a sync it shows the progress. It scrolls only when the text does not fit, and pressing it stops the scrolling. Ziggy, the dog beside it, trots while a sync runs, sits when it is done and naps when Strava cannot be reached. With reduced motion switched on in your device, nothing scrolls, counts up or flashes.
+- **Your mileage:** on the hub, one tile sets this week's distance against your usual week and the other sets this year's against the same date last year. Under them, seven bars show each day of the week. "Last 13 weeks" opens the weekly bars, with today's and this month's figures.
+- **Sync status:** the line in the top bar says when the page last synced, and pressing it refreshes. During a sync it shows the progress, with a thin bar under the top bar. If Strava cannot be reached it reads "Retry", and while the page waits out Strava's rate limit it reads "Paused", with the reason on a line below.
+- **Ziggy:** he speaks one line at a time. Press him or his bubble for the next one. His mood matches the line, and between lines he fidgets and sometimes trots to a new spot. He also runs the finish line on a race's page. With reduced motion switched on in your device, lines appear whole, nothing types, moves, counts up or flashes, and the countdown still ticks.
 - **Miles or kilometres:** the Units setting on the Data page switches mileage and race distances, paces, splits and heights between the two. It is kept in this browser only.
 
 Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting anything, add `?demo` to the end of the address.
@@ -50,7 +51,7 @@ Up next on Races, and the countdown on the hub, come from two places. The countd
   7/9/2027 Frostbite Half Marathon
   ```
 
-  The page reads the bio once a day and on every "Refresh now". A race you delete from the bio disappears on the next read. Data counts the lines that look like a date but could not be read.
+  The page reads the bio once a day and every time you refresh from the sync status in the top bar. A race you delete from the bio disappears on the next read. Data counts the lines that look like a date but could not be read.
 - **Add race.** Adds a race by hand, with an optional start time and place. A race added by hand is kept only in that browser (Strava has no copy), and it is dropped once its date has passed, because finished races come in from Strava.
 
 To move hand-added races to another browser or the home-screen app, open **Data**, find **Races you added** and press **Export**. Where the browser allows it you can **Download file**; copy and paste works everywhere. On the other device paste the text into **Import** (or choose the file). Races already there are not added twice. Leaving ("Forget this browser" or "Disconnect everywhere") offers an export first.
@@ -68,7 +69,7 @@ To move hand-added races to another browser or the home-screen app, open **Data*
 - **Data refreshes when you open the page.** It also refreshes when you come back to the tab after 15 minutes.
 - **Each refresh is small.** It lists your recent runs (one request per 200), and once a day re-lists the last 95 days to pick up edits and deletions.
 - **The page counts its own API calls.** It stays under 90 per 15 minutes and 900 per day, which is below Strava's read limits of 100 and 1,000. If it hits the limit, it pauses and picks up again when the window resets.
-- **The bio is read once a day, and on Refresh now.** It is one request, to find your upcoming races. Only the races found in the bio are kept, never the text.
+- **The bio is read once a day, and on every refresh you ask for.** It is one request, to find your upcoming races. Only the races found in the bio are kept, never the text.
 - **The first sync can take a few minutes** if you have a long race history: it reads one detail per race.
 
 ## Local development

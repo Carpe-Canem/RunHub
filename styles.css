@@ -43,8 +43,8 @@ p { margin: 0 0 10px; }
 .pt, .cm { display: inline-block; width: .3em; height: .7em; overflow: hidden; color: transparent; text-shadow: none; font-style: normal; }
 .pt { background: linear-gradient(var(--led), var(--led)) 50% 97% / .17em .17em no-repeat; }
 .cm { width: .2em; }
-/* One box that never breaks: a time set into a sentence must not split at its colon, and the all-lit layer
-   below sits exactly over the digits. */
+/* One box that never breaks: a time must not split at its colon, and the all-lit layer below sits exactly
+   over the digits. */
 .led { position: relative; display: inline-block; white-space: nowrap; }
 /* The all-lit layer is in every clock. It shows dimly behind one that asked for a ghost, and at full strength
    over every clock for the lamp test (main.js puts .lamp on <html> for 700 ms, once per page load). */
