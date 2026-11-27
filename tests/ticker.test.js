@@ -85,3 +85,9 @@ test('strip: once stopped by the user it stays still, and the control stays so i
   const { stripMode } = await import('../js/ticker.js');
   assert.deepEqual(stripMode({ wide: true, alert: false, still: true, motion: true }), { scroll: false, control: true });
 });
+
+test('strip: progress during a sync never scrolls (each count would restart it), so it wraps like an alert', async () => {
+  const { stripMode } = await import('../js/ticker.js');
+  assert.deepEqual(stripMode({ wide: true, alert: false, busy: true, still: false, motion: true }), { scroll: false, control: false });
+  assert.deepEqual(stripMode({ wide: true, alert: false, busy: false, still: false, motion: true }), { scroll: true, control: true });
+});

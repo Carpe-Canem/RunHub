@@ -72,7 +72,7 @@ p { margin: 0 0 10px; }
 .ticker.scroll .tk-text { animation: tk-slide var(--tk-s, 20s) linear infinite; }
 @keyframes tk-slide { to { transform: translateX(-50%); } }
 .ticker.alert .tk-text { white-space: normal; color: var(--slow); }
-.ticker.still .tk-text { white-space: normal; }
+.ticker.still .tk-text, .ticker.busy .tk-text { white-space: normal; }
 @media (min-width: 860px) {
   .status { display: flex; align-items: center; gap: 10px; flex: 0 1 440px; min-width: 0; }
   .ticker, .status progress, .status .btn { order: 0; }

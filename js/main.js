@@ -60,7 +60,7 @@ function renderStatus() {
 
 // What the strip last drew, so a status redraw that changes nothing leaves a scrolling strip alone.
 // still: the user pressed the strip to stop it scrolling (until the page is reloaded).
-const strip = { text: null, alert: false, pose: null, still: false };
+const strip = { text: null, alert: false, busy: false, pose: null, still: false };
 
 function drawTicker(st) {
   const box = $('ticker');
@@ -76,13 +76,16 @@ function drawTicker(st) {
   if (pose !== strip.pose) { strip.pose = pose; $('tickerDog').replaceChildren(ziggy(pose, 2)); }
   const text = tickerText({ status: st, next, mi });
   const alert = st.state === 'error' || st.state === 'paused';
-  if (text === strip.text && alert === strip.alert) return;
-  strip.text = text; strip.alert = alert;
+  const busy = st.state === 'sync';
+  if (text === strip.text && alert === strip.alert && busy === strip.busy) return;
+  strip.text = text; strip.alert = alert; strip.busy = busy;
   box.classList.toggle('alert', alert);
+  box.classList.toggle('busy', busy);
   fitTicker();
 }
 
-// The strip scrolls only when its text is wider than it is. An error or a pause never scrolls: CSS wraps it.
+// The strip scrolls only when its text is wider than it is. An error, a pause and a sync's progress never
+// scroll: CSS wraps them.
 // Screen readers get the status from #statusText, so the strip is hidden from them, except while it can scroll:
 // then it is a button that stops and restarts the scrolling (moving text must be stoppable).
 function fitTicker() {
@@ -92,7 +95,7 @@ function fitTicker() {
   const parts = () => strip.text.split(SEP).flatMap((s, i) => (i ? [square(), s] : [s]));
   box.classList.remove('scroll', 'still');
   el.replaceChildren(...parts());
-  const mode = stripMode({ wide: el.scrollWidth > el.parentNode.clientWidth, alert: strip.alert, still: strip.still, motion: motionOK() });
+  const mode = stripMode({ wide: el.scrollWidth > el.parentNode.clientWidth, alert: strip.alert, busy: strip.busy, still: strip.still, motion: motionOK() });
   box.disabled = !mode.control;
   if (mode.control) { box.removeAttribute('aria-hidden'); box.setAttribute('aria-label', strip.still ? 'Scroll the status strip' : 'Stop the status strip scrolling'); }
   else { box.setAttribute('aria-hidden', 'true'); box.removeAttribute('aria-label'); }

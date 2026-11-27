@@ -36,10 +36,11 @@ export function tickerText({ status, next, mi }) {
 // Ziggy beside the strip: trots while syncing, sits when synced, naps when nothing is coming in.
 export const tickerPose = (state) => (state === 'sync' ? 'trot' : state === 'idle' || state === 'demo' ? 'sit' : 'nap');
 
-// How the strip is shown. wide: its text is wider than the strip; alert: an error or a pause; still: the user
-// stopped the scrolling; motion: motion is allowed. Moving text must be stoppable, so whenever it would scroll
-// the strip is also the control that stops and restarts it.
-export function stripMode({ wide, alert, still, motion }) {
-  const control = wide && !alert && motion;
+// How the strip is shown. wide: its text is wider than the strip; alert: an error or a pause; busy: a sync is
+// showing its progress (every new count would start the scroll again, and the count is at the end of the line);
+// still: the user stopped the scrolling; motion: motion is allowed. Moving text must be stoppable, so whenever
+// it would scroll the strip is also the control that stops and restarts it.
+export function stripMode({ wide, alert, busy, still, motion }) {
+  const control = wide && !alert && !busy && motion;
   return { scroll: control && !still, control };
 }
