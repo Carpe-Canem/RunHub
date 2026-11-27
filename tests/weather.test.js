@@ -82,3 +82,15 @@ test("weatherLines lists the spec's six rows in order", () => {
   const noSky = weatherLines({ ...wx, c: 4 }, 'km');
   assert.deepEqual(noSky.map((l) => l[0]), ['Temperature', 'Feels like', 'Wind', 'Humidity', 'Precipitation']);
 });
+
+test('pickHour treats an hour with any missing figure as unusable, and a missing code as null', () => {
+  for (const k of ['temperature_2m', 'apparent_temperature', 'relative_humidity_2m', 'wind_speed_10m', 'precipitation']) {
+    const bad = { hourly: { ...json.hourly, [k]: col((i) => (i === 8 ? null : 1)) } };
+    assert.equal(pickHour(bad, '2026-03-14', '08:00'), null, k);
+    const nan = { hourly: { ...json.hourly, [k]: col((i) => (i === 8 ? NaN : 1)) } };
+    assert.equal(pickHour(nan, '2026-03-14', '08:00'), null, k);
+  }
+  const noCode = { hourly: { ...json.hourly, weather_code: col(() => null) } };
+  assert.deepEqual(pickHour(noCode, '2026-03-14', '08:00'), { t: 4.2, f: 1.1, h: 71, w: 12.6, p: 0, c: null });
+  assert.equal(skyText(null), '');
+});

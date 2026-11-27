@@ -17,16 +17,10 @@ export function pickHour(json, date, time) {
   const v = (k) => (Array.isArray(hr[k]) ? hr[k][i] : null);
   const t = v('temperature_2m');
   if (typeof t !== 'number' || !Number.isFinite(t)) return null;
-  const num = (x, d) => (typeof x === 'number' && Number.isFinite(x) ? r1(x) : d);
-  const c = v('weather_code');
-  return {
-    t: r1(t),
-    f: num(v('apparent_temperature'), r1(t)),
-    h: num(v('relative_humidity_2m'), 0),
-    w: num(v('wind_speed_10m'), 0),
-    p: num(v('precipitation'), 0),
-    c: typeof c === 'number' && Number.isFinite(c) ? Math.round(c) : -1,
-  };
+  const ok = (x) => typeof x === 'number' && Number.isFinite(x);
+  const f = v('apparent_temperature'), h = v('relative_humidity_2m'), w = v('wind_speed_10m'), p = v('precipitation'), c = v('weather_code');
+  if (![f, h, w, p].every(ok)) return null;
+  return { t: r1(t), f: r1(f), h: r1(h), w: r1(w), p: r1(p), c: ok(c) ? Math.round(c) : null };
 }
 
 export const isProvisional = (raceS, nowSec) => nowSec - raceS < 7 * DAY;
