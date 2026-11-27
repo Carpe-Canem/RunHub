@@ -17,6 +17,7 @@ test('tileSpec for CARTO is the navy recipe', () => {
   assert.deepEqual(t.base, { url: 'https://basemaps.cartocdn.com/rastertiles/dark_nolabels/{z}/{x}/{y}{r}.png?key=k', className: 'map-carto' });
   assert.deepEqual(t.labels, { url: 'https://basemaps.cartocdn.com/rastertiles/dark_only_labels/{z}/{x}/{y}{r}.png?key=k', className: 'map-labels' });
   assert.match(t.attribution, /OpenStreetMap/);
+  assert.match(t.attribution, /contributors/);
   assert.match(t.attribution, /CARTO/);
 });
 

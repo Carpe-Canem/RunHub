@@ -3,9 +3,9 @@
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
  * The only network destinations are www.strava.com (API + OAuth), cdnjs.cloudflare.com (Leaflet script and CSS),
  * OpenStreetMap tiles, basemaps.cartocdn.com (CARTO map tiles for the area shown, with the site's address as referrer
- * and the public key, which CARTO restricts to that address), and archive-api.open-meteo.com, which gets a start point rounded to about 1 km and a date
- * for each race (to read that day's weather) and nothing else, and nominatim.openstreetmap.org, which gets a start
- * point rounded to about 1 km, once per place, to name the town (switch: Place lookups on the Data page; usage policy
+ * and the public key, which CARTO restricts to that address), and archive-api.open-meteo.com, which gets a start
+ * point rounded to about 1 km and a date for each race (to read that day's weather) and nothing else, and
+ * nominatim.openstreetmap.org, which gets a start point rounded to about 1 km, once per place, to name the town (switch: Place lookups on the Data page; usage policy
  * https://operations.osmfoundation.org/policies/nominatim/).
  */
 import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';

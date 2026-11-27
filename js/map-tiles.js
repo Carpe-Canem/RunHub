@@ -7,7 +7,7 @@ export const CARTO_KEY = 'cb1_5gov_1_55151d29ac778071cbf351c0';
 export const CARTO_HOST = 'carpe-canem.github.io';
 
 const OSM_COPY = '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-const CARTO_COPY = `${OSM_COPY} © <a href="https://carto.com/attributions">CARTO</a>`;
+const CARTO_COPY = `${OSM_COPY} contributors © <a href="https://carto.com/attributions">CARTO</a>`;
 
 // CARTO on the site's host when there is a key; the browser's own choice (lw.map) wins, but CARTO needs a key.
 export function mapSource(host, pref, key) {
