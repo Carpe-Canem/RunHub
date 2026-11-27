@@ -114,3 +114,15 @@ test('formatters', () => {
   assert.equal(fmtPace(null, 'mi'), '–'); assert.equal(fmtPace(407, 'mi'), '6:47 /mi');
   assert.equal(fmtDist(10000, 'km'), '10.00 km'); assert.equal(fmtDist(10000, 'mi'), '6.21 mi');
 });
+
+test('a race with no time (0 or missing) never wins its class record', () => {
+  const m = buildRaces({
+    a: S('a', 'Riverbend 10K', '2024-05-01T08:00:00', 0, 10000),
+    b: S('b', 'Riverbend 10K', '2023-05-01T08:00:00', 2500, 10000),
+    c: S('c', 'Riverbend 10K', '2022-05-01T08:00:00', undefined, 10000),
+  }, {}, 'mi');
+  assert.equal(m.records['10K'], 'b');
+  assert.equal(m.byId.a.record, false);
+  assert.equal(m.byId.c.record, false);
+  assert.equal(m.byId.a.gap, null);   // no "+-41:40 off your record"
+});

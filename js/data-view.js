@@ -69,10 +69,16 @@ function rescanRow() {
     h('button', { type: 'button', class: 'btn small', disabled: !!S.syncing || !S.races, onclick: go }, 'Rescan all history'));
 }
 
+// The redraw replaces the radios, so focus goes back to the one now checked (arrow keys keep working).
 function unitsRow() {
   const now = units();
+  const choose = (u) => {
+    setUnits(u); bus.emit('data');
+    const el = document.querySelector(`#dataStatus [data-focus="units-${u}"]`);
+    if (el) el.focus();
+  };
   const pick = (u, label) => h('label', { class: 'radio' },
-    h('input', { type: 'radio', name: 'units', value: u, checked: now === u, onchange: () => { setUnits(u); bus.emit('data'); } }), ` ${label}`);
+    h('input', { type: 'radio', name: 'units', value: u, checked: now === u, 'data-focus': `units-${u}`, onchange: () => choose(u) }), ` ${label}`);
   return h('div', { class: 'units', role: 'radiogroup', 'aria-label': 'Units' }, h('strong', null, 'Units '), pick('mi', 'Miles'), ' ', pick('km', 'Kilometres'));
 }
 

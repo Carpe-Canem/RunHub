@@ -50,3 +50,10 @@ test('bus.emit keeps going when a listener throws, and never throws itself', () 
     assert.equal(logged.length, 1);
   } finally { console.error = was; }
 });
+test("setUnits refuses names inherited from Object, such as 'toString'", () => {
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
+  try {
+    assert.equal(setUnits('toString'), false); assert.equal(mem['lw.units'], undefined);
+  } finally { delete globalThis.localStorage; }
+});

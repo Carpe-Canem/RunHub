@@ -57,14 +57,14 @@ export function buildRaces(summaries, details, unit) {
   const byId = {}, records = {};
   for (const r of rows) {
     byId[r.id] = r;
-    if (r.short || r.virtual || r.cls === 'Other') continue;
+    if (r.short || r.virtual || r.cls === 'Other' || !(r.t > 0)) continue;   // no time: never a record
     const cur = records[r.cls];
     // rows run newest first, so "<=" lets an earlier race win a tie
     if (!cur || r.t <= byId[cur].t) records[r.cls] = r.id;
   }
   for (const r of rows) {
     r.record = records[r.cls] === r.id;
-    if (r.cls !== 'Other' && records[r.cls] && !r.record) r.gap = r.t - byId[records[r.cls]].t;
+    if (r.cls !== 'Other' && records[r.cls] && !r.record && r.t > 0) r.gap = r.t - byId[records[r.cls]].t;
     r.others = rows.filter((o) => o !== r && o.cls === r.cls && o.key === r.key).map((o) => o.id);
   }
   const counts = {};

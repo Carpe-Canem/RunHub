@@ -41,7 +41,7 @@ export const UNIT_M = { mi: 1609.344, km: 1000 };
 
 export function units() { const u = store.get(K.units); return u === 'km' ? 'km' : 'mi'; }
 
-export function setUnits(u) { return u in UNIT_M && store.set(K.units, u); }
+export function setUnits(u) { return typeof u === 'string' && Object.hasOwn(UNIT_M, u) && store.set(K.units, u); }
 
 export class UserError extends Error {}
 
