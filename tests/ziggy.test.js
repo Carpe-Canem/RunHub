@@ -1,42 +1,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FRAMES, W, H, cellPaths } from '../js/ziggy.js';
+import { SHEETS } from '../js/ziggy-frames.js';
+import { poseFrames } from '../js/ziggy.js';
 
-test('every frame is 14 rows of 24 allowed cells', () => {
-  assert.deepEqual(Object.keys(FRAMES).sort(), ['nap', 'sit', 'trot1', 'trot2']);
-  for (const [name, rows] of Object.entries(FRAMES)) {
-    assert.equal(rows.length, H, `${name} has ${H} rows`);
-    for (const row of rows) assert.match(row, new RegExp(`^[.oe#c]{${W}}$`), `${name}: "${row}"`);
+test('every pose maps to side frames that exist', () => {
+  assert.deepEqual(poseFrames('trot'), ['trot1', 'trot2']);
+  assert.deepEqual(poseFrames('sit'), ['sit']);
+  assert.deepEqual(poseFrames('nap'), ['nap']);
+  assert.deepEqual(poseFrames('moonwalk'), ['sit']);
+  assert.deepEqual(poseFrames('toString'), ['sit']);
+  for (const pose of ['trot', 'sit', 'nap', 'moonwalk']) {
+    for (const name of poseFrames(pose)) assert.ok(SHEETS.side.frames.includes(name), `${pose}: ${name}`);
   }
 });
 
-test('the trot frames differ only in the last three rows', () => {
-  assert.deepEqual(FRAMES.trot1.slice(0, 11), FRAMES.trot2.slice(0, 11));
-  assert.notDeepEqual(FRAMES.trot1.slice(11), FRAMES.trot2.slice(11));
+test('the trot is two different frames', () => {
+  const [a, b, ...rest] = poseFrames('trot');
+  assert.deepEqual(rest, []);
+  assert.notEqual(a, b);
 });
 
-test('every pose stands on the bottom row and has an unlit eye inside the head', () => {
-  for (const [name, rows] of Object.entries(FRAMES)) assert.match(rows[H - 1], /[^.]/, `${name} touches the ground`);
-  for (const name of ['trot1', 'sit']) assert.match(FRAMES[name][3], /o\.ooo/, `${name} has an eye`);
-});
-
-test('white on the muzzle is a single cell behind the nose, never a run', () => {
-  for (const name of ['trot1', 'sit']) {
-    assert.match(FRAMES[name][4], /o#o$/, `${name}: one white cell, then the nose`);
-    assert.match(FRAMES[name][5], /o#\.\.$/, `${name}: one white cell under it`);
+test('every mood has a still, and a talking frame unless it is asleep', () => {
+  const { frames } = SHEETS.hub;
+  for (const mood of ['happy', 'thrilled', 'eager', 'curious', 'worried']) {
+    assert.ok(frames.includes(mood), `${mood} still`);
+    assert.ok(frames.includes(`${mood}-talk`), `${mood} talking`);
   }
-});
-
-test('only the collar is blue, and the nap has none', () => {
-  assert.equal(FRAMES.trot1.join('').split('c').length - 1, 2);
-  assert.equal(FRAMES.sit.join('').split('c').length - 1, 2);
-  assert.ok(!FRAMES.nap.join('').includes('c'));
-});
-
-test('cellPaths draws one square per lit cell, grouped by kind, for the rows asked', () => {
-  const d = cellPaths(['.o#', 'c.o'], 0, 2);
-  assert.deepEqual(Object.keys(d).sort(), ['#', 'c', 'o']);
-  assert.equal(d.o.split('M').length - 1, 2);
-  assert.match(d['#'], /^M2\.08 0\.08h/);
-  assert.deepEqual(Object.keys(cellPaths(['.o#', 'c.o'], 1, 2)).sort(), ['c', 'o']);
+  assert.ok(frames.includes('asleep'));
+  assert.ok(frames.includes('asleep-breathe'));
+  assert.ok(!frames.includes('asleep-talk'));
 });

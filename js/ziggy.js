@@ -1,87 +1,44 @@
-// Ziggy, the board's dog: a dot-matrix sprite, 24 cells by 14, facing right.
-// Cells: . off, o coat (half lit), e ear (dimmer), # white (fully lit), c collar (the only blue on the board).
-// The muzzle has one white cell behind the nose and no more.
-import { h, svg } from './dom.js';
+// Ziggy, the board's dog: full-colour pixel sprites. Each one is a window the size of one frame, with the whole
+// sheet behind it; showing another frame moves the sheet. Decoration only, so hidden from screen readers.
+import { h } from './dom.js';
+import { SHEETS, framePos, sheetSize, sheetUrl } from './ziggy-frames.js';
 
-export const W = 24;
-export const H = 14;
+const SIDE = { trot: ['trot1', 'trot2'], nap: ['nap'] };
 
-const TROT = [
-  '..#.....................',
-  '.#.............oo.......',
-  '.o............ooooo.....',
-  '.o............oeeo.ooo..',
-  '..o...........ooeooooo#o',
-  '..o..........oooooooo#..',
-  '...oooooooooocc##.......',
-  '...ooooooooooo##........',
-  '...ooooooooooo#.........',
-  '...oooo....oooo.........',
-  '....oo......oo..........',
-  '...o..o....o..o.........',
-  '..o....o..o....o........',
-  '.#......##......#.......',
-];
-const TROT_LEGS_IN = [
-  '.....oo....oo...........',
-  '......oo..oo............',
-  '.......#..#.............',
-];
-const SIT = [
-  '........................',
-  '...............oo.......',
-  '..............ooooo.....',
-  '..............oeeo.ooo..',
-  '..............ooeooooo#o',
-  '.............oooooooo#..',
-  '............occ##.......',
-  '...........oooo##.......',
-  '..........ooooo##.......',
-  '.........oooooooo.......',
-  '........oooooo.oo.......',
-  '.......ooooooo.oo.......',
-  '.#....oooooooo.oo.......',
-  '..oooooooo###..##.......',
-];
-const EMPTY = '.'.repeat(W);
-const NAP = [
-  ...new Array(10).fill(EMPTY),
-  '......ooooooo...oo......',
-  '....ooooooooooooeeoo....',
-  '...oooooooooooooeoooo#o.',
-  '#ooooooooo###ooo.####...',
-];
+// The side sheet's frames for a pose: 'trot', 'nap', and anything else sits.
+export const poseFrames = (pose) => (Object.hasOwn(SIDE, pose) ? [...SIDE[pose]] : ['sit']);
 
-export const FRAMES = { trot1: TROT, trot2: [...TROT.slice(0, 11), ...TROT_LEGS_IN], sit: SIT, nap: NAP };
-
-const DOT = 0.84;   // a lit cell, in cells: the rest is the gap between dots
-const INSET = ((1 - DOT) / 2).toFixed(2).slice(1);   // ".08"
-
-// Path data per kind of cell ({o, e, '#', c}) for rows from..to: one small square per lit cell.
-export function cellPaths(rows, from = 0, to = rows.length) {
-  const d = {};
-  for (let y = from; y < to; y++) {
-    for (let x = 0; x < rows[y].length; x++) {
-      const k = rows[y][x];
-      if (k !== '.') d[k] = `${d[k] || ''}M${x}${INSET} ${y}${INSET}h${DOT}v${DOT}h-${DOT}z`;
-    }
-  }
-  return d;
+// Where the sheet goes to show a frame, as a background-position.
+function shift(sheet, name, scale) {
+  const { x, y } = framePos(sheet, name);
+  return `${-x * scale}px ${-y * scale}px`;
 }
 
-const CLS = { o: 'zg-o', e: 'zg-e', '#': 'zg-w', c: 'zg-c' };
-const layer = (rows, from, to, cls) => svg('g', { class: cls },
-  Object.entries(cellPaths(rows, from, to)).map(([k, d]) => svg('path', { class: CLS[k], d })));
+// A frame-sized window on a sheet, showing its first frame. scale: a whole number of screen px per drawn px.
+export function sprite(sheet, scale = 1) {
+  const { w, h: high } = sheetSize(sheet);
+  const [cw, ch] = SHEETS[sheet].cell;
+  const size = scale === 1 ? '' : `width:${cw * scale}px;height:${ch * scale}px;`;
+  return h('span', {
+    class: `zg zg-${sheet}`, 'aria-hidden': 'true', 'data-scale': scale === 1 ? null : scale,
+    style: `${size}background-image:url("${sheetUrl(sheet)}");background-size:${w * scale}px ${high * scale}px`,
+  });
+}
 
-// pose: 'trot', 'sit' or 'nap'. cell: the size of one cell in px. Decoration only, so hidden from screen readers.
-// The trot's two leg frames are swapped by CSS, so reduced motion stills them.
-export function ziggy(pose, cell = 2) {
-  const p = pose === 'trot' || pose === 'nap' ? pose : 'sit';
-  const kids = p === 'trot'
-    ? [layer(TROT, 0, 11), layer(TROT, 11, H, 'zg-f1'), layer(FRAMES.trot2, 11, H, 'zg-f2')]
-    : [layer(FRAMES[p], 0, H)];
-  return svg('svg', { class: `zg zg-${p}`, viewBox: `0 0 ${W} ${H}`, width: W * cell, height: H * cell, 'aria-hidden': 'true', focusable: 'false' }, kids);
+export function setFrame(el, sheet, name) {
+  el.style.backgroundPosition = shift(sheet, name, +el.dataset.scale || 1);
+}
+
+// The side dog. pose: 'trot', 'sit' or 'nap'. The trot's second frame is swapped in by CSS, so reduced motion
+// stills it on the first.
+export function ziggy(pose, scale = 1) {
+  const [first, second] = poseFrames(pose);
+  const el = sprite('side', scale);
+  el.classList.add(`zg-${second ? 'trot' : first}`);
+  setFrame(el, 'side', first);
+  if (second) el.style.setProperty('--f2', shift('side', second, scale));
+  return el;
 }
 
 // A note with Ziggy beside it: sitting by an empty list, napping by something that is not available.
-export const withZiggy = (pose, node, cell = 2) => h('div', { class: 'zg-note' }, ziggy(pose, cell), node);
+export const withZiggy = (pose, node, scale = 1) => h('div', { class: 'zg-note' }, ziggy(pose, scale), node);

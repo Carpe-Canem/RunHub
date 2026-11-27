@@ -1,6 +1,6 @@
 // Hub: the first view, read at a glance. The countdown to the next start, the week's and the year's mileage, the
 // week's days, and three rows: the last 13 weeks, the latest results and the personal records.
-import { bus, fmt1, dayLabel } from './core.js';
+import { S, bus, fmt1, dayLabel } from './core.js';
 import { $, h, led } from './dom.js';
 import { miles } from './runs-model.js';
 import { RACES_DOWN } from './races-view.js';
@@ -8,6 +8,8 @@ import { hubStats, fmtTime } from './races-model.js';
 import { countdown, countdownLabel, tickAction } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
 import { startText, NOTHING_ON, weekTile, yearTile, weekStrip, rowNotes } from './hub-model.js';
+import { ziggyLines, moodCheck } from './ziggy-says.js';
+import { ziggyStage } from './ziggy-stage.js';
 
 // What Next start last drew: {id, kind}, id null for "Nothing on the calendar.", or null when it could not draw.
 let shown = null;
@@ -134,6 +136,20 @@ function part(draw, note) {
   try { return draw(); } catch (e) { console.error(e); return note ? down(note) : null; }
 }
 
+// Ziggy's stage, after the body: his lines are brought up to date, and the node itself is placed once and never
+// taken out, so his line, his place and focus on his bubble carry over a redraw. A throw leaves him as he was.
+// mi, stats, up: as ziggyLines() takes them. In the demo, ?ziggy=<mood> shows that mood with two lines and
+// &fidget=<name> plays that fidget every time (hooks for the checks).
+function stage(box, mi, stats, up, runsLoaded) {
+  try {
+    const q = S.demo ? new URLSearchParams(location.search) : null;
+    const lines = (q && moodCheck(q.get('ziggy')))
+      || ziggyLines({ mi, stats, up, sync: { running: !!S.syncing, runsLoaded }, now: new Date() });
+    const el = ziggyStage(lines, { only: q && q.get('fidget') });
+    if (el.parentNode !== box) box.append(el);
+  } catch (e) { console.error(e); }
+}
+
 // cache: the cache of runs, null until the first sync has loaded the athlete. races: null until the race cache
 // is loaded, or {failed: true}. up: the upcoming rows, or null when reading them threw.
 export function renderHub(cache, races, up) {
@@ -165,6 +181,7 @@ export function renderHub(cache, races, up) {
       mi ? part(() => weeks(mi, weeksOpen), null) : null,
       stDown ? down(RACES_DOWN) : part(() => raceRows(st, recsOpen), RACES_DOWN)));
   body.replaceChildren(h('h2', { class: 'vh' }, 'Hub'), next, side);
+  stage(box, miDown ? false : mi, stDown ? false : st, up, !!cache);
   const el = key && box.querySelector(`[data-focus="${key}"]`);
   if (el) el.focus({ preventScroll: true });
 }

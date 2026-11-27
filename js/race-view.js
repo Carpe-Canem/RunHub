@@ -58,7 +58,7 @@ function phaseFor(r) {
 }
 
 const ledFor = (r, ph) => led(ph.phase === 'run' ? clockLike(runUpAt(r.t, ph.p), r.t) : fmtTime(r.t), { ghost: true });
-const dogFor = (ph) => ziggy(ph.phase === 'done' ? 'sit' : 'trot', 3);
+const dogFor = (ph) => ziggy(ph.phase === 'done' ? 'sit' : 'trot', 1);
 
 // A redraw during a record's hops starts their animations part-way in (a negative delay), so the flash and the
 // three hops carry on from where they were and are not played again from the start.

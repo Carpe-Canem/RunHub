@@ -6,7 +6,7 @@
   color-scheme: dark;
   --night: #0C1424; --panel: #131E35; --bar: #0A1120; --line: #233358; --board: #04070D;
   --tx: #E6ECF8; --mut: #8D9EC0;
-  --led: #FFB52E; --go: #35D69B; --slow: #FF7373; --collar: #6EC6E6;
+  --led: #FFB52E; --go: #35D69B; --slow: #FF7373;
   --f: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   --fl: Doto, "Courier New", monospace;
   --radius: 12px;
@@ -204,6 +204,43 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .rec-row .badge { justify-self: start; }
 .rec-date { font-size: 13px; color: var(--mut); }
 .rec-time { font-size: 15px; font-weight: 800; white-space: nowrap; }
+/* Ziggy's stage ends the hub: a bubble the hub's width, a pointer, and the strip he walks on. On a narrow screen
+   it takes the spare room above it, so he stands on the tab bar's edge. */
+.zs { position: relative; margin-top: auto; padding-top: 12px; }
+.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 16px; font: 500 14px/1.4 var(--f); text-align: left; color: var(--tx); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+button.zs-say { cursor: pointer; }
+.zs-say b { font-weight: 800; }
+.zs-say .go { color: var(--go); }
+/* The words still to come hold their place, so the bubble is its final size from the first frame. */
+.zs-off { opacity: 0; }
+/* The pointer: a corner of the bubble turned to point down at his head. Placed by left, as he is. */
+.zs-tail { position: relative; z-index: 1; display: block; width: 12px; height: 12px; margin: -7px 0 5px -6px; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+.zs-strip { position: relative; height: 88px; }
+.zs-dog { position: absolute; left: 0; bottom: 0; }
+.zs-more .zs-dog { cursor: pointer; }
+.zs-spark, .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
+/* Thrilled: an amber burst, zig-zagged at each end, and three sparks round him. The shape is on a layer behind
+   the words so the focus ring is not cut off with it. */
+.zs[data-mood="thrilled"] .zs-say { color: #1A1200; font-weight: 600; background: none; border-color: transparent; }
+.zs[data-mood="thrilled"] .zs-say::before { content: ""; position: absolute; inset: -1px; z-index: -1; background: var(--led); clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 17%, 100% 34%, calc(100% - 7px) 50%, 100% 66%, calc(100% - 7px) 83%, 100% 100%, 0 100%, 7px 83%, 0 66%, 7px 50%, 0 34%, 7px 17%); }
+.zs[data-mood="thrilled"] .zs-say:focus-visible { outline-color: var(--tx); }
+.zs[data-mood="thrilled"] .zs-say .go { color: inherit; }
+.zs[data-mood="thrilled"] .zs-tail { width: 14px; height: 9px; margin: -1px 0 2px -7px; background: var(--led); border: 0; transform: none; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.zs[data-mood="thrilled"] .zs-spark { display: block; left: -7px; top: 26px; width: 4px; height: 4px; background: var(--led); }
+.zs[data-mood="thrilled"] .zs-spark + .zs-spark { left: auto; right: -5px; top: 12px; background: var(--go); }
+.zs[data-mood="thrilled"] .zs-spark + .zs-spark + .zs-spark { right: -9px; top: 50px; background: var(--led); }
+/* Asleep: a dashed outline with nothing in it, a trail of two dots for a pointer, and two z's over him. */
+.zs[data-mood="asleep"] .zs-say { color: var(--mut); background: none; border-style: dashed; }
+.zs[data-mood="asleep"] .zs-tail { margin: 2px 0 -4px -6px; border: 0; transform: none; background: radial-gradient(circle at 4px 3px, var(--mut) 2px, transparent 2.5px), radial-gradient(circle at 9px 10px, var(--mut) 1.3px, transparent 1.8px); }
+.zs[data-mood="asleep"] .zs-z { display: block; left: 46px; top: 26px; font: 800 11px/1 var(--f); color: var(--mut); }
+.zs[data-mood="asleep"] .zs-z + .zs-z { left: 56px; top: 12px; font-size: 14px; }
+/* Sparks and z's drift only while he is moving; otherwise they sit where they are. */
+.zs[data-state="moving"] .zs-spark, .zs[data-state="fidget"] .zs-spark { animation: zs-spark .5s steps(2, jump-none) infinite alternate; }
+.zs[data-state="moving"] .zs-spark + .zs-spark, .zs[data-state="fidget"] .zs-spark + .zs-spark { animation-delay: -.2s; }
+.zs[data-state="moving"] .zs-z, .zs[data-state="fidget"] .zs-z { animation: zs-z 2s steps(4, jump-none) infinite; }
+.zs[data-state="moving"] .zs-z + .zs-z, .zs[data-state="fidget"] .zs-z + .zs-z { animation-delay: -1s; }
+@keyframes zs-spark { to { transform: translateY(-4px); opacity: .3; } }
+@keyframes zs-z { from { transform: translate(-2px, 4px); opacity: .3; } to { transform: translate(2px, -4px); } }
 /* Wide screens: the clock on the left, everything else on the right. The right column spans both rows, so the
    second row is free for what stands under the clock. */
 @media (min-width: 860px) {
@@ -213,6 +250,7 @@ main { padding-top: 18px; padding-bottom: 28px; }
   .cd-grp { align-items: flex-start; }
   .cd-grp .led { font-size: clamp(34px, 5.4vw, 64px); }
   .hub-side { grid-column: 2; grid-row: 1 / span 2; }
+  .zs { grid-column: 1; grid-row: 2; margin-top: 0; }
 }
 
 /* Races */
@@ -300,9 +338,9 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .race-led.flash .led { animation: led-go .6s steps(1) var(--ad, 0s) 1; }
 @keyframes led-go { 0% { color: var(--go); text-shadow: 0 0 12px color-mix(in srgb, var(--go) 40%, transparent); } }
 /* The finish line under the clock: Ziggy runs to the post as the time counts up (--p goes 0 to 1), then sits. */
-.finish { position: relative; height: 46px; max-width: 420px; margin: 0 0 10px; border-bottom: 2px dotted var(--line); }
-.fin-dog { position: absolute; left: calc(var(--p, 1) * (100% - 72px)); bottom: 2px; }
-.fin-post { position: absolute; right: 82px; bottom: 0; width: 8px; height: 40px; opacity: .85; background: conic-gradient(var(--tx) 25%, transparent 0 50%, var(--tx) 0 75%, transparent 0) 0 0 / 8px 8px; }
+.finish { position: relative; height: 48px; max-width: 420px; margin: 0 0 10px; border-bottom: 2px dotted var(--line); }
+.fin-dog { position: absolute; left: calc(var(--p, 1) * (100% - 48px)); bottom: 2px; }
+.fin-post { position: absolute; right: 56px; bottom: 0; width: 8px; height: 40px; opacity: .85; background: conic-gradient(var(--tx) 25%, transparent 0 50%, var(--tx) 0 75%, transparent 0) 0 0 / 8px 8px; }
 .finish.hop .fin-dog { animation: zg-hop .2s steps(2, jump-none) var(--ad, 0s) 3; }
 @keyframes zg-hop { 50% { transform: translateY(-7px); } }
 .race-ctx { font-size: 14px; font-weight: 700; color: var(--mut); margin: 0; }
@@ -342,17 +380,13 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .race-missing { padding: 8px 0; }
 .choose { padding: 48px 0; text-align: center; }
 
-/* Ziggy: the dot-matrix dog. The collar is the only blue on the board. */
-.zg { display: block; flex: none; }
-.zg-o { fill: var(--led); opacity: .42; }
-.zg-e { fill: var(--led); opacity: .2; }
-.zg-w { fill: var(--led); }
-.zg-c { fill: var(--collar); }
-.zg-f2 { visibility: hidden; }
-.zg-trot .zg-f1 { animation: zg-out .36s steps(1) infinite; }
-.zg-trot .zg-f2 { animation: zg-in .36s steps(1) infinite; }
-@keyframes zg-out { 50%, 100% { visibility: hidden; } }
-@keyframes zg-in { 50%, 100% { visibility: visible; } }
+/* Ziggy: a pixel sprite. Each one is a window on a sheet of frames, drawn only at whole-number scales. */
+.zg { display: block; flex: none; background-repeat: no-repeat; image-rendering: pixelated; }
+.zg-side { width: 48px; height: 40px; }
+.zg-hub { width: 96px; height: 88px; }
+/* The side trot: its second frame (--f2, set with the first) for half of each stride. */
+.zg-trot { animation: zg-trot .36s steps(1) infinite; }
+@keyframes zg-trot { 50%, 100% { background-position: var(--f2); } }
 .zg-note { display: flex; align-items: flex-end; gap: 12px; }
 .zg-note > :last-child { margin-bottom: 0; min-width: 0; }
 
