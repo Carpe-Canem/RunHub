@@ -88,14 +88,16 @@ export function rescan(rc) { rc.scan = freshScan(); }
 // Errors that would fail every remaining request too: lost access or no connection. The sync reports them.
 const stopsPass = (e) => !!(e && (e.refused || e.linkDead || e.authFailed || e.offline));
 
+const MAX_SKIPS_IN_A_ROW = 3;
+
 // One detail request per race not yet in rd, newest first. A rate-limit pause, lost access or no connection
 // stops the pass (the sync says why; a resumed sync picks up where it left off). Any other error (a Strava
 // 5xx, an unexpected throw) skips that race for this pass only: it is not recorded, so the next pass asks
-// again, and the older races still get read.
+// again, and the older races still get read. Three skips in a row end the pass.
 export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
   if (!rc || !rd) return;
   const todo = Object.values(rc.races).filter((r) => !rd[r.id]).sort((a, b) => b.s - a.s);
-  let done = 0, read = 0, skipped = 0;
+  let done = 0, read = 0, skipped = 0, streak = 0;
   if (S.warn === SKIPPED) S.warn = null;   // this pass asks for those races again
   try {
     for (const r of todo) {
@@ -104,12 +106,13 @@ export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
       catch (e) {
         if (e instanceof RateLimited || stopsPass(e)) throw e;
         console.warn('Race detail request failed', e);
-        a = undefined; skipped++;
+        a = undefined; skipped++; streak++;
       }
-      if (a !== undefined) { rd[r.id] = a ? detailFrom(a) : { at: Date.now(), missing: true }; read++; }
+      if (a !== undefined) { rd[r.id] = a ? detailFrom(a) : { at: Date.now(), missing: true }; read++; streak = 0; }
       done++;
       onStep(done, todo.length);
       if (read && done % 5 === 0) saveRaceDet();
+      if (streak >= MAX_SKIPS_IN_A_ROW) break;   // an outage: stop asking, the next pass retries
     }
   } finally {
     if (read) saveRaceDet();

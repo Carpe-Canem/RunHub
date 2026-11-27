@@ -202,7 +202,8 @@ test('saveRaceDet drops elevation profiles before giving up', () => {
   assert.equal(S.warn, 'This browser\'s storage is full, so some data will be fetched again next time.');
 });
 
-test('fetchRaceDetails skips a race whose request fails, keeps going, and leaves a note', async () => {
+test('fetchRaceDetails skips a race whose request fails, keeps going, and leaves a note', async (t) => {
+  t.mock.method(console, 'warn', () => {});
   const rc = S.races; const rd = S.raceDet;
   noteListed(rc, ACTS.slice(0, 46), 0);   // races 5000, 5015, 5030, 5045
   const calls = [];
@@ -222,6 +223,34 @@ test('fetchRaceDetails skips a race whose request fails, keeps going, and leaves
   await fetchRaceDetails(rc, rd, async (path) => { calls.push(path); return { id: 5015, sport_type: 'Run' }; });
   assert.deepEqual(calls, ['/activities/5015']);
   assert.equal(S.warn, null);
+});
+
+test('fetchRaceDetails ends the pass after three skipped races in a row and leaves the note', async (t) => {
+  t.mock.method(console, 'warn', () => {});
+  const rc = S.races; const rd = S.raceDet;
+  noteListed(rc, ACTS.slice(0, 46), 0);   // races 5000, 5015, 5030, 5045
+  const calls = [];
+  const call = async (path) => {
+    calls.push(path);
+    if (calls.length <= 3) throw new UserError('Strava returned an error (500). Try again later.');
+    return { id: +path.split('/')[2], sport_type: 'Run' };
+  };
+  await fetchRaceDetails(rc, rd, call);
+  assert.deepEqual(calls, ['/activities/5000', '/activities/5015', '/activities/5030']);
+  assert.equal(rd['5045'], undefined);
+  assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
+  // a race read between failures resets the count
+  S.warn = null;
+  calls.length = 0;
+  const call2 = async (path) => {
+    calls.push(path);
+    if (path === '/activities/5015') return { id: 5015, sport_type: 'Run' };
+    throw new UserError('Strava returned an error (500). Try again later.');
+  };
+  Object.keys(rd).forEach((k) => delete rd[k]);
+  await fetchRaceDetails(rc, rd, call2);
+  assert.deepEqual(calls, ['/activities/5000', '/activities/5015', '/activities/5030', '/activities/5045']);
+  assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
 });
 
 test('fetchRaceDetails still stops on a rate-limit pause', async () => {
