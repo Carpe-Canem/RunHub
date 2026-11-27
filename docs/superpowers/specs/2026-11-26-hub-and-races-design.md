@@ -257,7 +257,9 @@ Every access stays guarded as today. If storage is full, details are dropped bef
 
 **Checked on the live site (owner, 2026-11-26).** On https://carpe-canem.github.io/RunHub/ a setup link opened on a second device connected and synced, and the first device was still signed in afterwards. The same check found the hub opening, the tab bar clearing the iPhone home indicator, and the Legends numbers matching.
 
-**Still unverified.** The first device refreshes only when its access token has less than an hour left (tokens last about 6 hours), so it was most likely still on its old access token. Strava's documentation says a refresh token can change whenever a new access token is issued. The case that can break is the first device's own next refresh, after the second device has refreshed. To test: on the first device, wait 6 hours or more after the second one connected (or set `expires_at` in `lw.token` to 0), then sync. If the first device then shows "Strava access expired or was revoked", refresh tokens rotate and the link design needs rethinking, for example a link that carries only the keys and has each device sign in itself.
+**Why that first check was not enough.** The first device refreshes only when its access token has less than an hour left (tokens last about 6 hours), so it was most likely still on its old access token. Strava's documentation says a refresh token can change whenever a new access token is issued. The case that could break was the first device's own next refresh, after the second device had refreshed; if it then showed "Strava access expired or was revoked", the link design would need rethinking.
+
+**Re-checked after the phase 2 release (owner, 2026-11-27): still signed in.** With v=21 live, the first device synced more than 6 hours after the second device connected through a setup link, so its own refresh ran after the second device's, and it stayed signed in. The link design stands.
 
 **Tests.** Two pure functions, `encodeSetup(fields)` and `decodeSetup(text)`. The second accepts a whole link or a bare code and returns nothing for garbage, a wrong version or a missing field.
 
