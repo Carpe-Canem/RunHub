@@ -8,6 +8,7 @@ import { $ } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
+import { demoRaces } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
@@ -87,13 +88,15 @@ function onRoute(route, prev) {
   if (prev) window.scrollTo(0, scrolls[route.view] || 0);
 }
 
+function setDemoRaces() { const d = demoRaces(); S.races = d.races; S.raceDet = d.det; }
+
 function startDemo() {
-  S.demo = true; S.cache = demoCache(); S.error = null;
+  S.demo = true; S.cache = demoCache(); setDemoRaces(); S.error = null;
   render();
 }
 
 function exitDemo() {
-  S.demo = false; S.cache = null;
+  S.demo = false; S.cache = null; S.races = null; S.raceDet = null;
   if (location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo(0, 0);
@@ -245,7 +248,7 @@ async function init() {
     S.cache = loadCache(t.athleteId);
     S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId);
   } else if (new URLSearchParams(location.search).has('demo')) {
-    S.demo = true; S.cache = demoCache(); S.error = null;
+    S.demo = true; S.cache = demoCache(); setDemoRaces(); S.error = null;
   }
   // After handleCallback, which strips the sign-in code (and any hash) from the address.
   startRouter({ enabled: ENABLED, onRoute });   // draws the first view
