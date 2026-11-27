@@ -1,0 +1,16 @@
+o #6A7995 outline blue-grey
+k #1A1A1C coat black
+d #0D0C10 coat shadow
+g #2F2F33 coat gloss
+w #FCF6EC white
+c #D5C8B8 cream shade
+s #A69889 grey shade on white
+t #CF9A52 tan
+u #8F6638 dark tan
+e #A8652A eye amber
+n #040305 nose and pupil
+b #1478C8 collar blue
+l #35A5EA collar light
+p #F28977 tongue pink
+m #7A2A26 mouth dark
+h #FFFFFF highlight white

@@ -230,6 +230,9 @@ Hub sheet, 96 × 88 cells, 8 columns, 5 rows (768 × 440), three-quarter view. T
 - The five other stills are traced from the same B6 sheet exactly as the happy one was (`pose-thrilled`,
   `pose-trot`, `pose-curious`, `pose-worried`, `pose-asleep` show the crops), all at the happy pose's
   scale so he is one size throughout. Every other frame is a copy of its still with pixels moved.
+- **Talking, as the owner chose at the Phase 1 gate (2026-11-27, loop B of three):** he talks by swapping the
+  still with the opposite mouth. The happy still has his mouth open with the tongue out, as B6 shows, so
+  `happy-talk` is the mouth shut. A mood whose still has the mouth shut gets a mouth-open talking frame.
 - The thrilled hop is a CSS lift of the sprite (as `zg-hop` is today), not a frame. Sparks and the z's
   are drawn by CSS beside him, not in the sheet.
 - `eager` and `eager-trot` are the two leg frames of the trot at hub size.
