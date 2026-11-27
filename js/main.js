@@ -23,7 +23,7 @@ import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { showExport, hideExport, renderUpcomingPanel } from './upcoming-panel.js';
 import { renderHub, tickHub } from './hub.js';
-import { renderRaces, racesDown, upNext } from './races-view.js';
+import { renderRaces, racesDown, upNext, tickUpNext } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
 import { dropCourseMap, closeCourseDialog } from './race-map.js';
 import { openAddSheet, closeAddSheet } from './add-race.js';
@@ -84,7 +84,7 @@ function render() {
   $('forgetBtn').hidden = S.demo;
   $('leaveNote').hidden = S.demo;
   renderStatus();
-  hubTicks();
+  viewTicks();
   if (!connected) return;
   const c = S.cache;
   const scope = (token() || {}).scope || '';
@@ -117,18 +117,22 @@ function hubUp() {
   try { return upcomingRows(); } catch (e) { console.error(e); return null; }
 }
 
-// The Next start countdown moves on every 30 s, only while the hub is on screen. One timer: render() starts it
-// when the hub shows and stops it otherwise, and never restarts a running one (redraws during a sync would
-// keep putting it off).
-let hubTimer = null;
-function hubTicks() {
-  const on = current().view === 'hub' && !$('dash').hidden;
-  if (on && !hubTimer) {
-    hubTimer = setInterval(() => {
-      if (current().view !== 'hub' || $('dash').hidden) { clearInterval(hubTimer); hubTimer = null; return; }
-      try { const up = hubUp(); if (up) tickHub(up); } catch (e) { console.error(e); }
+// Every 30 s while the hub or Races is on screen: the Next start countdown moves on, and Up next catches up
+// after midnight. One timer: render() starts it when either shows and stops it otherwise, and never restarts a
+// running one (redraws during a sync would keep putting it off).
+let ticker = null;
+const ticks = () => ['hub', 'races'].includes(sectionOf(current().view)) && !$('dash').hidden;
+function viewTicks() {
+  const on = ticks();
+  if (on && !ticker) {
+    ticker = setInterval(() => {
+      if (!ticks()) { clearInterval(ticker); ticker = null; return; }
+      try {
+        const up = hubUp();
+        if (up) (current().view === 'hub' ? tickHub : tickUpNext)(up);
+      } catch (e) { console.error(e); }
     }, 30e3);
-  } else if (!on && hubTimer) { clearInterval(hubTimer); hubTimer = null; }
+  } else if (!on && ticker) { clearInterval(ticker); ticker = null; }
 }
 
 function raceModel() {

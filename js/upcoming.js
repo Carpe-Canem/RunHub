@@ -1,4 +1,5 @@
 // Upcoming races: pure rules for bio lines, hand-added races and countdowns.
+import { plural } from './core.js';
 import { STANDARDS, classify, classColour, seriesKey } from './race-rules.js';
 
 export const CLASS_OPTIONS = [...STANDARDS.map((s) => s.cls), 'Other'];
@@ -92,14 +93,25 @@ export function countdown(row, now) {
   return { kind: 'clock', days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60), mins: mins % 60 };
 }
 
-const count = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+// What the hub's tick does, given what Next start last drew ({id, kind}, or null when it could not draw).
+export function tickAction(shown, up, now, hasClock) {
+  if (!shown || !Array.isArray(up)) return { do: 'nothing' };
+  const r = up[0] || null;
+  if (!r) return { do: shown.id === null ? 'nothing' : 'redraw' };
+  const cd = countdown(r, now);
+  if (r.id !== shown.id || cd.kind !== shown.kind || !hasClock) return { do: 'redraw' };
+  return { do: 'clock', cd };
+}
+
+// Has the local day moved on from the one (YYYY-MM-DD) that was drawn?
+export const dayChanged = (drawn, now) => isoDay(now) !== drawn;
 
 // What a screen reader hears for the countdown. No days part on race day; null for "Race day".
 export function countdownLabel(cd) {
-  if (cd.kind === 'days') return `${count(cd.days, 'day')} to the start`;
+  if (cd.kind === 'days') return `${plural(cd.days, 'day')} to the start`;
   if (cd.kind !== 'clock') return null;
-  const hm = `${count(cd.hours, 'hour')} and ${count(cd.mins, 'minute')}`;
-  return `${cd.days ? `${count(cd.days, 'day')}, ` : ''}${hm} to the start`;
+  const hm = `${plural(cd.hours, 'hour')} and ${plural(cd.mins, 'minute')}`;
+  return `${cd.days ? `${plural(cd.days, 'day')}, ` : ''}${hm} to the start`;
 }
 
 const NOT_EXPORT = "This isn't a Run Hub races export.";

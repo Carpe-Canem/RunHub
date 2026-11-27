@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, classColour } from '../js/race-rules.js';
-import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, exportUpcoming, importUpcoming, mergeUpcoming, daysText, countdown, countdownLabel } from '../js/upcoming.js';
+import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, exportUpcoming, importUpcoming, mergeUpcoming, daysText, countdown, countdownLabel, tickAction, dayChanged } from '../js/upcoming.js';
 
 const today = '2027-06-01';
 
@@ -155,4 +155,35 @@ test('importUpcoming counts duplicates, finished races and unreadable entries', 
   assert.deepEqual(importUpcoming(file([null, 'x', { n: 5, date: '2027-06-20' }]), [], today), { add: [], dup: 0, past: 0, bad: 3 });
   const twice = importUpcoming(file([ok, ok]), [], today);
   assert.equal(twice.add.length, 1); assert.equal(twice.dup, 1);
+});
+
+test('tickAction: what the hub tick does with what Next start last drew', () => {
+  const now = new Date(2027, 5, 1, 8, 0);
+  const row = { id: 'a', date: '2027-06-05', time: '09:00' };
+  const drawn = { id: 'a', kind: 'clock' };
+  const none = { do: 'nothing' }, redraw = { do: 'redraw' };
+  assert.deepEqual(tickAction(null, [row], now, true), none, 'Next start could not draw');
+  assert.deepEqual(tickAction(drawn, null, now, true), none, 'rows could not be read');
+  assert.deepEqual(tickAction({ id: null, kind: null }, [], now, false), none, 'still nothing coming up');
+  assert.deepEqual(tickAction(drawn, [], now, true), redraw, 'the last race went away');
+  assert.deepEqual(tickAction({ id: null, kind: null }, [row], now, false), redraw, 'a first race arrived');
+  assert.deepEqual(tickAction(drawn, [{ ...row, id: 'b' }], now, true), redraw, 'another race is next');
+  assert.deepEqual(tickAction(drawn, [row], new Date(2027, 5, 5, 9, 0), true), redraw, 'the start time passed');
+  assert.deepEqual(tickAction(drawn, [row], now, false), redraw, 'no clock element');
+  assert.deepEqual(tickAction(drawn, [row], now, true), { do: 'clock', cd: { kind: 'clock', days: 4, hours: 1, mins: 0 } });
+});
+
+test('dayChanged: true only once the local day differs from the drawn one', () => {
+  assert.equal(dayChanged('2027-06-01', new Date(2027, 5, 1, 23, 59, 59)), false);
+  assert.equal(dayChanged('2027-06-01', new Date(2027, 5, 2, 0, 0, 0)), true);
+});
+
+test('importUpcoming: a time, distance or place that is not text makes the race unreadable', () => {
+  const base = { n: 'Lanternfield 10K', date: '2027-06-20' };
+  const text = (extra) => JSON.stringify({ app: 'Run Hub', kind: 'upcoming', v: 1, races: [{ ...base, ...extra }] });
+  // Values that checkHand alone would accept or turn into text.
+  for (const extra of [{ time: 0 }, { time: false }, { time: ['09:30'] }, { cls: 0 }, { cls: false }, { place: 42 }, { place: ['Mill Park'] }, { place: {} }]) {
+    assert.deepEqual(importUpcoming(text(extra), [], today), { add: [], dup: 0, past: 0, bad: 1 }, JSON.stringify(extra));
+  }
+  assert.equal(importUpcoming(text({ time: null, cls: null, place: null }), [], today).add.length, 1);
 });

@@ -6,7 +6,7 @@ import { racesDown } from './races-view.js';
 import { hubStats, fmtTime } from './races-model.js';
 import { routeTile } from './race-draw.js';
 import { when } from './race-view.js';
-import { countdown, countdownLabel } from './upcoming.js';
+import { countdown, countdownLabel, tickAction } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
 
 // What Next start last drew: {id, kind}, id null for "Nothing coming up.", or null when it could not draw.
@@ -56,13 +56,10 @@ function nextStart(up) {
 
 // The 30-second tick: only the digits change, so focus on the hub's links and buttons stays where it is.
 export function tickHub(up) {
-  if (!shown || !Array.isArray(up)) return;
-  const r = up[0] || null;
-  if (!r && shown.id === null) return;
-  const cd = r ? countdown(r, new Date()) : null;
   const el = $('nextClock');
-  if (!r || r.id !== shown.id || cd.kind !== shown.kind || !el) { bus.emit('data'); return; }
-  setClock(el, cd);
+  const act = tickAction(shown, up, new Date(), !!el);
+  if (act.do === 'redraw') bus.emit('data');
+  else if (act.do === 'clock') setClock(el, act.cd);
 }
 
 // rm.failed: building the race model threw. Any throw here shows the note, and the other cards still draw.

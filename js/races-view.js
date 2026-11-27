@@ -6,7 +6,7 @@ import { classColour } from './race-rules.js';
 import { fmtTemp, skyText } from './weather.js';
 import { routeTile, paceChart } from './race-draw.js';
 import { current } from './router.js';
-import { daysText, isoDay } from './upcoming.js';
+import { daysText, isoDay, dayChanged } from './upcoming.js';
 import { removeHand, upcomingRows } from './upcoming-sync.js';
 import { openAddSheet } from './add-race.js';
 
@@ -88,18 +88,32 @@ function upRow(r, today) {
     h('span', { class: 'up-side' },
       h('span', { class: 'up-days' }, daysText(r, today)),
       r.src === 'bio' ? null : h('button', {
-        type: 'button', class: 'btn small', 'aria-label': `Remove ${r.n}`, onclick: () => removeRace(r),
+        type: 'button', class: 'btn small', 'aria-label': `Remove ${r.n}`, 'data-focus': `up-remove-${r.id}`, onclick: () => removeRace(r),
       }, 'Remove')));
 }
 
 // Upcoming races: from the bio and added by hand. Not affected by the distance filter or the race model.
 export function upNext(up) {
   const today = isoDay(new Date());
-  return h('section', { class: 'up-next', 'aria-label': 'Up next' },
+  return h('section', { class: 'up-next', 'aria-label': 'Up next', 'data-day': today },
     h('div', { class: 'finished-head' },
       h('h3', { class: 'sub-title' }, 'Up next'),
       h('button', { type: 'button', class: 'btn small', 'data-focus': 'up-add', onclick: (e) => openAddSheet(e.currentTarget) }, 'Add race')),
     up.length ? h('ul', { class: 'up-list' }, up.map((r) => upRow(r, today))) : h('p', { class: 'empty' }, UP_EMPTY));
+}
+
+// The 30-second tick on Races: after midnight the days text is old and a race may have dropped off. Only Up next
+// is replaced, so the rest of the page, the open race and the scroll position stay as they are.
+export function tickUpNext(rows) {
+  const el = document.querySelector('#view-races .up-next');
+  if (!el || !dayChanged(el.dataset.day, new Date())) return;
+  const a = document.activeElement;
+  const key = a && el.contains(a) ? a.dataset.focus : null;
+  const next = upNext(rows);
+  el.replaceWith(next);
+  if (!key) return;
+  const back = next.querySelector(`[data-focus="${key}"]`) || next.querySelector('[data-focus="up-add"]');
+  if (back) back.focus({ preventScroll: true });
 }
 
 // model: from buildRaces, plus `scanning`; null while the race cache is not loaded yet.

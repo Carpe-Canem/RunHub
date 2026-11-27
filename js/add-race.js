@@ -1,6 +1,6 @@
 // The Add race sheet: a small dialog on the page body (so redraws never remove it) that adds a hand-made
 // upcoming race. Same pattern as the full-screen course map: the rest of the page is inert while it is open.
-import { h } from './dom.js';
+import { h, announcer } from './dom.js';
 import { S, bus } from './core.js';
 import { CLASS_OPTIONS, isoDay, checkHand } from './upcoming.js';
 import { addHand, NOT_SAVED } from './upcoming-sync.js';
@@ -42,13 +42,13 @@ export function openAddSheet(opener) {
     field('Place (optional)', place),
     err,
     h('div', { class: 'row end' }, cancel, add));
-  const showError = (msg) => { err.textContent = msg; err.hidden = false; };
+  const showError = announcer(err);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (add.disabled) return;
     add.disabled = true;
-    err.hidden = true;
+    showError(null);
     try {
       const res = checkHand({ n: name.value, date: date.value, time: time.value, cls: cls.value, place: place.value }, isoDay(new Date()), S.upcoming ? S.upcoming.hand : []);
       if (res.error) { showError(res.error); return; }

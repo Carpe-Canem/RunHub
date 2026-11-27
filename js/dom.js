@@ -3,6 +3,19 @@ import { ghost } from './core.js';
 
 export const $ = (id) => document.getElementById(id);
 
+// A message line a screen reader hears every time, a repeat included: it is cleared at once and set again a
+// little later. say(null) only clears.
+export function announcer(el, later = (fn) => setTimeout(fn, 100), cancel = (id) => clearTimeout(id)) {
+  let waiting = null;
+  return (msg) => {
+    if (waiting !== null) cancel(waiting);
+    waiting = null;
+    el.textContent = '';
+    el.hidden = true;
+    if (msg) waiting = later(() => { waiting = null; el.textContent = msg; el.hidden = false; });
+  };
+}
+
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
   if (props) {
