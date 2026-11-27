@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { statusOf, tickerText, tickerPose, SEP } from '../js/ticker.js';
 
-const NOW = Date.UTC(2026, 10, 27, 12, 0, 0);
+const NOW = new Date(2026, 10, 27, 12, 0, 0).getTime();   // local noon, so "the same day" holds in any time zone
 const base = { demo: false, connected: true, syncing: false, progress: null, error: null, pausedUntil: 0, lastSync: NOW - 3 * 60e3, warn: null, now: NOW };
-const clock = (t) => `at ${new Date(t).getUTCHours()}:${String(new Date(t).getUTCMinutes()).padStart(2, '0')}`;
-const st = (over) => statusOf({ ...base, ...over }, (t) => clock(t).slice(3));
+const clock = (t) => `at ${new Date(t).getHours()}:${String(new Date(t).getMinutes()).padStart(2, '0')}`;
+const st = (over) => statusOf({ ...base, ...over }, (t) => clock(t).slice(3), (t) => `Nov ${new Date(t).getDate()}`);
 
 test('status: idle shows how long ago in the strip and a clock time to screen readers', () => {
   assert.deepEqual(st(), { state: 'idle', text: 'Synced 3 min ago', live: 'Synced at 11:57' });
@@ -90,4 +90,10 @@ test('strip: progress during a sync never scrolls (each count would restart it),
   const { stripMode } = await import('../js/ticker.js');
   assert.deepEqual(stripMode({ wide: true, alert: false, busy: true, still: false, motion: true }), { scroll: false, control: false });
   assert.deepEqual(stripMode({ wide: true, alert: false, busy: false, still: false, motion: true }), { scroll: true, control: true });
+});
+
+test('status: a sync from an earlier day is announced with its date, not only a time', () => {
+  assert.equal(st({ lastSync: NOW - 26 * 3600e3 }).live, 'Synced Nov 26 at 10:00');
+  assert.equal(st({ lastSync: NOW - 13 * 3600e3 }).live, 'Synced Nov 26 at 23:00');
+  assert.equal(st({ lastSync: NOW - 11 * 3600e3 }).live, 'Synced at 1:00');
 });

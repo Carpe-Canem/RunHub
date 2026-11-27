@@ -3,10 +3,14 @@ import { ago, timeLabel, fmt1 } from './core.js';
 
 export const SEP = ' ■ ';
 
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+const dayText = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
 // s: {demo, connected, syncing, progress, error, pausedUntil, lastSync, warn, now}.
 // text is drawn on the strip. live is what a screen reader is told: it leaves out whatever changes by itself
-// (the minutes since the last sync, the count during a sync), so each state is announced once.
-export function statusOf(s, label = timeLabel) {
+// (the minutes since the last sync, the count during a sync), so each state is announced once. A sync from an
+// earlier day is given with its date. label and day format a time and a date (replaced in tests).
+export function statusOf(s, label = timeLabel, day = dayText) {
   if (s.demo) return { state: 'demo', text: 'Demo', live: 'Demo' };
   if (!s.connected) return { state: 'off', text: '', live: '' };
   if (s.syncing && s.progress) {
@@ -20,7 +24,8 @@ export function statusOf(s, label = timeLabel) {
   }
   const warn = s.warn ? `. ${s.warn}` : '';
   if (!s.lastSync) return { state: 'idle', text: `Not synced yet${warn}`, live: `Not synced yet${warn}` };
-  return { state: 'idle', text: `Synced ${ago(s.lastSync, s.now)}${warn}`, live: `Synced at ${label(s.lastSync)}${warn}` };
+  const at = `${sameDay(s.lastSync, s.now) ? '' : `${day(s.lastSync)} `}at ${label(s.lastSync)}`;
+  return { state: 'idle', text: `Synced ${ago(s.lastSync, s.now)}${warn}`, live: `Synced ${at}${warn}` };
 }
 
 // next: {name, when} for the next start ("In 14 days", "Tomorrow", "Today"), or null. mi: from miles(), or null.

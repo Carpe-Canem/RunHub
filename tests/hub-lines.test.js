@@ -110,3 +110,10 @@ test('next start: day, time and place without dot separators; the year only when
   assert.equal(startText({ date: '2027-01-09', time: '' }, now, 'en-US'), 'Sat, Jan 9, 2027');
   assert.equal(startText({ date: 'soon' }, now, 'en-US'), '');
 });
+
+test('last out: a name that ends in a full stop does not get a second one', () => {
+  const last = (over) => say(Object.fromEntries(raceLines(stats({ latest: [race(over)] })).map((l) => [l.key, l])).last);
+  assert.equal(last({ n: 'Run the Mile.', t: 0 }), 'Last out: Run the Mile.');
+  assert.equal(last({ n: 'Are We There Yet?', t: 0 }), 'Last out: Are We There Yet?');
+  assert.equal(last({ n: 'Run the Mile.' }), 'Last out: Run the Mile. in 22:41.');
+});

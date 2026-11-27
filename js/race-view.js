@@ -29,12 +29,15 @@ export function raceOpened(id) {
   run = { id, t0: null, t: 0, record: false, landed: false, over: false };
 }
 
-// Where the run-up is, ms after it started: counting up, hopping (a record only) or done.
+// Where the run-up is, ms after it started: counting up, hopping (a record only; since: ms into the hops) or done.
 export function finishPhase(ms, record) {
   if (ms < RUN_MS) return { phase: 'run', p: ms / RUN_MS };
-  if (record && ms < RUN_MS + HOP_MS) return { phase: 'hop', p: 1 };
+  if (record && ms < RUN_MS + HOP_MS) return { phase: 'hop', p: 1, since: ms - RUN_MS };
   return { phase: 'done', p: 1 };
 }
+
+// The lamp test (main.js) covers every clock for its first 700 ms: the run-up waits for it to end.
+const lampOn = () => document.documentElement.classList.contains('lamp');
 
 const DONE = { phase: 'done', p: 1 };
 
@@ -43,9 +46,13 @@ const DONE = { phase: 'done', p: 1 };
 function phaseFor(r) {
   if (!run || run.id !== r.id || run.over) return DONE;
   if (!(r.t > 0) || !motionOK()) { run.over = true; return DONE; }
-  if (run.t0 == null) { run.t0 = performance.now(); run.t = r.t; run.record = !!r.record; }
+  if (run.t0 == null) {
+    run.t = r.t; run.record = !!r.record;
+    if (lampOn()) return { phase: 'run', p: 0 };   // step() starts the clock when the lamp test is over
+    run.t0 = performance.now();
+  }
   const ph = finishPhase(performance.now() - run.t0, run.record);
-  if (ph.phase !== 'run') run.landed = true;   // a redraw after the landing never flashes again
+  if (ph.phase !== 'run') run.landed = true;   // step() does the landing once; a redraw only carries it on
   if (ph.phase === 'done') run.over = true;
   return ph;
 }
@@ -53,17 +60,26 @@ function phaseFor(r) {
 const ledFor = (r, ph) => led(ph.phase === 'run' ? clockLike(runUpAt(r.t, ph.p), r.t) : fmtTime(r.t), { ghost: true });
 const dogFor = (ph) => ziggy(ph.phase === 'done' ? 'sit' : 'trot', 3);
 
+// A redraw during a record's hops starts their animations part-way in (a negative delay), so the flash and the
+// three hops carry on from where they were and are not played again from the start.
+const carryOn = (ph) => (ph.phase === 'hop' ? `--ad:-${Math.round(ph.since)}ms;` : '');
+
 // Under the clock: Ziggy runs to a chequered post, by the same eased progress as the digits, and sits past it.
 function finishStrip(ph) {
-  return h('div', { id: 'finish', class: `finish${ph.phase === 'hop' ? ' hop' : ''}`, 'aria-hidden': 'true', style: `--p:${easeOut(ph.p)}` },
+  return h('div', { id: 'finish', class: `finish${ph.phase === 'hop' ? ' hop' : ''}`, 'aria-hidden': 'true', style: `${carryOn(ph)}--p:${easeOut(ph.p)}` },
     h('span', { class: 'fin-post' }),
     h('span', { class: 'fin-dog', id: 'finishDog' }, dogFor(ph)));
 }
 
-// One frame of the run-up. Only the digits and Ziggy change; it stops by itself when the race page is gone.
+// One frame of the run-up. Only the digits and Ziggy change. It stops by itself when another race, or none, is
+// drawn; behind another view it runs to its end (under two seconds) and then stops.
 function step() {
   const el = $('raceLed'); const strip = $('finish');
-  if (!run || run.over || run.t0 == null || !el || !strip || shownId !== run.id) return;
+  if (!run || run.over || !el || !strip || shownId !== run.id) return;
+  if (run.t0 == null) {
+    if (lampOn()) { raf = requestAnimationFrame(step); return; }
+    run.t0 = performance.now();
+  }
   const ph = finishPhase(performance.now() - run.t0, run.record);
   const r = { t: run.t };
   if (ph.phase === 'run') {
@@ -233,7 +249,7 @@ export function renderRace(model, id, cameFrom) {
       h('p', { class: 'rc-when' }, h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls), ' ', when(r), r.place ? ` · ${r.place}` : null),
       h('h2', { class: 'view-title race-name' }, r.n || 'Race'),
       // While it counts up, a screen reader is given the finish time, not the passing digits.
-      h('p', { id: 'raceLed', class: 'race-led', role: running ? 'img' : null, 'aria-label': running ? `Finish time ${fmtTime(r.t)}` : null }, ledFor(r, ph)),
+      h('p', { id: 'raceLed', class: `race-led${ph.phase === 'hop' ? ' flash' : ''}`, style: carryOn(ph) || null, role: running ? 'img' : null, 'aria-label': running ? `Finish time ${fmtTime(r.t)}` : null }, ledFor(r, ph)),
       finishStrip(ph),
       ctx ? h('p', { class: `race-ctx${r.record ? ' go' : r.gap != null && !r.short && !r.virtual ? ' slow' : ''}` }, ctx) : null),
     h('div', { class: 'race-stats' },

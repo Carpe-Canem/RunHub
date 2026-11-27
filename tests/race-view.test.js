@@ -41,8 +41,9 @@ test('finishPhase: the run-up, then three hops for a record only, then done', as
   assert.deepEqual(finishPhase(0, false), { phase: 'run', p: 0 });
   assert.deepEqual(finishPhase(RUN_MS / 2, true), { phase: 'run', p: 0.5 });
   assert.deepEqual(finishPhase(RUN_MS, false), { phase: 'done', p: 1 });
-  assert.deepEqual(finishPhase(RUN_MS, true), { phase: 'hop', p: 1 });
-  assert.deepEqual(finishPhase(RUN_MS + HOP_MS - 1, true), { phase: 'hop', p: 1 });
+  // since: ms into the hops, so a redraw can pick the hop and the flash up where they were
+  assert.deepEqual(finishPhase(RUN_MS, true), { phase: 'hop', p: 1, since: 0 });
+  assert.deepEqual(finishPhase(RUN_MS + HOP_MS - 1, true), { phase: 'hop', p: 1, since: HOP_MS - 1 });
   assert.deepEqual(finishPhase(RUN_MS + HOP_MS, true), { phase: 'done', p: 1 });
   assert.ok(RUN_MS >= 1000 && RUN_MS <= 1400);
 });

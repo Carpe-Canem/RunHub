@@ -33,9 +33,10 @@ export function raceLines(stats) {
   const out = [];
   const r = stats.latest && stats.latest[0];
   if (r) {
-    const parts = [t(`Last out: ${r.n || 'a race'}`)];
-    if (r.t > 0) parts.push(t(' in '), { led: fmtTime(r.t) });
-    parts.push(t('.'));
+    const name = r.n || 'a race';
+    const parts = [t(`Last out: ${name}`)];
+    if (r.t > 0) parts.push(t(' in '), { led: fmtTime(r.t) }, t('.'));
+    else if (!/[.!?]$/.test(name)) parts.push(t('.'));   // a name that ends its own sentence gets no second stop
     if (r.record) parts.push(t(' '), t(`Your fastest ${r.cls} yet.`, 'go'));
     out.push({ key: 'last', href: `#race/${r.id}`, parts });
   }

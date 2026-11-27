@@ -55,7 +55,8 @@ function renderStatus() {
   const p = st.state === 'sync' ? S.progress : null;
   prog.hidden = !p;
   if (p && p.total) { prog.max = p.total; prog.value = p.done; } else if (p) prog.removeAttribute('value');
-  drawTicker(st);
+  // The strip is for the eye only: if drawing it throws, the page and the announced status carry on.
+  try { drawTicker(st); } catch (e) { console.error(e); }
 }
 
 // What the strip last drew, so a status redraw that changes nothing leaves a scrolling strip alone.
@@ -65,7 +66,7 @@ const strip = { text: null, alert: false, busy: false, pose: null, still: false,
 function drawTicker(st) {
   const box = $('ticker');
   box.hidden = st.state === 'off';
-  if (box.hidden) return;
+  if (box.hidden) { strip.text = null; return; }   // fitted afresh when it shows again
   let next = null; let mi = null;
   if (st.state === 'idle' || st.state === 'demo') {
     // Either may throw on bad stored data: the hub says so, and the strip just leaves that part out.
@@ -423,7 +424,9 @@ async function init() {
     clearTimeout(fit);
     fit = setTimeout(() => { if ($('tickerText').parentNode.clientWidth !== strip.width) fitTicker(); }, 150);
   });
-  // The strip's font arrives after the first draw and is wider than its stand-in: measure again.
+  // The strip's font arrives after it is first drawn (later still when the page opened on the setup screen)
+  // and is wider than its stand-in: measure again whenever fonts finish loading.
+  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', fitTicker);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTicker);
   // Another tab added, removed or imported races, or wiped this browser: show what is stored now.
   window.addEventListener('storage', (e) => {
