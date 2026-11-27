@@ -118,6 +118,54 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .rowlink .label { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); margin: 2px 0; }
 .rowlink .sub { display: block; font-size: 13px; color: var(--mut); }
 .rowlink .led { font-size: 44px; }
+.hub-rows { display: grid; gap: 10px; }
+@media (min-width: 860px) { .hub-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Races */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; font: inherit; font-size: 14px; font-weight: 700; color: var(--tx); background: var(--panel); border: 1px solid var(--line); border-radius: 22px; cursor: pointer; }
+.chip .count { font-size: 12px; color: var(--mut); }
+.chip[aria-pressed="true"] { background: var(--led); border-color: var(--led); color: #1A1200; }
+.chip[aria-pressed="true"] .count { color: #1A1200; }
+.trend { max-width: 560px; }
+.trend .chart-title { margin: 0 0 6px; font-weight: 700; }
+.trend .empty { margin: 6px 0 2px; }
+.pchart { display: block; width: 100%; height: auto; overflow: visible; }
+.pc-axis { stroke: var(--line); stroke-width: 1; }
+.pc-year { fill: var(--mut); font: 700 11px var(--f); }
+.pc-rec { fill: var(--go); stroke: var(--board); stroke-width: 2; }
+.pc-rec-t { fill: var(--go); font: 800 11px var(--f); }
+.finished-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 4px; }
+.finished-head .sub-title { margin: 0; }
+.toggle { display: inline-flex; background: var(--panel); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg-btn { min-height: 44px; min-width: 72px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 700; color: var(--mut); background: none; border: 0; border-radius: 8px; cursor: pointer; }
+.seg-btn[aria-pressed="true"] { background: var(--line); color: var(--tx); }
+.year-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0; padding: 8px 0 6px; background: var(--night); color: var(--mut); font-size: 12px; font-weight: 800; letter-spacing: .14em; }
+.race-list, .route-grid { list-style: none; margin: 0 0 6px; padding: 0; }
+.race-list li + li { border-top: 1px solid var(--line); }
+.race-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 60px; padding: 8px 4px; color: inherit; text-decoration: none; border-radius: 8px; }
+.race-row:hover, .route-card:hover { background: color-mix(in srgb, var(--line) 35%, transparent); }
+.rr-main { min-width: 0; }
+.rr-name { display: block; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rr-meta, .rc-meta { display: block; font-size: 12px; color: var(--mut); }
+.rr-pr { color: var(--go); font-weight: 700; }
+.rr-time { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rr-time .led { font-size: 20px; }
+.rr-pace { font-size: 12px; color: var(--mut); white-space: nowrap; }
+.badge { display: inline-block; padding: 0 6px; border: 1px solid var(--c); border-radius: 5px; color: var(--c); font-size: 11px; font-weight: 800; line-height: 1.5; }
+.rtile { display: block; flex: none; }
+.rt-bg { fill: var(--board); }
+.rt-start { fill: none; stroke: var(--go); }
+.rt-finish { fill: var(--slow); }
+.rt-none { fill: none; stroke: var(--mut); opacity: .6; }
+.route-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-top: 4px; }
+.route-card { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--panel); border-radius: var(--radius); color: inherit; text-decoration: none; min-width: 0; }
+.route-card .rtile { width: 100%; height: auto; }
+.rc-name { font-weight: 800; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-time .led { font-size: 22px; }
+@media (min-width: 600px) { .route-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 860px) { .route-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.showall { margin-top: 10px; }
 
 /* Legends: headline cards */
 .bans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

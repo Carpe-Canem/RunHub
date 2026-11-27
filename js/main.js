@@ -3,7 +3,7 @@
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
  * The only network destinations are www.strava.com (API + OAuth) and OpenStreetMap tiles.
  */
-import { S, K, bus, store, UserError, timeLabel, ago } from './core.js';
+import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
 import { $ } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
@@ -14,10 +14,14 @@ import { loadRaces, loadRaceDet } from './races-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
+import { renderRaces } from './races-view.js';
+import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 
-// Views that exist so far. Phase 2 adds 'races' and 'race'.
-const ENABLED = ['hub', 'legends', 'data'];
+// Views that exist so far. 'race' (one race) is drawn in the Races section; until its page exists it shows the list.
+const ENABLED = ['hub', 'races', 'race', 'legends', 'data'];
+const SECTIONS = ['hub', 'races', 'legends', 'data'];
+const sectionOf = (view) => (view === 'race' ? 'races' : view);
 const scrolls = {};
 
 function renderStatus() {
@@ -51,9 +55,10 @@ function render() {
   $('nav').hidden = !connected;
   $('dataLink').hidden = !connected;
   const view = current().view;
-  for (const v of ENABLED) $(`view-${v}`).hidden = v !== view;
+  const section = sectionOf(view);
+  for (const v of SECTIONS) $(`view-${v}`).hidden = v !== section;
   for (const a of document.querySelectorAll('#nav a')) {
-    if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    if (a.dataset.view === section) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
   $('demoBanner').hidden = !S.demo;
   $('disconnectBtn').textContent = S.demo ? 'Leave the demo' : 'Disconnect everywhere';
@@ -67,7 +72,10 @@ function render() {
   sw.hidden = S.demo || !scope || /activity:read_all/.test(scope);
   sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Use “Forget this browser” on the Data page, then connect again to fix this.';
   const ready = !!(c && c.athlete);   // false until the first sync has loaded the athlete
-  if (view === 'hub') { renderHub(ready ? compute(c) : null); return; }
+  // Races do not depend on the Legends cache. null until the race cache is loaded.
+  const races = S.races ? Object.assign(buildRaces(S.races.races, S.raceDet, units()), { scanning: !(S.races.scan && S.races.scan.done) }) : null;
+  if (view === 'hub') { renderHub(ready ? compute(c) : null, races); return; }
+  if (section === 'races') { renderRaces(races); return; }
   if (!ready) return;
 
   const model = compute(c);
