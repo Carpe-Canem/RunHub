@@ -60,7 +60,7 @@ function renderStatus() {
 
 // What the strip last drew, so a status redraw that changes nothing leaves a scrolling strip alone.
 // still: the user pressed the strip to stop it scrolling (until the page is reloaded).
-const strip = { text: null, alert: false, busy: false, pose: null, still: false };
+const strip = { text: null, alert: false, busy: false, pose: null, still: false, width: 0 };
 
 function drawTicker(st) {
   const box = $('ticker');
@@ -89,6 +89,12 @@ function drawTicker(st) {
 // Screen readers get the status from #statusText, so the strip is hidden from them, except while it can scroll:
 // then it is a button that stops and restarts the scrolling (moving text must be stoppable).
 function fitTicker() {
+  layTicker();
+  // Noted after laying out: the stop mark at the strip's end takes room from the text when it shows.
+  strip.width = $('tickerText').parentNode.clientWidth;
+}
+
+function layTicker() {
   const box = $('ticker'); const el = $('tickerText');
   if (strip.text == null || box.hidden) return;
   const square = () => h('i', { class: 'tk-sq' });
@@ -411,7 +417,12 @@ async function init() {
   if (t) { enrich(); sync(false); }
   setInterval(renderStatus, 60e3);
   let fit = null;
-  window.addEventListener('resize', () => { clearTimeout(fit); fit = setTimeout(fitTicker, 150); });
+  // Only a change of width matters: a phone browser's toolbar sliding away resizes the window on every scroll,
+  // and fitting again would send a scrolling strip back to its start.
+  window.addEventListener('resize', () => {
+    clearTimeout(fit);
+    fit = setTimeout(() => { if ($('tickerText').parentNode.clientWidth !== strip.width) fitTicker(); }, 150);
+  });
   // The strip's font arrives after the first draw and is wider than its stand-in: measure again.
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTicker);
   // Another tab added, removed or imported races, or wiped this browser: show what is stored now.

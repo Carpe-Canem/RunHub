@@ -39,8 +39,9 @@ p { margin: 0 0 10px; }
 .pt, .cm { display: inline-block; width: .3em; height: .7em; overflow: hidden; color: transparent; text-shadow: none; font-style: normal; }
 .pt { background: linear-gradient(var(--led), var(--led)) 50% 97% / .17em .17em no-repeat; }
 .cm { width: .2em; }
-.led { position: relative; }
-.led.g { display: inline-block; }
+/* One box that never breaks: a time set into a sentence must not split at its colon, and the all-lit layer
+   below sits exactly over the digits. */
+.led { position: relative; display: inline-block; white-space: nowrap; }
 /* The all-lit layer is in every clock. It shows dimly behind one that asked for a ghost, and at full strength
    over every clock for the lamp test (main.js puts .lamp on <html> for 700 ms, once per page load). */
 .led .gh { display: none; position: absolute; left: 0; top: 0; opacity: .13; text-shadow: none; white-space: nowrap; }
@@ -55,12 +56,13 @@ p { margin: 0 0 10px; }
 .top-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-top: 8px; padding-bottom: 8px; min-height: 60px; }
 .top h1 { font-size: 17px; margin: 0; margin-right: auto; }
 /* On narrow screens the status has no box of its own: Refresh sits on the first row beside Data, and the strip
-   (with the progress bar during a sync) takes the whole second row. */
+   takes the second row, sharing it with the progress bar during a sync. Its basis is the row less the bar, so
+   it never fits on the first row, at any width, when Refresh is hidden. */
 .status { display: contents; }
 .status progress { order: 4; flex: none; width: 64px; height: 6px; accent-color: var(--led); }
 .status .btn { order: 1; flex: none; }
 /* The status as a dot-matrix sign. Upper case here only: on a sign it is the vernacular. */
-.ticker { order: 3; flex: 1 1 60%; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; background: var(--board); border: 0; border-radius: 8px; font: inherit; color: inherit; text-align: left; }
+.ticker { order: 3; flex: 1 1 calc(100% - 78px); min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; background: var(--board); border: 0; border-radius: 8px; font: inherit; color: inherit; text-align: left; }
 /* While it scrolls the strip is a button that stops it; the mark at its end says which way pressing goes. */
 .ticker:enabled { cursor: pointer; }
 .ticker:enabled::after { content: ""; flex: none; width: 8px; height: 10px; border: solid var(--mut); border-width: 0 3px; }
@@ -76,6 +78,7 @@ p { margin: 0 0 10px; }
 @media (min-width: 860px) {
   .status { display: flex; align-items: center; gap: 10px; flex: 0 1 440px; min-width: 0; }
   .ticker, .status progress, .status .btn { order: 0; }
+  .ticker { flex: 1 1 auto; }
 }
 .datalink { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 8px; color: var(--mut); text-decoration: none; font-size: 13px; font-weight: 700; }
 
