@@ -35,3 +35,23 @@ test('weatherState follows the start point and the cache', () => {
   assert.equal(weatherState({ ll: [1, 2], wx: null }), 'pending');
   assert.equal(weatherState({ ll: [1, 2], wx: { t: 1 } }), 'ok');
 });
+
+test('finishPhase: the run-up, then three hops for a record only, then done', async () => {
+  const { finishPhase, RUN_MS, HOP_MS } = await import('../js/race-view.js');
+  assert.deepEqual(finishPhase(0, false), { phase: 'run', p: 0 });
+  assert.deepEqual(finishPhase(RUN_MS / 2, true), { phase: 'run', p: 0.5 });
+  assert.deepEqual(finishPhase(RUN_MS, false), { phase: 'done', p: 1 });
+  assert.deepEqual(finishPhase(RUN_MS, true), { phase: 'hop', p: 1 });
+  assert.deepEqual(finishPhase(RUN_MS + HOP_MS - 1, true), { phase: 'hop', p: 1 });
+  assert.deepEqual(finishPhase(RUN_MS + HOP_MS, true), { phase: 'done', p: 1 });
+  assert.ok(RUN_MS >= 1000 && RUN_MS <= 1400);
+});
+
+test('easeOut: 0 to 1, slowing into the end, and the run-up uses it', async () => {
+  const { easeOut, runUpAt } = await import('../js/race-rules.js');
+  assert.equal(easeOut(0), 0);
+  assert.equal(easeOut(1), 1);
+  assert.equal(easeOut(5), 1);
+  assert.ok(easeOut(0.5) > 0.8);
+  assert.equal(runUpAt(1000, 0.5), Math.round(1000 * easeOut(0.5)));
+});

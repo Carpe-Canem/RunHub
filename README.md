@@ -1,9 +1,10 @@
 # Run Hub
 
-A Strava dashboard for runners that you can open before a run or after one. It opens on a hub: the countdown to your next start, your mileage, your latest results and your records. Races is the other page.
+A Strava dashboard for runners that you can open before a run or after one. It opens on a hub that reads like a finish-line announcer: the countdown to your next start, then a few plain sentences with the numbers set in clock digits (this week against your usual week, this year against the same date last year, your last race, your totals), then your latest results and your records. Races is the other page.
 
 - **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. Upcoming races are read from your Strava bio (one line per race, `MM/DD/YYYY Name`) or added by hand with "Add race", and show under "Up next" until their date has passed. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
-- **Your mileage:** on the hub, see your daily, weekly, monthly and year-to-date mileage next to your own normal.
+- **Your mileage:** on the hub, this week's and this year's mileage are sentences set next to your own normal. "Last 13 weeks" opens the weekly bars, with today's and this month's figures.
+- **The status strip:** the dot-matrix strip at the top says when the page last synced, what the next start is and the week so far; during a sync it shows the progress. It scrolls only when the text does not fit, and pressing it stops the scrolling. Ziggy, the dog beside it, trots while a sync runs, sits when it is done and naps when Strava cannot be reached. With reduced motion switched on in your device, nothing scrolls, counts up or flashes.
 - **Miles or kilometres:** the Units setting on the Data page switches mileage and race distances, paces, splits and heights between the two. It is kept in this browser only.
 
 Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting anything, add `?demo` to the end of the address.

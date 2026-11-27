@@ -56,8 +56,8 @@ export function dayLabel(i) { return new Date(i * DAY).toLocaleDateString(undefi
 
 export function timeLabel(t) { return new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 
-export function ago(t) {
-  const m = Math.round((Date.now() - t) / 60e3);
+export function ago(t, now = Date.now()) {
+  const m = Math.round((now - t) / 60e3);
   if (m < 1) return 'just now';
   if (m < 60) return `${m} min ago`;
   const h = Math.round(m / 60);

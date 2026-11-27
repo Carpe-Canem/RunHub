@@ -1,21 +1,33 @@
-// Hub: the first view. Next start, the races card, mileage, the latest results and the records.
-import { bus, units, fmt0, fmt1, plural, dayLabel, UNIT_M } from './core.js';
+// Hub: the first view. The countdown to the next start, then a few sentences (the week, the year, the last race,
+// the totals), the 13-week bars folded away, the latest results and the records.
+import { bus, fmt1, dayLabel } from './core.js';
 import { $, h, led } from './dom.js';
 import { miles } from './runs-model.js';
-import { racesDown } from './races-view.js';
+import { RACES_DOWN } from './races-view.js';
 import { hubStats, fmtTime } from './races-model.js';
 import { routeTile } from './race-draw.js';
-import { when } from './race-view.js';
 import { countdown, countdownLabel, tickAction } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
+import { mileLines, raceLines, nextParts, startText, NOTHING_ON } from './hub-lines.js';
+import { withZiggy } from './ziggy.js';
 
-// What Next start last drew: {id, kind}, id null for "Nothing coming up.", or null when it could not draw.
+// What Next start last drew: {id, kind}, id null for "Nothing on the calendar.", or null when it could not draw.
 let shown = null;
 
 const p2 = (n) => String(n).padStart(2, '0');
 // With the year: the strip and the records can reach back years.
 const dateText = (r) => new Date(`${r.date}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls);
+
+// A part of a sentence from hub-lines.js: clock digits, a toned phrase or plain text.
+const partNode = (p) => (p.led != null ? led(p.led) : p.tone ? h('span', { class: p.tone }, p.text) : p.text);
+// Lines with a link are one link from first word to last, so the whole sentence is the target.
+function sentence(line, dim) {
+  const kids = line.parts.map(partNode);
+  return h('p', { class: dim ? 'say dim' : 'say' }, line.href ? h('a', { href: line.href, 'data-focus': `hub-${line.key}` }, kids) : kids);
+}
+// Shown in place of a section whose code threw: Ziggy naps beside it.
+const down = (note) => withZiggy('nap', h('p', { class: 'empty races-down' }, note));
 
 // The countdown digits. Only these are replaced by the one-second tick.
 function clockParts(cd) {
@@ -37,11 +49,10 @@ function setClock(el, cd) {
 // up: the upcoming rows, or null when reading them threw.
 function nextStart(up) {
   if (!Array.isArray(up)) throw new Error('upcoming races not available');
-  const label = h('span', { class: 'label' }, 'Next start');
   if (!up.length) {
     shown = { id: null, kind: null };
-    return h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' }, label,
-      h('p', { class: 'empty' }, 'Nothing coming up.'),
+    return h('section', { id: 'nextStart', class: 'next-start', 'aria-label': 'Next start' },
+      withZiggy('sit', h('p', { class: 'say dim' }, NOTHING_ON), 3),
       h('button', { type: 'button', class: 'btn small', 'data-focus': 'hub-add', onclick: (e) => openAddSheet(e.currentTarget) }, 'Add race'));
   }
   const r = up[0];
@@ -49,10 +60,10 @@ function nextStart(up) {
   const clock = h('div', { id: 'nextClock', class: 'next-clock' });
   setClock(clock, cd);
   shown = { id: r.id, kind: cd.kind };
-  return h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' }, label,
-    h('strong', { class: 'next-name' }, r.n),
-    h('p', { class: 'next-when' }, badge(r), ' ', when(r), r.place ? ` · ${r.place}` : null),
-    clock);
+  return h('section', { id: 'nextStart', class: 'next-start', 'aria-label': 'Next start' },
+    clock,
+    h('p', { class: 'say next-name' }, nextParts(r, cd.kind).map(partNode)),
+    h('p', { class: 'say-close' }, startText(r)));
 }
 
 // The one-second tick: only the digits change, so focus on the hub's links and buttons stays where it is.
@@ -63,47 +74,33 @@ export function tickHub(up) {
   else if (act.do === 'clock') setClock(el, act.cd);
 }
 
-// rm.failed: building the race model threw. Any throw here shows the note, and the other cards still draw.
-function racesCard(rm) {
-  try { if (!(rm && rm.failed)) return racesCardFor(rm); } catch (e) { console.error(e); }
-  return h('a', { class: 'rowlink', href: '#races' },
-    h('span', { class: 'rowlink-text' }, h('strong', null, 'Races'), racesDown()));
+// mi: from miles(), or null until the first sync has loaded the runs.
+function mileage(mi) {
+  return h('section', { class: 'hub-say', 'aria-label': 'Mileage' }, mileLines(mi).map((l) => sentence(l, !mi)));
 }
 
-function racesCardFor(rm) {
+// rm: the race model, null until it is loaded. st: its hub numbers. Ziggy sits by "No races yet." unless he is
+// already sitting by an empty calendar just above.
+function racesSay(rm, st, dogFree) {
   const loading = !rm || (rm.scanning && !rm.rows.length);
-  const st = loading ? null : hubStats(rm);
-  const unit = units();
-  const sub = loading ? 'Loading your race history'
-    : st.count ? `${plural(st.podiums, 'age-group podium')} · ${fmt0(st.metres / UNIT_M[unit])} ${unit} raced` : 'No races yet';
-  return h('a', { class: 'rowlink', href: '#races', 'data-focus': 'hub-races' },
-    h('span', { class: 'rowlink-text' },
-      h('strong', null, 'Races'),
-      h('span', { class: 'label' }, 'Races finished'),
-      h('span', { class: 'sub' }, sub)),
-    h('span', { class: 'rowlink-num' }, led(loading ? '--' : p2(st.count), { ghost: true })));
+  const lines = raceLines(loading ? null : st);
+  const quiet = loading || !st.count;
+  const nodes = lines.map((l) => (l.key === 'none' && dogFree ? withZiggy('sit', sentence(l, true), 3) : sentence(l, quiet)));
+  return h('section', { class: 'hub-say', 'aria-label': 'Races' }, nodes,
+    quiet && !loading ? h('p', { class: 'say-close' }, 'Runs you mark as Race in Strava appear here.') : null);
 }
 
-// cache: the cache of runs, or null until the first sync has loaded the athlete.
-function mileage(cache) {
-  const head = h('h3', { class: 'sub-title' }, 'Mileage');
-  if (!cache) return h('section', { class: 'hub-sec', 'aria-label': 'Mileage' }, head, h('p', { class: 'empty' }, 'Loading your runs from Strava'));
-  const mi = miles(cache);
+function weeks(mi, open) {
   const u = mi.unit;
-  const line = (label, value, cmp) => h('div', { class: 'mline' }, h('span', null, label), h('strong', null, value), h('span', { class: 'cmp' }, cmp));
   const max = Math.max(...mi.weeks, mi.weekAvg, 1);
   const bars = mi.weeks.map((v, i) => h('div', { class: `bar${i === 12 ? ' cur' : ''}`, style: `height:${Math.max(2, (v / max) * 100)}%`, title: `Week of ${dayLabel(mi.ws - (12 - i) * 7)}: ${fmt1(v)} ${u}` }));
-  return h('section', { class: 'hub-sec', 'aria-label': 'Mileage' }, head,
-    h('div', { class: 'panel miles' },
-      line('Today', `${fmt1(mi.today)} ${u}`, plural(mi.runsToday, 'run')),
-      line('This week', `${fmt1(mi.week)} ${u}`, `12-week average ${fmt1(mi.weekAvg)}`),
-      line('This month', `${fmt1(mi.month)} ${u}`, `6-month average ${fmt1(mi.monthAvg)}`),
-      line('Year to date', `${fmt0(mi.ytd)} ${u}`, mi.hasLastYear ? `Same date last year ${fmt0(mi.lytd)}` : '–'),
-      h('p', { class: 'chart-title' }, `Last 13 weeks (${u}), current week highlighted`),
-      h('div', { class: 'bars', role: 'img', 'aria-label': `Weekly distance for the last 13 weeks. This week ${fmt1(mi.week)} ${u}, 12-week average ${fmt1(mi.weekAvg)} ${u}.` },
-        h('div', { class: 'avg', style: `bottom:${(mi.weekAvg / max) * 100}%`, title: `12-week average ${fmt1(mi.weekAvg)} ${u}` }),
-        bars),
-      h('div', { class: 'bar-axis' }, h('span', null, dayLabel(mi.ws - 12 * 7)), h('span', null, 'This week'))));
+  return h('details', { class: 'weeks', open },
+    h('summary', { 'data-focus': 'hub-weeks' }, 'Last 13 weeks'),
+    h('div', { class: 'bars', role: 'img', 'aria-label': `Weekly distance for the last 13 weeks. This week ${fmt1(mi.week)} ${u}, 12-week average ${fmt1(mi.weekAvg)} ${u}.` },
+      h('div', { class: 'avg', style: `bottom:${(mi.weekAvg / max) * 100}%`, title: `12-week average ${fmt1(mi.weekAvg)} ${u}` }),
+      bars),
+    h('div', { class: 'bar-axis' }, h('span', null, dayLabel(mi.ws - 12 * 7)), h('span', null, 'This week')),
+    h('p', { class: 'weeks-more' }, `The dashed line is your 12-week average, ${fmt1(mi.weekAvg)} ${u}. Today ${fmt1(mi.today)} ${u}. This month ${fmt1(mi.month)} ${u}; your usual month is ${fmt1(mi.monthAvg)}.`));
 }
 
 function latest(st) {
@@ -132,7 +129,7 @@ function records(st) {
 
 // Each section draws on its own: a throw shows that section's note and the rest of the hub still draws.
 function part(draw, note) {
-  try { return draw(); } catch (e) { console.error(e); return note ? h('p', { class: 'empty races-down' }, note) : null; }
+  try { return draw(); } catch (e) { console.error(e); return note ? down(note) : null; }
 }
 
 // cache: the cache of runs, null until the first sync has loaded the athlete. races: null until the race cache
@@ -143,19 +140,26 @@ export function renderHub(cache, races, up) {
   const key = a && a.closest && a.closest('#view-hub') ? a.dataset.focus : null;
   const oldStrip = box.querySelector('.strip');
   const left = oldStrip ? oldStrip.scrollLeft : 0;
+  const oldWeeks = box.querySelector('details.weeks');
+  const weeksOpen = !!(oldWeeks && oldWeeks.open);
   let next;
   try { next = nextStart(up); } catch (e) {
     if (Array.isArray(up)) console.error(e);   // null: main.js has already logged why
     shown = null;
-    next = h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' },
-      h('span', { class: 'label' }, 'Next start'), h('p', { class: 'empty' }, 'Upcoming races are not available right now.'));
+    next = h('section', { id: 'nextStart', class: 'next-start', 'aria-label': 'Next start' }, down('Upcoming races are not available right now.'));
   }
-  const st = part(() => (races && !races.failed && races.rows ? hubStats(races) : null), null);
+  // The mileage and the race numbers are each worked out once, here; a throw in either shows its own note.
+  let mi = null; let miDown = false;
+  if (cache) { try { mi = miles(cache); } catch (e) { console.error(e); miDown = true; } }
+  let st = null; let stDown = !!(races && races.failed);
+  if (races && !races.failed) { try { st = hubStats(races); } catch (e) { console.error(e); stDown = true; } }
+  const dogFree = !(shown && shown.id === null);
   box.replaceChildren(...[
-    h('h2', { class: 'hub-title' }, 'Run Hub'),
+    h('h2', { class: 'vh' }, 'Hub'),
     next,
-    h('div', { class: 'hub-rows' }, racesCard(races)),
-    part(() => mileage(cache), 'Mileage is not available right now.'),
+    miDown ? down('Mileage is not available right now.') : part(() => mileage(mi), 'Mileage is not available right now.'),
+    stDown ? down(RACES_DOWN) : part(() => racesSay(races, st, dogFree), RACES_DOWN),
+    mi ? part(() => weeks(mi, weeksOpen), null) : null,
     part(() => latest(st), 'Latest results are not available right now.'),
     part(() => records(st), 'Personal records are not available right now.'),
     h('p', null, h('a', { class: 'textlink', href: '#data', 'data-focus': 'hub-data' }, 'Data and connection')),

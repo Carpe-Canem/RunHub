@@ -9,6 +9,7 @@ import { current } from './router.js';
 import { daysText, isoDay, dayChanged } from './upcoming.js';
 import { removeHand, nextRows } from './upcoming-sync.js';
 import { openAddSheet } from './add-race.js';
+import { withZiggy } from './ziggy.js';
 
 const FIRST = 10;
 let expanded = false;   // "Show all" pressed; reset when the filter changes
@@ -19,9 +20,9 @@ function readUi() {
 }
 function saveUi(patch) { store.set(K.ui, { ...readUi(), ...patch }); }
 
-// Shown in place of any race area whose code threw, so the rest of the page still works.
+// Shown in place of any race area whose code threw, so the rest of the page still works. Ziggy naps beside it.
 export const RACES_DOWN = 'Races are not available right now.';
-export const racesDown = () => h('p', { class: 'empty races-down' }, RACES_DOWN);
+export const racesDown = () => withZiggy('nap', h('p', { class: 'empty races-down' }, RACES_DOWN));
 
 // Redraw, then put focus back on the control that was used (the redraw replaces it).
 function redraw(model, focusKey) {
@@ -122,8 +123,8 @@ export function renderRaces(model, up = []) {
   const upEl = upNext(up);
   if (!model) return box.replaceChildren(title, upEl, h('p', { class: 'empty' }, 'Loading your race history…'));
   if (!model.rows.length) {
-    return box.replaceChildren(title, upEl, h('p', { class: 'empty' },
-      model.scanning ? 'Scanning your race history…' : 'No races yet. Runs you mark as Race in Strava appear here.'));
+    return box.replaceChildren(title, upEl, model.scanning ? h('p', { class: 'empty' }, 'Scanning your race history…')
+      : withZiggy('sit', h('p', { class: 'empty' }, 'No races yet. Runs you mark as Race in Strava appear here.')));
   }
   const unit = units();
   const ui = readUi();

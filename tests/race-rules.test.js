@@ -65,3 +65,23 @@ test('the rules use no regex lookbehind, which older Safari cannot parse', async
   const src = await readFile(new URL('../js/race-rules.js', import.meta.url), 'utf8');
   assert.equal(/\(\?<[!=]/.test(src), false);
 });
+
+test('runUpAt: starts at zero, lands exactly on the time, never runs backwards or past it', async () => {
+  const { runUpAt } = await import('../js/race-rules.js');
+  assert.equal(runUpAt(1361, 0), 0);
+  assert.equal(runUpAt(1361, -1), 0);
+  assert.equal(runUpAt(1361, 1), 1361);
+  assert.equal(runUpAt(1361, 2), 1361);
+  let last = 0;
+  for (let i = 0; i <= 100; i++) {
+    const s = runUpAt(1361, i / 100);
+    assert.ok(Number.isInteger(s) && s >= last && s <= 1361, `step ${i}: ${s}`);
+    last = s;
+  }
+});
+
+test('runUpAt: eased, so it is past half-way at half time', async () => {
+  const { runUpAt } = await import('../js/race-rules.js');
+  assert.ok(runUpAt(1000, 0.5) > 800);
+  assert.equal(runUpAt(0, 0.5), 0);
+});

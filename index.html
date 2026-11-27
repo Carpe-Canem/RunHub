@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-bwKaTUi1TarMuY3dhixXZYYwWB1vF3oiyJFT+AP1F0k=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-X6XoZYgpMzLRVG8NKx1dORrbwJ21yAGxG2anZ5bRjlo=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Run Hub</title>
   <meta name="description" content="A personal running board: your races, what's coming up, and your mileage against your normal.">
@@ -16,7 +16,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0C1424">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
-  <link rel="stylesheet" href="styles.css?v=41">
+  <link rel="stylesheet" href="styles.css?v=42">
 </head>
 <body>
   <header class="top">
@@ -28,9 +28,10 @@
       </nav>
       <a href="#data" id="dataLink" class="datalink" hidden>Data</a>
       <button type="button" id="addRaceBtn" class="btn small primary wide-only" hidden>Add race</button>
-      <div class="status" id="status" aria-live="polite">
-        <span id="statusText"></span>
-        <progress id="progress" hidden></progress>
+      <div class="status" id="status">
+        <span id="statusText" class="vh" role="status" aria-live="polite"></span>
+        <button type="button" class="ticker" id="ticker" aria-hidden="true" disabled hidden><span class="tk-dog" id="tickerDog" aria-hidden="true"></span><span class="tk-win" aria-hidden="true"><span class="tk-text" id="tickerText"></span></span></button>
+        <progress id="progress" aria-label="Sync progress" hidden></progress>
         <button type="button" id="refreshBtn" class="btn small" hidden>Refresh now</button>
       </div>
     </div>
@@ -129,37 +130,39 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/add-race.js": "./js/add-race.js?v=41",
-      "./js/core.js": "./js/core.js?v=41",
-      "./js/data-view.js": "./js/data-view.js?v=41",
-      "./js/dom.js": "./js/dom.js?v=41",
-      "./js/enrich-sync.js": "./js/enrich-sync.js?v=41",
-      "./js/hub.js": "./js/hub.js?v=41",
-      "./js/main.js": "./js/main.js?v=41",
-      "./js/map-tiles.js": "./js/map-tiles.js?v=41",
-      "./js/places.js": "./js/places.js?v=41",
-      "./js/probe.js": "./js/probe.js?v=41",
-      "./js/race-draw.js": "./js/race-draw.js?v=41",
-      "./js/race-map.js": "./js/race-map.js?v=41",
-      "./js/race-rules.js": "./js/race-rules.js?v=41",
-      "./js/race-view.js": "./js/race-view.js?v=41",
-      "./js/races-demo.js": "./js/races-demo.js?v=41",
-      "./js/races-model.js": "./js/races-model.js?v=41",
-      "./js/races-sync.js": "./js/races-sync.js?v=41",
-      "./js/races-view.js": "./js/races-view.js?v=41",
-      "./js/router.js": "./js/router.js?v=41",
-      "./js/runs-model.js": "./js/runs-model.js?v=41",
-      "./js/setup-link.js": "./js/setup-link.js?v=41",
-      "./js/strava.js": "./js/strava.js?v=41",
-      "./js/sync.js": "./js/sync.js?v=41",
-      "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=41",
-      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=41",
-      "./js/upcoming.js": "./js/upcoming.js?v=41",
-      "./js/weather.js": "./js/weather.js?v=41",
-      "./js/ziggy.js": "./js/ziggy.js?v=41"
+      "./js/add-race.js": "./js/add-race.js?v=42",
+      "./js/core.js": "./js/core.js?v=42",
+      "./js/data-view.js": "./js/data-view.js?v=42",
+      "./js/dom.js": "./js/dom.js?v=42",
+      "./js/enrich-sync.js": "./js/enrich-sync.js?v=42",
+      "./js/hub-lines.js": "./js/hub-lines.js?v=42",
+      "./js/hub.js": "./js/hub.js?v=42",
+      "./js/main.js": "./js/main.js?v=42",
+      "./js/map-tiles.js": "./js/map-tiles.js?v=42",
+      "./js/places.js": "./js/places.js?v=42",
+      "./js/probe.js": "./js/probe.js?v=42",
+      "./js/race-draw.js": "./js/race-draw.js?v=42",
+      "./js/race-map.js": "./js/race-map.js?v=42",
+      "./js/race-rules.js": "./js/race-rules.js?v=42",
+      "./js/race-view.js": "./js/race-view.js?v=42",
+      "./js/races-demo.js": "./js/races-demo.js?v=42",
+      "./js/races-model.js": "./js/races-model.js?v=42",
+      "./js/races-sync.js": "./js/races-sync.js?v=42",
+      "./js/races-view.js": "./js/races-view.js?v=42",
+      "./js/router.js": "./js/router.js?v=42",
+      "./js/runs-model.js": "./js/runs-model.js?v=42",
+      "./js/setup-link.js": "./js/setup-link.js?v=42",
+      "./js/strava.js": "./js/strava.js?v=42",
+      "./js/sync.js": "./js/sync.js?v=42",
+      "./js/ticker.js": "./js/ticker.js?v=42",
+      "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=42",
+      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=42",
+      "./js/upcoming.js": "./js/upcoming.js?v=42",
+      "./js/weather.js": "./js/weather.js?v=42",
+      "./js/ziggy.js": "./js/ziggy.js?v=42"
     }
   }
   </script>
-  <script type="module" src="js/main.js?v=41"></script>
+  <script type="module" src="js/main.js?v=42"></script>
 </body>
 </html>

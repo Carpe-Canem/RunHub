@@ -114,6 +114,13 @@ export function fmtTime(sec) {
   const p2 = (n) => String(n).padStart(2, '0');
   return h ? `${h}:${p2(m)}:${p2(s)}` : `${m}:${p2(s)}`;
 }
+// A running clock in the shape of the finish time it is heading for: 7 s on the way to 22:41 is "00:07".
+export function clockLike(sec, total) {
+  const shape = fmtTime(total).split(':');
+  const t = Math.round(sec);
+  const vals = shape.length === 3 ? [Math.floor(t / 3600), Math.floor((t % 3600) / 60), t % 60] : [Math.floor(t / 60), t % 60];
+  return vals.map((v, i) => String(v).padStart(shape[i].length, '0')).join(':');
+}
 export const fmtPace = (secPerUnit, unit) => (secPerUnit == null || !isFinite(secPerUnit) ? '–' : `${fmtTime(secPerUnit)} /${unit}`);
 export const fmtDist = (m, unit) => `${(m / (UNIT_M[unit] || UNIT_M.mi)).toFixed(2)} ${unit}`;
 

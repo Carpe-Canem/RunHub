@@ -57,20 +57,21 @@ export function table(head, rows) {
     h('tbody', null, rows)));
 }
 
-// Clock digits. Each ":" stays in the text (for copying and screen readers) but is drawn as two square dots.
+// Clock digits. Each ":" stays in the text (for copying and screen readers) but is drawn as two square dots;
+// a "." is drawn as one, and a "," as a narrow gap (the font's own marks are a full digit wide).
+const MARKS = { ':': 'cn', '.': 'pt', ',': 'cm' };
 function ledParts(text) {
-  const out = [];
-  String(text).split(':').forEach((part, i) => {
-    if (i) out.push(h('i', { class: 'cn' }, ':'));
-    if (part) out.push(part);
-  });
-  return out;
+  return String(text).split(/([:.,])/).filter(Boolean).map((part) => (MARKS[part] ? h('i', { class: MARKS[part] }, part) : part));
 }
 
 // led('1:02:33', { ghost: true }) -> <span class="led g"><span class="gh" aria-hidden="true">8:88:88</span>1:02:33</span>
+// The all-lit layer is always there: CSS shows it dimly behind a clock that asked for a ghost (class g), and at
+// full strength over every clock during the lamp test.
 export function led(text, opts) {
-  const withGhost = !!(opts && opts.ghost);
-  return h('span', { class: withGhost ? 'led g' : 'led' },
-    withGhost ? h('span', { class: 'gh', 'aria-hidden': 'true' }, ledParts(ghost(text))) : null,
+  return h('span', { class: opts && opts.ghost ? 'led g' : 'led' },
+    h('span', { class: 'gh', 'aria-hidden': 'true' }, ledParts(ghost(text))),
     ledParts(text));
 }
+
+// The one gate for motion started from script. CSS animations are stilled by the stylesheet's own rule.
+export const motionOK = () => typeof matchMedia === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;

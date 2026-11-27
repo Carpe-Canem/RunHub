@@ -9,11 +9,11 @@
  * (switch: Place lookups on the Data page; usage policy https://operations.osmfoundation.org/policies/nominatim/).
  * Map tiles are requested for the race page's course map.
  */
-import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
-import { $, h } from './dom.js';
+import { S, K, bus, store, UserError, units } from './core.js';
+import { $, h, motionOK } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
-import { loadCache, demoCache } from './runs-model.js';
+import { loadCache, demoCache, miles } from './runs-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
@@ -28,6 +28,9 @@ import { dropCourseMap, closeCourseDialog } from './race-map.js';
 import { openAddSheet, closeAddSheet } from './add-race.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
+import { statusOf, tickerText, tickerPose, stripMode, SEP } from './ticker.js';
+import { ziggy } from './ziggy.js';
+import { daysText, isoDay } from './upcoming.js';
 
 // Views that exist so far. 'race' (one race) belongs to the Races section: on wide screens the list and
 // the race sit side by side (#dash.split); on narrow ones CSS shows one of them, by #dash's data-view.
@@ -37,28 +40,79 @@ const sectionOf = (view) => (view === 'race' ? 'races' : view);
 const scrolls = {};
 let raceFrom = null;   // 'hub' or 'races' when this session opened the current race from there; Back then goes back
 
+// The status: a dot-matrix strip for the eye (hidden from screen readers) and #statusText, a polite live region
+// that is only written when what it says changes, so each state is announced once.
 function renderStatus() {
-  const text = $('statusText'); const prog = $('progress'); const btn = $('refreshBtn');
+  const prog = $('progress'); const btn = $('refreshBtn');
   const connected = !S.demo && !!token();
   btn.hidden = !connected || S.syncing;
-  text.className = '';
-  if (S.demo) { text.textContent = 'Demo'; prog.hidden = true; return; }
-  if (!connected) { text.textContent = ''; prog.hidden = true; return; }
-  if (S.syncing && S.progress) {
-    const p = S.progress;
-    text.textContent = p.total ? `${p.label}: ${p.done} of ${p.total}` : `${p.label}…`;
-    prog.hidden = false;
-    if (p.total) { prog.max = p.total; prog.value = p.done; } else prog.removeAttribute('value');
-    return;
+  const st = statusOf({
+    demo: S.demo, connected, syncing: S.syncing, progress: S.progress, error: S.error, pausedUntil: S.pausedUntil,
+    lastSync: S.cache && S.cache.lastSync, warn: S.warn, now: Date.now(),
+  });
+  const live = $('statusText');
+  if (live.textContent !== st.live) live.textContent = st.live;
+  const p = st.state === 'sync' ? S.progress : null;
+  prog.hidden = !p;
+  if (p && p.total) { prog.max = p.total; prog.value = p.done; } else if (p) prog.removeAttribute('value');
+  drawTicker(st);
+}
+
+// What the strip last drew, so a status redraw that changes nothing leaves a scrolling strip alone.
+// still: the user pressed the strip to stop it scrolling (until the page is reloaded).
+const strip = { text: null, alert: false, pose: null, still: false };
+
+function drawTicker(st) {
+  const box = $('ticker');
+  box.hidden = st.state === 'off';
+  if (box.hidden) return;
+  let next = null; let mi = null;
+  if (st.state === 'idle' || st.state === 'demo') {
+    // Either may throw on bad stored data: the hub says so, and the strip just leaves that part out.
+    try { const r = nextRows()[0]; if (r) next = { name: r.n, when: daysText(r, isoDay(new Date())) }; } catch { /* left out */ }
+    try { if (S.cache && S.cache.athlete) mi = miles(S.cache); } catch { /* left out */ }
   }
-  prog.hidden = true;
-  if (S.error) { text.textContent = S.error; text.className = 'err'; return; }
-  if (S.pausedUntil > Date.now()) {
-    text.textContent = `Paused for Strava's rate limit. Resumes at ${timeLabel(S.pausedUntil)} if this page is open.`;
-    return;
-  }
-  const last = S.cache && S.cache.lastSync;
-  text.textContent = (last ? `Synced ${ago(last)}` : 'Not synced yet') + (S.warn ? `. ${S.warn}` : '');
+  const pose = tickerPose(st.state);
+  if (pose !== strip.pose) { strip.pose = pose; $('tickerDog').replaceChildren(ziggy(pose, 2)); }
+  const text = tickerText({ status: st, next, mi });
+  const alert = st.state === 'error' || st.state === 'paused';
+  if (text === strip.text && alert === strip.alert) return;
+  strip.text = text; strip.alert = alert;
+  box.classList.toggle('alert', alert);
+  fitTicker();
+}
+
+// The strip scrolls only when its text is wider than it is. An error or a pause never scrolls: CSS wraps it.
+// Screen readers get the status from #statusText, so the strip is hidden from them, except while it can scroll:
+// then it is a button that stops and restarts the scrolling (moving text must be stoppable).
+function fitTicker() {
+  const box = $('ticker'); const el = $('tickerText');
+  if (strip.text == null || box.hidden) return;
+  const square = () => h('i', { class: 'tk-sq' });
+  const parts = () => strip.text.split(SEP).flatMap((s, i) => (i ? [square(), s] : [s]));
+  box.classList.remove('scroll', 'still');
+  el.replaceChildren(...parts());
+  const mode = stripMode({ wide: el.scrollWidth > el.parentNode.clientWidth, alert: strip.alert, still: strip.still, motion: motionOK() });
+  box.disabled = !mode.control;
+  if (mode.control) { box.removeAttribute('aria-hidden'); box.setAttribute('aria-label', strip.still ? 'Scroll the status strip' : 'Stop the status strip scrolling'); }
+  else { box.setAttribute('aria-hidden', 'true'); box.removeAttribute('aria-label'); }
+  if (mode.control && !mode.scroll) box.classList.add('still');   // stopped: the whole line, wrapped
+  if (!mode.scroll) return;
+  // Twice over, each copy ending in a square, so sliding by half its width loops without a jump.
+  el.append(square(), ...parts(), square());
+  box.style.setProperty('--tk-s', `${Math.max(10, Math.round(el.scrollWidth / 2 / 40))}s`);
+  box.classList.add('scroll');
+}
+
+// Lamp test: once per page load, on the first connected draw, every clock digit shows all its cells lit.
+let lampDone = false;
+function lampTest() {
+  if (lampDone) return;
+  lampDone = true;
+  if (!motionOK()) return;
+  const root = document.documentElement;
+  root.classList.add('lamp');
+  setTimeout(() => root.classList.remove('lamp'), 700);
 }
 
 function render() {
@@ -85,6 +139,7 @@ function render() {
   renderStatus();
   viewTicks();
   if (!connected) return;
+  lampTest();
   const c = S.cache;
   const scope = (token() || {}).scope || '';
   const sw = $('scopeWarn');
@@ -298,6 +353,7 @@ function wireSetup() {
   $('demoBtn').addEventListener('click', startDemo);
   $('exitDemoBtn').addEventListener('click', exitDemo);
   $('refreshBtn').addEventListener('click', () => sync(true));
+  $('ticker').addEventListener('click', () => { strip.still = !strip.still; fitTicker(); });
   $('addRaceBtn').addEventListener('click', (e) => openAddSheet(e.currentTarget));
   $('disconnectBtn').addEventListener('click', () => (S.demo ? exitDemo() : leave(true)));
   $('forgetBtn').addEventListener('click', () => leave(false));
@@ -351,6 +407,10 @@ async function init() {
   startRouter({ enabled: ENABLED, onRoute });   // draws the first view
   if (t) { enrich(); sync(false); }
   setInterval(renderStatus, 60e3);
+  let fit = null;
+  window.addEventListener('resize', () => { clearTimeout(fit); fit = setTimeout(fitTicker, 150); });
+  // The strip's font arrives after the first draw and is wider than its stand-in: measure again.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTicker);
   // Another tab added, removed or imported races, or wiped this browser: show what is stored now.
   window.addEventListener('storage', (e) => {
     if (S.demo || !S.athleteId || (e.key !== null && e.key !== `lw.upcoming.${S.athleteId}`)) return;

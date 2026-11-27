@@ -64,3 +64,9 @@ export function agePlace(description) {
 
 export const isVirtual = (sportType, description) =>
   sportType === 'VirtualRun' || /\bvirtual\b/i.test(description || '');
+
+// Progress 0..1, slowing into the end.
+export const easeOut = (progress) => 1 - (1 - Math.min(1, Math.max(0, progress))) ** 3;
+
+// The finish clock's run-up: the seconds shown at progress 0..1, slowing into the finish time.
+export const runUpAt = (totalSeconds, progress) => Math.round(totalSeconds * easeOut(progress));

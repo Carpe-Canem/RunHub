@@ -195,3 +195,14 @@ test('hubStats orders a class outside the standards after them, by name', () => 
   }, {}, 'km');
   assert.deepEqual(hubStats(m).records.map((r) => r.cls), ['5K', '12K', '25K']);
 });
+
+test('clockLike: a running time keeps the finish time\'s shape, with leading zeros', async () => {
+  const { clockLike, fmtTime } = await import('../js/races-model.js');
+  assert.equal(clockLike(7, 1361), '00:07');
+  assert.equal(clockLike(754, 1361), '12:34');
+  assert.equal(clockLike(7, 307), '0:07');
+  assert.equal(clockLike(7, 3753), '0:00:07');
+  assert.equal(clockLike(3599, 3753), '0:59:59');
+  assert.equal(clockLike(0, 36000 + 61), '00:00:00');
+  for (const total of [59, 307, 1361, 3753, 36061]) assert.equal(clockLike(total, total), fmtTime(total));
+});
