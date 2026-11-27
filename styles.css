@@ -196,7 +196,9 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .race-ctx { font-size: 14px; font-weight: 700; color: var(--mut); margin: 0; }
 .race-ctx.go { color: var(--go); }
 .race-ctx.slow { color: var(--slow); }
-.race-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+.race-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0 0; }
+@media (max-width: 479px) { .race-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.credit { color: var(--mut); font-size: 11px; margin: 8px 0 0; }
 .stat { background: var(--panel); border-radius: var(--radius); padding: 10px 12px; min-width: 0; }
 .stat .label { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
 .stat strong { display: block; font-size: 16px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

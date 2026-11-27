@@ -3,6 +3,7 @@ import { K, store, units, dayLabel, DAY } from './core.js';
 import { $, h, led } from './dom.js';
 import { chips, paceTrend, fmtTime, fmtPace } from './races-model.js';
 import { classColour } from './race-rules.js';
+import { fmtTemp, skyText } from './weather.js';
 import { routeTile, paceChart } from './race-draw.js';
 import { current } from './router.js';
 
@@ -33,12 +34,14 @@ const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.
 const open = (r) => { const c = current(); return c.view === 'race' && c.id === r.id ? 'page' : null; };
 const shortTag = (r) => (r.short ? h('span', { class: 'tag' }, 'Short') : null);
 
+const wxText = (r, unit) => (r.wx ? ` · ${[fmtTemp(r.wx.t, unit), skyText(r.wx.c)].filter(Boolean).join(' ')}` : null);
+
 function row(r, unit) {
   return h('li', null, h('a', { class: 'race-row', href: `#race/${r.id}`, 'data-focus': `race-${r.id}`, 'aria-current': open(r) },
     routeTile(r.pts, r.colour, 44),
     h('span', { class: 'rr-main' },
       h('strong', { class: 'rr-name' }, r.n || 'Race'),
-      h('span', { class: 'rr-meta' }, badge(r), ' ', dateText(r), r.record ? h('span', { class: 'rr-pr' }, ' · Record') : null, r.short ? ' ' : null, shortTag(r))),
+      h('span', { class: 'rr-meta' }, badge(r), ' ', dateText(r), wxText(r, unit), r.record ? h('span', { class: 'rr-pr' }, ' · Record') : null, r.short ? ' ' : null, shortTag(r))),
     h('span', { class: 'rr-time' }, led(fmtTime(r.t)), h('span', { class: 'rr-pace' }, fmtPace(r.pace, unit)))));
 }
 

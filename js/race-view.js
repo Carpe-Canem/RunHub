@@ -3,6 +3,7 @@ import { S, bus, units, RateLimited } from './core.js';
 import { $, h, led } from './dom.js';
 import { contextLine, fmtTime, fmtPace, fmtDist } from './races-model.js';
 import { fetchProfile, saveRaceDet } from './races-sync.js';
+import { fmtTemp, weatherLines } from './weather.js';
 import { routeTile, elevationChart, splitsTable, fmtHeight } from './race-draw.js';
 
 // Elevation fetches, by race id: 'loading' while in flight, 'failed' until the page is opened again, or the
@@ -57,6 +58,20 @@ async function loadProfile(id) {
   bus.emit('data');
 }
 
+// 'none': no start point, so no weather is possible; 'pending': a start point and nothing cached yet; 'ok'.
+export function weatherState(r) { return !r.ll ? 'none' : r.wx ? 'ok' : 'pending'; }
+
+function weather(r, unit) {
+  const st = weatherState(r);
+  return h('section', { class: 'race-sec', 'aria-label': 'Race-day weather' },
+    h('h3', { class: 'sub-title' }, 'Race-day weather'),
+    st === 'none' ? h('p', { class: 'empty' }, 'No weather')
+      : st === 'pending' ? h('p', { class: 'empty' }, 'Weather not available yet')
+        : [h('dl', { class: 'kv race-kv' }, weatherLines(r.wx, unit).flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])),
+          r.wx.prov ? h('p', { class: 'empty' }, 'Provisional: final figures arrive about a week after the race.') : null,
+          h('p', { class: 'credit' }, 'Weather data by Open-Meteo.com')]);
+}
+
 function course(r) {
   const plan = elevationPlan(S.raceDet && S.raceDet[r.id], !!r.pts, S.demo, prof[r.id]);
   if (plan.fetch) loadProfile(r.id);
@@ -89,7 +104,7 @@ function others(r, model, unit) {
         h('strong', { class: 'or-year' }, o.year),
         h('span', { class: 'rr-main' },
           h('span', { class: 'rr-name' }, o.n || 'Race'),
-          h('span', { class: 'rr-meta' }, fmtPace(o.pace, unit), o.record ? h('span', { class: 'rr-pr' }, ' · Record') : null)),
+          h('span', { class: 'rr-meta' }, fmtPace(o.pace, unit), o.wx ? ` · ${fmtTemp(o.wx.t, unit)}` : null, o.record ? h('span', { class: 'rr-pr' }, ' · Record') : null)),
         h('span', { class: 'rr-time' }, led(fmtTime(o.t))))))));
 }
 
@@ -142,17 +157,19 @@ export function renderRace(model, id, cameFrom) {
   box.replaceChildren(...[
     back(cameFrom),
     h('div', { class: 'card race-clock' },
-      h('p', { class: 'rc-when' }, h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls), ' ', when(r)),
+      h('p', { class: 'rc-when' }, h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls), ' ', when(r), r.place ? ` · ${r.place}` : null),
       h('h2', { class: 'view-title race-name' }, r.n || 'Race'),
       h('p', { class: 'race-led' }, led(fmtTime(r.t), { ghost: true })),
       ctx ? h('p', { class: `race-ctx${r.record ? ' go' : r.gap != null && !r.short && !r.virtual ? ' slow' : ''}` }, ctx) : null),
     h('div', { class: 'race-stats' },
       stat('Pace', fmtPace(r.pace, unit)),
       stat('Distance', r.official > 0 ? fmtDist(r.official, unit) : '–'),
-      stat('Climb', fmtHeight(r.el || 0, unit))),
+      stat('Climb', fmtHeight(r.el || 0, unit)),
+      stat('Temperature', r.wx ? fmtTemp(r.wx.t, unit) : '–')),
     tags.length ? h('p', { class: 'tags' }, tags) : null,
     course(r),
     splits(r, unit),
+    weather(r, unit),
     others(r, model, unit),
     fromStrava(r, unit),
   ].filter(Boolean));

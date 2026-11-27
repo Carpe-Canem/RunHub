@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { elevationPlan } from '../js/race-view.js';
+import { elevationPlan, weatherState } from '../js/race-view.js';
 
 const P = [[0, 10], [500, 12], [1000, 11]];
 const det = (extra) => ({ at: 1, sp: { mi: [], km: [] }, ...extra });
@@ -27,4 +27,11 @@ test('elevationPlan: no GPS, no detail, a missing detail or the demo never fetch
   assert.deepEqual(elevationPlan({ at: 1, missing: true }, true, false, undefined), { show: 'unavailable' });
   assert.deepEqual(elevationPlan(det(), true, true, undefined), { show: 'unavailable' });
   assert.deepEqual(elevationPlan(det({ prof: [] }), true, false, undefined), { show: 'none' });
+});
+
+test('weatherState follows the start point and the cache', () => {
+  assert.equal(weatherState({ ll: null, wx: null }), 'none');
+  assert.equal(weatherState({ ll: null, wx: { t: 1 } }), 'none');
+  assert.equal(weatherState({ ll: [1, 2], wx: null }), 'pending');
+  assert.equal(weatherState({ ll: [1, 2], wx: { t: 1 } }), 'ok');
 });
