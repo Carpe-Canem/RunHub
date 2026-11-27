@@ -4,6 +4,10 @@ import { store, S, DAY, UNIT_M, units, dayOf, todayIdx, weekStart } from './core
 export function emptyCache() { return { v: 2, athlete: null, acts: {}, lastStart: 0, lastSync: 0, lastFull: 0 }; }
 
 // Version 1 also held Local Legends data (det, eff, seg). Its runs are kept, so nothing is fetched again.
+// A whole list of runs has been read at least once. Strava lists oldest first, so until then the cache can hold
+// old runs only, and the hub's mileage and Ziggy's lines would be wrong.
+export const runsLoaded = (c) => !!(c && c.athlete && c.lastSync > 0);
+
 export function loadCache(id) {
   const c = store.get(`lw.cache.${id}`);
   if (!c || (c.v !== 1 && c.v !== 2)) return emptyCache();

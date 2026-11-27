@@ -73,5 +73,15 @@ export function led(text, opts) {
     ledParts(text));
 }
 
+// --topbar follows the top bar's real height, less the top safe area: the status note gives the bar a second row,
+// and the hub is as tall as what is left. The safe area is padding, so the border box is the one to watch.
+export function watchTopbar(bar, root, Observer = globalThis.ResizeObserver) {
+  if (!Observer) return;
+  new Observer(() => {
+    const { height } = bar.getBoundingClientRect();
+    if (height) root.style.setProperty('--topbar', `calc(${height}px - var(--sat))`);
+  }).observe(bar, { box: 'border-box' });
+}
+
 // The one gate for motion started from script. CSS animations are stilled by the stylesheet's own rule.
 export const motionOK = () => typeof matchMedia === 'function' && !matchMedia('(prefers-reduced-motion: reduce)').matches;

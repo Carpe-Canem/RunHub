@@ -1,7 +1,7 @@
 // The sync: the athlete, the list of runs (for mileage and for spotting races), the bio, then the race history.
 import { S, bus, RUN_TYPES, DAY, UserError, RateLimited } from './core.js';
 import { api, token } from './strava.js';
-import { saveCache } from './runs-model.js';
+import { saveCache, runsLoaded } from './runs-model.js';
 import { enrich } from './enrich-sync.js';
 import { readBio, syncBio } from './upcoming-sync.js';
 import { noteListed, saveRaces, scanHistory, fetchRaceDetails, detailStepEvent } from './races-sync.js';
@@ -14,7 +14,7 @@ export async function sync(manual) {
   bus.emit('status');
   const c = S.cache;
   // The first sync has no runs to show yet. The views redraw now, so Ziggy can say he is fetching them.
-  if (!c.athlete) bus.emit('data');
+  if (!runsLoaded(c)) bus.emit('data');
   try {
     if (!c.athlete) {
       const a = await api('/athlete');

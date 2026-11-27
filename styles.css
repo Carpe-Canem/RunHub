@@ -13,7 +13,8 @@
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --tab: 56px;
-  /* The top bar: its 60 px and the 1 px rule under it. */
+  /* The top bar without the safe area: its 60 px and the 1 px rule under it. watchTopbar() in js/dom.js then keeps
+     it to the bar's real height, which a status note makes taller. */
   --topbar: 61px;
   /* The top and bottom safe areas, as tokens so a check can set a phone's. */
   --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);

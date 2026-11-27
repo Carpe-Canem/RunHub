@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { announcer } from '../js/dom.js';
+import * as dom from '../js/dom.js';
 
 // A queue in place of timers, and a plain object in place of the error line.
 function rig() {
@@ -85,4 +86,22 @@ test('led: a decimal point and a thousands comma stay in the text but are drawn 
     assert.deepEqual(marks(led('1:02:33')), [['cn', ':'], ['cn', ':']]);
     assert.equal(led('1,098.5').text, '8,888.81,098.5');
   } finally { delete globalThis.document; delete globalThis.Node; }
+});
+
+// The hub is as tall as the page between the two bars, so Ziggy stands on the tab bar. The status note gives the
+// top bar a second row: --topbar has to follow the bar's real height, which includes the top safe area.
+test('watchTopbar: --topbar follows the height of the top bar', () => {
+  const set = []; let seen; let watched; let height = 123;
+  class Observer { constructor(fn) { seen = fn; } observe(el, opts) { watched = [el, opts]; } }
+  const bar = { getBoundingClientRect: () => ({ height }) };
+  const root = { style: { setProperty: (k, v) => set.push([k, v]) } };
+  dom.watchTopbar(bar, root, Observer);
+  assert.deepEqual(watched, [bar, { box: 'border-box' }]);   // the safe area is padding
+  seen(); height = 146.5; seen();
+  height = 0; seen();   // the bar is not laid out: the last height stands
+  assert.deepEqual(set, [['--topbar', 'calc(123px - var(--sat))'], ['--topbar', 'calc(146.5px - var(--sat))']]);
+});
+
+test('watchTopbar: without ResizeObserver the height in the stylesheet stands', () => {
+  assert.doesNotThrow(() => dom.watchTopbar({}, {}, undefined));
 });

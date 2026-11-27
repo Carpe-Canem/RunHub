@@ -150,7 +150,7 @@ function stage(box, mi, stats, up, runsLoaded) {
   } catch (e) { console.error(e); }
 }
 
-// cache: the cache of runs, null until the first sync has loaded the athlete. races: null until the race cache
+// cache: the cache of runs, null until a whole list of them has been read. races: null until the race cache
 // is loaded, or {failed: true}. up: the upcoming rows, or null when reading them threw.
 export function renderHub(cache, races, up) {
   const box = $('view-hub');

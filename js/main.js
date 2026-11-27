@@ -10,10 +10,10 @@
  * Map tiles are requested for the race page's course map.
  */
 import { S, K, bus, store, UserError, units } from './core.js';
-import { $, h, motionOK } from './dom.js';
+import { $, h, motionOK, watchTopbar } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
-import { loadCache, demoCache } from './runs-model.js';
+import { loadCache, demoCache, runsLoaded } from './runs-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
@@ -121,7 +121,8 @@ function render() {
   // Races do not depend on the cache of runs, and only these views show them. null until the race cache is
   // loaded; {failed: true} when building it threw, so each race area shows a note and the rest still draws.
   const races = S.races && RACE_VIEWS.includes(view) ? raceModel() : null;
-  if (view === 'hub') { renderHub(ready ? c : null, races, hubUp()); return; }
+  // The hub's numbers wait for a whole list of runs, not just the athlete.
+  if (view === 'hub') { renderHub(runsLoaded(c) ? c : null, races, hubUp()); return; }
   if (section === 'races') { renderRacePanes(races, view === 'race' ? current().id : null); return; }
   // The export does not wait for the first sync: the offer before leaving can open Data before it has run.
   if (view === 'data') { try { renderUpcomingPanel(); } catch (e) { console.error(e); } }
@@ -353,6 +354,7 @@ async function init() {
   // Scroll positions are put back by onRoute; the browser's own restoring on Back would fight it.
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   wireSetup();
+  watchTopbar(document.querySelector('header.top'), document.documentElement);
   await linkFromAddress();   // before anything else
   // The same link arriving in a page that is already open (no reload happens for a change after the #).
   // On a failed link, redraw: the router may already have drawn the hub for a token that is now wiped.
