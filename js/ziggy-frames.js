@@ -9,7 +9,7 @@ export const SHEETS = {
       'happy-tilt', 'thrilled', 'thrilled-talk', 'thrilled-wag', 'thrilled-blink', 'thrilled-ear', 'eager', 'eager-talk',
       'eager-trot', 'eager-blink', 'eager-ear', 'eager-tail', 'curious', 'curious-talk', 'curious-tilt', 'curious-blink',
       'curious-ear', 'worried', 'worried-talk', 'worried-low', 'worried-glance', 'asleep', 'asleep-breathe', 'asleep-ear',
-      'asleep-paw',
+      'asleep-paw', 'happy-sniff1', 'happy-sniff2', 'happy-look1', 'happy-look2', 'happy-scratch1', 'happy-scratch2',
     ],
   },
   side: { cell: [48, 40], cols: 4, frames: ['sit', 'trot1', 'trot2', 'nap'] },

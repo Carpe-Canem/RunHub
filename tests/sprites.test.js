@@ -174,3 +174,13 @@ test('the committed sheets are what the grids build', () => {
     assert.deepEqual([...png.indices], [...sheetIndices(sheet)], `${sheet}: run node scripts/build-sprites.mjs`);
   }
 });
+
+test('he sniffs with his mouth shut, and his scratching paw is white', () => {
+  for (const name of ['happy-sniff1', 'happy-sniff2']) assert.equal(count(readFrame('hub', name), 'p'), 0, name);
+  for (const name of ['happy-scratch1', 'happy-scratch2']) {
+    const rows = readFrame('hub', name), still = readFrame('hub', 'happy');
+    // the raised paw is white well above where his feet are
+    assert.ok(rows.slice(38, 52).join('').split('').filter((ch) => ch === 'w').length >
+      still.slice(38, 52).join('').split('').filter((ch) => ch === 'w').length + 20, name);
+  }
+});

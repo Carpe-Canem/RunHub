@@ -178,3 +178,10 @@ test('a wander stays on the strip, goes somewhere else, and takes under 2 second
   assert.equal(wanderMs(-100), wanderMs(100));
   assert.equal(wanderMs(0), 0);
 });
+
+test('happy sniffs with his mouth shut, looks back and scratches', () => {
+  assert.deepEqual(FIDGETS.happy.slice(6, 9), ['sniff', 'lookback', 'scratch']);
+  assert.ok(steps('happy', 'sniff').some(([f]) => f === 'happy-sniff2'));
+  assert.equal(steps('happy', 'lookback')[1][0], 'happy-look2');
+  assert.equal(steps('happy', 'scratch').filter(([f]) => f === 'happy-scratch2').length, 6);
+});

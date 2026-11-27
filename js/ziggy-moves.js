@@ -6,7 +6,7 @@ export const TALK_MS = 130;     // mouth open, mouth shut
 export const MOOD_MS = 3200;    // the mood's own movement after speaking, at most: with the typing, under 5 s
 
 export const FIDGETS = {
-  happy:    ['blink', 'ear', 'tail', 'yawn', 'shake', 'tilt', 'wander'],
+  happy:    ['blink', 'ear', 'tail', 'yawn', 'shake', 'tilt', 'sniff', 'lookback', 'scratch', 'wander'],
   thrilled: ['blink', 'ear', 'tail', 'wander'],
   eager:    ['blink', 'ear', 'tail', 'wander'],
   curious:  ['blink', 'ear', 'tilt', 'wander'],
@@ -46,6 +46,11 @@ const MOVES = {
     blink: blink('happy'), ear: ear('happy'), tail: tail('happy'), tilt: tilt('happy'),
     yawn: [['happy', 200], ['happy-yawn', 1000], ['happy', 300]],
     shake: [...times(6, ['happy-shake1', 90], ['happy-shake2', 90]), ['happy', 200]],
+    // Approved as mock-ups on 2026-11-27: the nose dips twice with his mouth shut, he looks back over his
+    // shoulder, and a hind paw scratches at his collar.
+    sniff: [['happy', 150], ...times(2, ['happy-sniff1', 200], ['happy-sniff2', 200]), ['happy-sniff1', 200], ['happy', 250]],
+    lookback: [['happy-look1', 200], ['happy-look2', 1000], ['happy-look1', 150], ['happy', 250]],
+    scratch: [['happy-scratch1', 150], ...times(6, ['happy-scratch2', 90], ['happy-scratch1', 90]), ['happy', 250]],
   },
   thrilled: {
     talk: talk('thrilled'), mood: times(13, ['thrilled-wag', 120], ['thrilled', 120]),

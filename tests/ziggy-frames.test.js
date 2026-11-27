@@ -23,7 +23,7 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
 });
 
 test('the hub sheet is 768 × 440 with 33 frames, the side sheet 192 × 40 with four', () => {
-  assert.equal(SHEETS.hub.frames.length, 33);
+  assert.equal(SHEETS.hub.frames.length, 39);
   assert.deepEqual(sheetSize('hub'), { w: 768, h: 440 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
   assert.deepEqual(sheetSize('side'), { w: 192, h: 40 });
