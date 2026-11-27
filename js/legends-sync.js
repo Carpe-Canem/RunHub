@@ -2,7 +2,7 @@
 import { S, bus, RUN_TYPES, WINDOW, DAY, HOT_MAX_AGE, COLD_MAX_AGE, MANUAL_MAX_AGE, UserError, RateLimited, dayOf, todayIdx } from './core.js';
 import { api, token } from './strava.js';
 import { saveCache, compute, legendCount } from './legends-model.js';
-import { noteListed, saveRaces, scanHistory, fetchRaceDetails } from './races-sync.js';
+import { noteListed, saveRaces, scanHistory, fetchRaceDetails, detailStepEvent } from './races-sync.js';
 
 export async function sync(manual) {
   if (S.demo || S.syncing || !token()) return;
@@ -85,7 +85,7 @@ async function syncRaces() {
   bus.emit('status');
   await fetchRaceDetails(S.races, S.raceDet, api, (done, total) => {
     S.progress.done = done; S.progress.total = total;
-    bus.emit('data');
+    bus.emit(detailStepEvent(done, total));   // a full redraw every 5 races, as the Legends passes do
   });
 }
 

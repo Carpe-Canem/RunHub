@@ -1,7 +1,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S, RateLimited } from '../js/core.js';
-import { emptyRaces, loadRaces, loadRaceDet, saveRaces, saveRaceDet, noteListed, scanHistory, fetchRaceDetails, fetchProfile, rescan } from '../js/races-sync.js';
+import { S, RateLimited, UserError } from '../js/core.js';
+import { emptyRaces, loadRaces, loadRaceDet, saveRaces, saveRaceDet, noteListed, scanHistory, fetchRaceDetails, fetchProfile, rescan, detailStepEvent } from '../js/races-sync.js';
 
 let mem;
 const saved = (k) => JSON.parse(mem[k] || 'null');
@@ -180,8 +180,11 @@ test('saveRaces drops details before summaries when storage is full', async () =
   saveRaces();
   assert.equal(saved('lw.races.42').races[RACE_IDS[0]].n, 'Riverbend 10K renamed');
   assert.equal(mem['lw.raceDet.42'], undefined);
-  assert.deepEqual(S.raceDet, {});
-  assert.equal(S.warn, null);
+  // only the stored copy goes: the details stay in memory, so they are not all fetched again this session
+  assert.equal(Object.keys(S.raceDet).length, 30);
+  assert.equal(S.raceDet[RACE_IDS[0]].cal, 500);
+  assert.equal(S.warn, 'This browser\'s storage is full, so some data will be fetched again next time.');
+  S.warn = null;
   quota(100);
   saveRaces();
   assert.equal(S.warn, 'This browser\'s storage is full, so some data will be fetched again next time.');
@@ -197,4 +200,57 @@ test('saveRaceDet drops elevation profiles before giving up', () => {
   quota(5);
   saveRaceDet();
   assert.equal(S.warn, 'This browser\'s storage is full, so some data will be fetched again next time.');
+});
+
+test('fetchRaceDetails skips a race whose request fails, keeps going, and leaves a note', async () => {
+  const rc = S.races; const rd = S.raceDet;
+  noteListed(rc, ACTS.slice(0, 46), 0);   // races 5000, 5015, 5030, 5045
+  const calls = [];
+  const call = async (path) => {
+    calls.push(path);
+    if (path === '/activities/5015') throw new UserError('Strava returned an error (500). Try again later.');
+    return { id: +path.split('/')[2], sport_type: 'Run', calories: 600 };
+  };
+  await fetchRaceDetails(rc, rd, call);
+  assert.deepEqual(calls, ['/activities/5000', '/activities/5015', '/activities/5030', '/activities/5045']);
+  assert.equal(rd['5015'], undefined);   // not recorded, so the next pass asks again
+  assert.deepEqual(Object.keys(rd).sort(), ['5000', '5030', '5045']);
+  assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
+  assert.deepEqual(Object.keys(saved('lw.raceDet.42').det).sort(), ['5000', '5030', '5045']);
+});
+
+test('fetchRaceDetails still stops on a rate-limit pause', async () => {
+  const rc = S.races; const rd = S.raceDet;
+  noteListed(rc, ACTS.slice(0, 46), 0);
+  const calls = [];
+  const call = async (path) => {
+    calls.push(path);
+    if (path === '/activities/5015') throw new RateLimited(Date.now() + 60e3);
+    return { id: +path.split('/')[2], sport_type: 'Run' };
+  };
+  await assert.rejects(fetchRaceDetails(rc, rd, call), RateLimited);
+  assert.deepEqual(calls, ['/activities/5000', '/activities/5015']);
+  assert.equal(S.warn, null);
+  assert.ok(saved('lw.raceDet.42').det['5000']);
+});
+
+test('the details pass redraws every 5 races and at the end, and updates the status in between', () => {
+  const events = Array.from({ length: 12 }, (_, i) => detailStepEvent(i + 1, 12));
+  assert.deepEqual(events, ['status', 'status', 'status', 'status', 'data', 'status', 'status', 'status', 'status', 'data', 'status', 'data']);
+});
+
+test('a race noteListed adds during a scan survives the end-of-scan prune', async () => {
+  const rc = S.races;
+  const first = fakeCall(ACTS, { throwOn: 2 });
+  await assert.rejects(scanHistory(rc, first.call), RateLimited);
+  // listed by the Legends sync while the scan is paused: older than scan.started, not on a scanned page
+  const extra = { id: 9001, name: 'Frostbite 5 Miler', sport_type: 'Run', workout_type: 1, distance: 8047, elapsed_time: 2400, start_date: iso(T - 3 * 86400 + 600), start_date_local: iso(T - 3 * 86400 + 600) };
+  noteListed(rc, [extra], T - 10 * 86400);
+  assert.ok(rc.scan.seen.includes('9001'));
+  await scanHistory(rc, fakeCall().call);
+  assert.equal(rc.scan.done, true);
+  assert.equal(rc.races['9001'].n, 'Frostbite 5 Miler');
+  // once the scan is done, nothing more is collected
+  noteListed(rc, [{ ...extra, id: 9002 }], T - 10 * 86400);
+  assert.deepEqual(rc.scan.seen, []);
 });

@@ -1,9 +1,10 @@
 // Races: a cache of the athlete's whole race history, kept apart from the Local Legends cache.
-import { S, store } from './core.js';
+import { S, store, RateLimited } from './core.js';
 import { api } from './strava.js';
 import { isRace, summaryFrom, detailFrom, reduceProfile } from './races-model.js';
 
 const FULL = 'This browser\'s storage is full, so some data will be fetched again next time.';
+const SKIPPED = 'Some race details could not be read; they will be retried.';
 const PER = 200;
 const racesKey = (id) => `lw.races.${id}`;
 const detKey = (id) => `lw.raceDet.${id}`;
@@ -21,10 +22,11 @@ const off = () => S.demo || !S.athleteId;
 export function saveRaces() {
   if (off() || !S.races) return;
   if (store.set(racesKey(S.athleteId), S.races)) return;
-  // Details go before summaries. Empty in place, so a details fetch still holding the object keeps working.
+  // Details go before summaries. Only the stored copy: the details stay in memory, so this session does not
+  // fetch them all again, and the next load does (hence the warning).
   store.del(detKey(S.athleteId));
-  if (S.raceDet) for (const k of Object.keys(S.raceDet)) delete S.raceDet[k];
-  if (!store.set(racesKey(S.athleteId), S.races)) S.warn = FULL;
+  S.warn = FULL;
+  store.set(racesKey(S.athleteId), S.races);
 }
 
 export function saveRaceDet() {
@@ -42,7 +44,13 @@ const startOf = (a) => (a.start_date ? Date.parse(a.start_date) / 1000 || 0 : 0)
 export function noteListed(rc, list, after) {
   if (!rc) return;
   const now = new Set();
-  for (const a of list) if (isRace(a)) { const r = summaryFrom(a); rc.races[r.id] = r; now.add(r.id); }
+  const sc = rc.scan;
+  for (const a of list) {
+    if (!isRace(a)) continue;
+    const r = summaryFrom(a); rc.races[r.id] = r; now.add(r.id);
+    // during a scan, a race added here counts as seen, so the end-of-scan prune keeps it
+    if (sc && !sc.done && !sc.seen.includes(r.id)) sc.seen.push(r.id);
+  }
   for (const [id, r] of Object.entries(rc.races)) if (r.s > after && !now.has(id)) delete rc.races[id];
 }
 
@@ -77,22 +85,31 @@ export async function scanHistory(rc, call = api) {
 
 export function rescan(rc) { rc.scan = freshScan(); }
 
-// One detail request per race not yet in rd, newest first.
+// One detail request per race not yet in rd, newest first. A rate-limit pause stops the pass (the resumed sync
+// picks up where it left off). Any other error skips that race for this pass only: it is not recorded, so the
+// next pass asks again, and the older races still get read.
 export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
   if (!rc || !rd) return;
   const todo = Object.values(rc.races).filter((r) => !rd[r.id]).sort((a, b) => b.s - a.s);
-  let done = 0;
+  let done = 0, read = 0, skipped = 0;
   try {
     for (const r of todo) {
-      const a = await call(`/activities/${r.id}`);
-      rd[r.id] = a ? detailFrom(a) : { at: Date.now(), missing: true };
+      let a;
+      try { a = await call(`/activities/${r.id}`); }
+      catch (e) {
+        if (e instanceof RateLimited) throw e;
+        console.warn('Race detail request failed', e);
+        a = undefined; skipped++;
+      }
+      if (a !== undefined) { rd[r.id] = a ? detailFrom(a) : { at: Date.now(), missing: true }; read++; }
       done++;
       onStep(done, todo.length);
-      if (done % 5 === 0) saveRaceDet();
+      if (read && done % 5 === 0) saveRaceDet();
     }
   } finally {
-    if (done) saveRaceDet();
+    if (read) saveRaceDet();
   }
+  if (skipped) S.warn = SKIPPED;
 }
 
 export async function fetchProfile(id, call = api) {
@@ -102,3 +119,6 @@ export async function fetchProfile(id, call = api) {
   if (!Array.isArray(alt) || !alt.length || !Array.isArray(dist)) return null;
   return reduceProfile(dist, alt, 80);
 }
+
+// What the details pass asks for after each race: a full redraw every 5 and at the end, else the status line.
+export const detailStepEvent = (done, total) => (done % 5 === 0 || done === total ? 'data' : 'status');
