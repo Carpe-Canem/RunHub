@@ -1,7 +1,8 @@
 /*
  * Run Hub: a static, browser-only Strava dashboard.
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
- * The only network destinations are www.strava.com (API + OAuth) and OpenStreetMap tiles.
+ * The only network destinations are www.strava.com (API + OAuth), cdnjs.cloudflare.com (Leaflet script and CSS)
+ * and OpenStreetMap tiles.
  */
 import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
 import { $ } from './dom.js';

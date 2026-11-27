@@ -5,12 +5,13 @@ A Strava dashboard for runners that you can open before a run or after one. It o
 - **Before a run:** see which Local Legend titles are about to slip and which ones are within reach.
 - **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
 - **After a run:** see your daily, weekly, monthly and year-to-date mileage next to your own normal.
+- **Miles or kilometres:** the Units setting on the Data page switches mileage and race distances, paces, splits and heights between the two. It is kept in this browser only.
 
 Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting anything, add `?demo` to the end of the address.
 
 ## Privacy
 
-- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside host is OpenStreetMap, for the map tiles on the Legends map.
+- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside hosts are `cdnjs.cloudflare.com`, which serves the Leaflet map library (script and stylesheet) on every page view, and OpenStreetMap, for the map tiles on the Legends map.
 - **Everything stays in your browser.** Your Client ID, Client Secret, tokens and cached data (race history included) are kept in that browser's `localStorage`. Nothing is sent to the site owner or anyone else.
 - **Each runner brings their own Strava API app**, so everyone's keys, data and rate limits are separate.
 - **Leaders stay anonymous.** The page keeps only the Local Legend leader's athlete ID, to tell whether the leader is you, and their effort count. It never stores or shows their name or photo.
