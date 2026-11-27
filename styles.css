@@ -205,11 +205,12 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
 .race-sec { margin-top: 20px; }
 .course-tile .rtile { width: 100%; max-width: 320px; height: auto; }
-.course-map { height: 260px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--board); color: var(--mut); }
+.course-map { position: relative; z-index: 0; height: 260px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--board); color: var(--mut); }
 @media (min-width: 860px) { .course-map { height: 320px; } }
 .course-expand { margin-top: 6px; min-height: 44px; min-width: 44px; }
 .course-dialog { position: fixed; inset: 0; z-index: 2000; background: var(--board); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .course-full-map { position: absolute; inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.course-dialog .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 20px; }
 .course-close { position: absolute; z-index: 1000; top: calc(env(safe-area-inset-top) + 10px); right: calc(env(safe-area-inset-right) + 10px); min-height: 44px; min-width: 44px; }
 .course-key { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mut); margin: 6px 0 10px; }
 .key-start, .key-finish { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
@@ -257,7 +258,7 @@ summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid 
 details[open] > summary::before { transform: rotate(45deg); }
 details > :not(summary) { margin-left: 14px; margin-right: 14px; }
 details > :last-child { margin-bottom: 14px; }
-#map { height: 360px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--board); color: var(--mut); }
+#map { position: relative; z-index: 0; height: 360px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--board); color: var(--mut); }
 .legend { font-size: 12px; color: var(--mut); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; }
 .sw { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: -6px; vertical-align: middle; }
 .sw.risk { background: #FF7373; } .sw.reach { background: #FFB52E; } .sw.held { background: #35D69B; } .sw.other { background: #8D9EC0; }

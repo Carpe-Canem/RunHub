@@ -20,7 +20,7 @@ export function canMap(L, pts) { return !!L && Array.isArray(pts) && pts.length 
 
 // Module state: the race whose map is shown, its element and its Leaflet map.
 const st = { id: null, el: null, map: null };
-let dlg = null;   // { el, map, onKey, opener, scroll }
+let dlg = null;   // { el, map, onKey, opener, scroll, inert }
 
 function draw(map, r) {
   map.createPane('route').style.zIndex = 450;
@@ -32,11 +32,13 @@ function draw(map, r) {
   }
 }
 
+const fit = (map, r) => map.fitBounds(L.latLngBounds(r.pts), { padding: [16, 16] });
+
 function build(el, opts, r) {
   const map = L.map(el, opts);
   addTiles(map);
   draw(map, r);
-  map.fitBounds(L.latLngBounds(r.pts), { padding: [16, 16] });
+  fit(map, r);
   return map;
 }
 
@@ -56,21 +58,31 @@ export function dropCourseMap() {
 
 export function courseMap(r) {
   if (st.id === r.id && st.el) {
-    const { map } = st;
-    requestAnimationFrame(() => { if (st.map === map && map) map.invalidateSize(); });
-    return st.el;
+    const { map, el } = st;
+    if (!map) buildInline(el.firstChild, el, r);   // self-heal: the first build never ran
+    else requestAnimationFrame(() => { if (st.map === map) { map.invalidateSize(); fit(map, r); } });
+    return el;
   }
   dropCourseMap();
   const mapEl = h('div', { class: 'course-map' });
-  const expand = h('button', { type: 'button', class: 'btn course-expand', onclick: () => openDialog(r, expand) }, 'Expand');
+  const expand = h('button', { type: 'button', class: 'btn course-expand', 'aria-label': 'Expand course map', onclick: () => openDialog(r, expand) }, 'Expand');
   const el = h('div', { class: 'course-map-wrap' }, mapEl, expand);
   st.id = r.id; st.el = el;
-  whenAttached(mapEl, () => {
-    if (st.el !== el || st.map) return;
-    st.map = build(mapEl, STATIC, r);
-  });
+  buildInline(mapEl, el, r);
   return el;
 }
+
+function buildInline(mapEl, el, r) {
+  whenAttached(mapEl, () => {
+    if (st.el !== el || st.map) return;
+    const map = build(mapEl, STATIC, r);
+    map.on('resize', () => fit(map, r));   // rotation or the 860 px breakpoint keeps the whole course in view
+    st.map = map;
+  });
+}
+
+// Closes the full-screen map (without moving focus) when the page leaves the race it shows.
+export function closeCourseDialog() { closeDialog(false); }
 
 function closeDialog(refocus) {
   if (!dlg) return;
@@ -80,6 +92,7 @@ function closeDialog(refocus) {
   if (d.map) d.map.remove();
   d.el.remove();
   document.body.style.overflow = d.scroll;
+  for (const n of d.inert) n.inert = false;
   if (refocus && d.opener.isConnected) d.opener.focus();
 }
 
@@ -89,7 +102,9 @@ function openDialog(r, opener) {
   const close = h('button', { type: 'button', class: 'btn course-close', onclick: () => closeDialog(true) }, 'Close');
   const el = h('div', { class: 'course-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Course map' }, mapEl, close);
   const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); closeDialog(true); } };
-  dlg = { el, map: null, onKey, opener, scroll: document.body.style.overflow };
+  const inert = [...document.body.children].filter((n) => !n.inert);   // keeps Tab and screen readers inside the dialog
+  dlg = { el, map: null, onKey, opener, scroll: document.body.style.overflow, inert };
+  for (const n of inert) n.inert = true;
   document.body.style.overflow = 'hidden';
   document.body.append(el);
   document.addEventListener('keydown', onKey, true);

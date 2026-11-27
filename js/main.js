@@ -22,7 +22,7 @@ import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
 import { renderRaces, racesDown } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
-import { dropCourseMap } from './race-map.js';
+import { dropCourseMap, closeCourseDialog } from './race-map.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 
@@ -129,6 +129,7 @@ function renderRacePanes(races, id) {
 function onRoute(route, prev) {
   if (prev) scrolls[prev.view] = window.scrollY;
   if (prev && prev.view === 'data') hideSetupLink();   // a setup link is not left on screen
+  if (prev && !(route.view === 'race' && route.id === prev.id)) closeCourseDialog();
   const newRace = route.view === 'race' && !(prev && prev.view === 'race' && prev.id === route.id);
   if (newRace) {
     raceFrom = prev && (prev.view === 'hub' || prev.view === 'races') ? prev.view : null;
