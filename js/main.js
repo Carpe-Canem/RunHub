@@ -7,19 +7,18 @@
  * point rounded to about 1 km and a date for each race (to read that day's weather) and nothing else, and
  * nominatim.openstreetmap.org, which gets a start point rounded to about 1 km, once per place, to name the town
  * (switch: Place lookups on the Data page; usage policy https://operations.osmfoundation.org/policies/nominatim/).
- * Map tiles are requested for the Legends map and the race page's course map.
+ * Map tiles are requested for the race page's course map.
  */
 import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
 import { $, h } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
-import { loadCache, compute, miles, demoCache } from './legends-model.js';
+import { loadCache, demoCache } from './runs-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
-import { sync } from './legends-sync.js';
+import { sync } from './sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
 import { loadUp, nextRows, handCount } from './upcoming-sync.js';
 import { loadEnv, enrich, placesOn } from './enrich-sync.js';
-import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { showExport, hideExport, renderUpcomingPanel } from './upcoming-panel.js';
 import { renderHub, tickHub } from './hub.js';
@@ -32,8 +31,8 @@ import { startRouter, current } from './router.js';
 
 // Views that exist so far. 'race' (one race) belongs to the Races section: on wide screens the list and
 // the race sit side by side (#dash.split); on narrow ones CSS shows one of them, by #dash's data-view.
-const ENABLED = ['hub', 'races', 'race', 'legends', 'data'];
-const SECTIONS = ['hub', 'races', 'legends', 'data'];
+const ENABLED = ['hub', 'races', 'race', 'data'];
+const SECTIONS = ['hub', 'races', 'data'];
 const sectionOf = (view) => (view === 'race' ? 'races' : view);
 const scrolls = {};
 let raceFrom = null;   // 'hub' or 'races' when this session opened the current race from there; Back then goes back
@@ -92,22 +91,14 @@ function render() {
   sw.hidden = S.demo || !scope || /activity:read_all/.test(scope);
   sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Use “Forget this browser” on the Data page, then connect again to fix this.';
   const ready = !!(c && c.athlete);   // false until the first sync has loaded the athlete
-  // Races do not depend on the Legends cache, and only these views show them. null until the race cache is
+  // Races do not depend on the cache of runs, and only these views show them. null until the race cache is
   // loaded; {failed: true} when building it threw, so each race area shows a note and the rest still draws.
   const races = S.races && RACE_VIEWS.includes(view) ? raceModel() : null;
-  if (view === 'hub') { renderHub(ready ? compute(c) : null, races, hubUp()); return; }
+  if (view === 'hub') { renderHub(ready ? c : null, races, hubUp()); return; }
   if (section === 'races') { renderRacePanes(races, view === 'race' ? current().id : null); return; }
   // The export does not wait for the first sync: the offer before leaving can open Data before it has run.
   if (view === 'data') { try { renderUpcomingPanel(); } catch (e) { console.error(e); } }
-  if (!ready) return;
-
-  const model = compute(c);
-  if (view === 'legends') {
-    renderLegends(model, miles(c));
-    if ($('dMap').open) renderMap(model);
-  } else if (view === 'data') {
-    renderData(model, c, races);
-  }
+  if (ready && view === 'data') renderData(c, races);
 }
 
 const RACE_VIEWS = ['hub', 'races', 'race', 'data'];
@@ -175,7 +166,6 @@ function onRoute(route, prev) {
     raceOpened(route.id);
   }
   render();
-  if (route.view === 'legends' && S.map) S.map.invalidateSize();
   // A race always opens at its top; any other view goes back to where it was left.
   if (prev) window.scrollTo(0, route.view === 'race' ? 0 : scrolls[route.view] || 0);
 }
@@ -204,7 +194,6 @@ function wipe() {
   store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe); store.del(K.units); store.del(K.ui); store.del(K.map); store.del(K.places);
   clearTimeout(S.resumeTimer);
   Object.assign(S, { cache: null, races: null, raceDet: null, raceEnv: null, upcoming: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
-  if (S.map) { S.map.remove(); S.map = null; }
   dropCourseMap();
   closeAddSheet();
   hideSetupLink();
@@ -322,7 +311,6 @@ function wireSetup() {
     box.value = ''; btn.disabled = true; S.showLinkError('');
     try { if (await useSetup(text)) enter(); } finally { btn.disabled = false; }
   });
-  $('dMap').addEventListener('toggle', () => { if ($('dMap').open && S.cache && S.cache.athlete) renderMap(compute(S.cache)); });
   S.showSetupError = showErr;
 }
 

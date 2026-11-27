@@ -1,5 +1,5 @@
 // Data: sync and storage status, the field check (counts only, never values) and the setup link.
-import { S, K, bus, store, units, setUnits, RUN_TYPES, WINDOW, LIMIT_15, LIMIT_DAY, UserError, RateLimited, dayOf, todayIdx, timeLabel, ago } from './core.js';
+import { S, K, bus, store, units, setUnits, RUN_TYPES, LIMIT_15, LIMIT_DAY, UserError, RateLimited, timeLabel, ago } from './core.js';
 import { $, h, table } from './dom.js';
 import { api, token, creds, redirectUri, rateState } from './strava.js';
 import { encodeSetup } from './setup-link.js';
@@ -8,31 +8,21 @@ import { buildRaces } from './races-model.js';
 import { upcomingRows } from './upcoming-sync.js';
 import { rescan, saveRaces } from './races-sync.js';
 import { RACES_DOWN } from './races-view.js';
-import { sync } from './legends-sync.js';
+import { sync } from './sync.js';
 import { enrich, placesOn, setPlaces } from './enrich-sync.js';
 import { PLACE_LOOKUPS, pointKey } from './places.js';
 import { dropCourseMap } from './race-map.js';
 import { standalone, renderUpcomingPanel } from './upcoming-panel.js';
 import { currentSource, setMapPref } from './map-tiles.js';
 
-// races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
-export function renderData(model, c, races) {
+// c: the cache of runs. races: the race model main.js built ({failed: true} if that threw), or null before the
+// race cache is loaded.
+export function renderData(c, races) {
   const box = $('dataStatus'); box.replaceChildren();
   const r = rateState();
-  const fetched = model.rows.length - model.pending;
-  const withLL = model.rows.filter((x) => x.status !== 'pending' && x.status !== 'unknown').length;
-  const checked = model.held.filter((x) => x.stravaCount != null);
-  const matches = checked.filter((x) => x.stravaCount === x.mine).length;
-  const runs90 = Object.values(c.acts).filter((a) => dayOf(a.d) >= todayIdx() - (WINDOW - 1)).length;
-  const vis = { everyone: 0, followers_only: 0, only_me: 0 };
-  for (const a of Object.values(c.acts)) vis[a.v] = (vis[a.v] || 0) + 1;
   const items = [
     ['Last synced', c.lastSync ? ago(c.lastSync) : 'Not yet'],
-    ['Runs cached', `${Object.keys(c.acts).length} since Jan 1 last year · ${runs90} in the last 90 days`],
-    ['Runs by visibility', `${vis.everyone} everyone · ${vis.followers_only} followers · ${vis.only_me} only you (only “everyone” counts toward Local Legends)`],
-    ['Segments tracked', `${model.rows.length} (leader count checked on ${fetched})`],
-    ['Local Legend field returned', fetched ? `${withLL} of ${fetched} segments${withLL === 0 && fetched > 3 ? '. Strava may have removed this field' : ''}` : '–'],
-    ['Your count vs Strava\'s, on titles you hold', checked.length ? `${matches} of ${checked.length} match` : '–'],
+    ['Runs cached', `${Object.keys(c.acts).length} since Jan 1 last year`],
   ];
   try { items.push(...raceItems(races)); } catch (e) { console.error(e); items.push(['Race history', RACES_DOWN]); }
   try { items.push(...upcomingItems()); } catch (e) { console.error(e); items.push(['Upcoming races', 'Not available']); }
@@ -128,14 +118,12 @@ function placesRow() {
       : 'Place lookups are turned off for this site.')];
 }
 
-// The redraw replaces the radios, so focus goes back to the one now checked. A new source needs new tiles, so the
-// Legends map is removed and drawn again when next shown.
+// The redraw replaces the radios, so focus goes back to the one now checked.
 function mapRow() {
   const now = currentSource();
   const choose = (p) => {
     setMapPref(p);
-    if (S.map) { S.map.remove(); S.map = null; }
-    dropCourseMap();   // a shown race map is rebuilt on the new source too
+    dropCourseMap();   // a new source needs new tiles: a shown race map is rebuilt on it
     bus.emit('data');
     const el = document.querySelector(`#dataStatus [data-focus="map-${p}"]`);
     if (el) el.focus();

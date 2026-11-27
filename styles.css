@@ -119,7 +119,6 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .rowlink .sub { display: block; font-size: 13px; color: var(--mut); }
 .rowlink .led { font-size: 44px; }
 .hub-rows { display: grid; gap: 10px; }
-@media (min-width: 860px) { .hub-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .card.next-start { background: var(--board); padding: 14px 16px 16px; margin-bottom: 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .next-name { font-size: 19px; font-weight: 800; overflow-wrap: anywhere; }
 .next-when { font-size: 13px; color: var(--mut); margin: 0 0 6px; }
@@ -261,26 +260,11 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .race-missing { padding: 8px 0; }
 .choose { padding: 48px 0; text-align: center; }
 
-/* Legends: headline cards */
-.bans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+/* Cards: Next start, the race clock, the pace trend */
 .card { background: var(--panel); border-radius: var(--radius); padding: 12px 14px; margin: 0; }
-.card.hero { grid-column: 1 / -1; }
 .card .label { font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); margin: 0; }
-.card .num { font-family: var(--fl); font-weight: 900; font-size: 34px; line-height: 1.05; margin: 6px 0 4px; color: var(--tx); }
-.card.hero .num { font-size: 60px; }
-.card.mini .num { font-family: var(--f); font-weight: 800; font-size: 22px; }
-.card .sub { font-size: 12px; color: var(--mut); margin: 0; }
-.card.danger { background: color-mix(in srgb, var(--slow) 14%, var(--panel)); }
-.card.danger .num { color: var(--slow); text-shadow: 0 0 12px #FF737355; }
-.card.danger .sub { color: var(--tx); }
-.card.ok .num { color: var(--go); }
-@media (min-width: 720px) {
-  .bans { grid-template-columns: 2fr 1fr 1fr; }
-  .card.hero { grid-column: auto; grid-row: span 2; display: flex; flex-direction: column; justify-content: center; }
-  .card.hero .num { font-size: 76px; }
-}
 
-/* Legends: panels */
+/* Fold-out panels */
 details { background: var(--panel); border-radius: var(--radius); margin-top: 10px; }
 summary { cursor: pointer; padding: 0 14px; min-height: 48px; display: flex; align-items: center; gap: 8px; font-weight: 800; list-style: none; }
 summary::-webkit-details-marker { display: none; }
@@ -288,10 +272,6 @@ summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid 
 details[open] > summary::before { transform: rotate(45deg); }
 details > :not(summary) { margin-left: 14px; margin-right: 14px; }
 details > :last-child { margin-bottom: 14px; }
-#map { position: relative; z-index: 0; height: 360px; border-radius: 10px; border: 1px solid var(--line); overflow: hidden; background: var(--board); color: var(--mut); }
-.legend { font-size: 12px; color: var(--mut); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 8px; }
-.sw { display: inline-block; width: 18px; height: 4px; border-radius: 2px; margin-right: -6px; vertical-align: middle; }
-.sw.risk { background: #FF7373; } .sw.reach { background: #FFB52E; } .sw.held { background: #35D69B; } .sw.other { background: #8D9EC0; }
 
 /* The current map tiles, recoloured navy in the browser (no new map host) */
 .map-navy { filter: grayscale(1) invert(1) brightness(.82) contrast(1.15) sepia(.75) hue-rotate(178deg) saturate(1.5); }
@@ -313,11 +293,6 @@ tbody tr:last-child td { border-bottom: 0; }
 td.n { text-align: right; white-space: nowrap; }
 th:not(:first-child) { text-align: right; }
 th:last-child, td:last-child { white-space: nowrap; }
-tr.risk td { background: color-mix(in srgb, var(--slow) 12%, transparent); color: var(--slow); }
-tr.reach td { background: color-mix(in srgb, var(--led) 10%, transparent); color: var(--led); }
-td.seg { min-width: 140px; }
-.linkish { font: inherit; font-weight: 700; color: inherit; background: none; border: 0; padding: 0; min-height: 28px; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.ext { text-decoration: none; font-size: 13px; }
 .probe td:first-child { overflow-wrap: anywhere; }
 .probe-text { display: block; width: 100%; height: 8em; margin-top: 10px; font: 12px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; color: var(--tx); background: var(--night); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
 

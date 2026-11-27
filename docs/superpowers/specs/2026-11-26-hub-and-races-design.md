@@ -2,6 +2,8 @@
 
 Date: 2026-11-26. Status: approved by the owner on 2026-11-26.
 
+Note, 2026-11-27: the Local Legends page was removed at the owner's request (v41), and mileage moved to the hub. What this document says about Legends is history. See `docs/superpowers/plans/2026-11-27-run-hub-legends-removal-and-look.md`.
+
 This repository is public. This document contains no real race names, places, times, coordinates or keys, and neither may anything committed after it. Every example below is invented.
 
 ## Decisions the owner approved

@@ -1,20 +1,18 @@
 # Run Hub
 
-A Strava dashboard for runners that you can open before a run or after one. It opens on a hub, a short board that links to its pages. Local Legends and Races are the pages so far.
+A Strava dashboard for runners that you can open before a run or after one. It opens on a hub: the countdown to your next start, your mileage, your latest results and your records. Races is the other page.
 
-- **Before a run:** see which Local Legend titles are about to slip and which ones are within reach.
 - **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. Upcoming races are read from your Strava bio (one line per race, `MM/DD/YYYY Name`) or added by hand with "Add race", and show under "Up next" until their date has passed. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
-- **After a run:** see your daily, weekly, monthly and year-to-date mileage next to your own normal.
+- **Your mileage:** on the hub, see your daily, weekly, monthly and year-to-date mileage next to your own normal.
 - **Miles or kilometres:** the Units setting on the Data page switches mileage and race distances, paces, splits and heights between the two. It is kept in this browser only.
 
 Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting anything, add `?demo` to the end of the address.
 
 ## Privacy
 
-- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside hosts are `cdnjs.cloudflare.com`, which serves the Leaflet map library (script and stylesheet) on every page view, OpenStreetMap and `basemaps.cartocdn.com` (CARTO), for the map tiles on the Legends map and the race page's course map (the tile host sees roughly where a race was) (CARTO is used on the site's own address and can be switched to OpenStreetMap with the Map switch on the Data page): tile requests for the area shown, with the site's address and a public API key. That key is public by design: CARTO restricts it to the site's address, so it is of no use elsewhere. And `archive-api.open-meteo.com`, which reads each race's weather. Open-Meteo is sent a start point rounded to about 1 km and a date, for each race, and nothing else: no names, times, tokens or athlete ID. `nominatim.openstreetmap.org` (OpenStreetMap's Nominatim) names the town of each race start: it is sent a start point rounded to about 1 km, once per place, at most one request every 1.5 seconds, and nothing else. The "Place lookups" switch on the Data page turns it off. See its [usage policy](https://operations.osmfoundation.org/policies/nominatim/).
+- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside hosts are `cdnjs.cloudflare.com`, which serves the Leaflet map library (script and stylesheet) on every page view, OpenStreetMap and `basemaps.cartocdn.com` (CARTO), for the map tiles on the race page's course map (the tile host sees roughly where a race was) (CARTO is used on the site's own address and can be switched to OpenStreetMap with the Map switch on the Data page): tile requests for the area shown, with the site's address and a public API key. That key is public by design: CARTO restricts it to the site's address, so it is of no use elsewhere. And `archive-api.open-meteo.com`, which reads each race's weather. Open-Meteo is sent a start point rounded to about 1 km and a date, for each race, and nothing else: no names, times, tokens or athlete ID. `nominatim.openstreetmap.org` (OpenStreetMap's Nominatim) names the town of each race start: it is sent a start point rounded to about 1 km, once per place, at most one request every 1.5 seconds, and nothing else. The "Place lookups" switch on the Data page turns it off. See its [usage policy](https://operations.osmfoundation.org/policies/nominatim/).
 - **Everything stays in your browser.** Your Client ID, Client Secret, tokens and cached data (race history included) are kept in that browser's `localStorage`. Nothing is sent to the site owner or anyone else.
 - **Each runner brings their own Strava API app**, so everyone's keys, data and rate limits are separate.
-- **Leaders stay anonymous.** The page keeps only the Local Legend leader's athlete ID, to tell whether the leader is you, and their effort count. It never stores or shows their name or photo.
 - **Two ways out, on the Data page.** "Forget this browser" wipes everything from that browser and leaves your other devices connected. "Disconnect everywhere" also revokes the page's access at Strava, which signs out every device.
 - **Note for the site owner:** every GitHub Pages project site on this account shares the origin `carpe-canem.github.io`, and so shares `localStorage`. Only host pages you trust under this account. Better still, use a custom domain for this dashboard.
 
@@ -27,7 +25,7 @@ Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting 
 2. Upload any icon, then copy the **Client ID** and **Client Secret**.
 3. Open the dashboard, paste them in, click **Connect with Strava**, and approve on Strava's screen.
 
-The page asks Strava for `read,activity:read_all`. Private runs count toward your mileage, but only public runs (visible to "Everyone") count toward Local Legends.
+The page asks Strava for `read,activity:read_all`. Private runs count toward your mileage, and a private run flagged as a race shows in your races.
 
 ## Setting up another device
 
@@ -60,24 +58,17 @@ To move hand-added races to another browser or the home-screen app, open **Data*
 
 | Metric | Definition |
 |---|---|
-| Titles at risk | Titles you hold where some of your public efforts drop out of the 90-day window in the next 7 days |
-| Within reach | Segments where you're 3 or fewer efforts behind the current Local Legend |
-| Titles held | Segments you ran in the last 90 days where you're the current Local Legend |
 | This week | Run, TrailRun and VirtualRun distance, Monday to today, compared with your average over the previous 12 weeks |
+| This month | Distance since the 1st, compared with your average over the previous 6 months |
 | Year to date | Distance since January 1, compared with the same date last year |
-
-**Limits to know about:**
-
-- **The leader's count comes from an undocumented field.** It's the `local_legend` field returned by `GET /segments/{id}`, and Strava may change or remove it. The Data status panel shows whether the field is still being returned.
-- **Strava doesn't say who's in second place**, so "at risk" means your own efforts are about to expire. It doesn't mean a rival is closing in.
 
 ## Refresh and rate limits
 
 - **Data refreshes when you open the page.** It also refreshes when you come back to the tab after 15 minutes.
-- **Leader counts are re-checked on a schedule.** At-risk and within-reach segments are re-checked every 6 hours, and all others once a day.
+- **Each refresh is small.** It lists your recent runs (one request per 200), and once a day re-lists the last 95 days to pick up edits and deletions.
 - **The page counts its own API calls.** It stays under 90 per 15 minutes and 900 per day, which is below Strava's read limits of 100 and 1,000. If it hits the limit, it pauses and picks up again when the window resets.
 - **The bio is read once a day, and on Refresh now.** It is one request, to find your upcoming races. Only the races found in the bio are kept, never the text.
-- **The first sync can take a few minutes** if you've run a lot of segments.
+- **The first sync can take a few minutes** if you have a long race history: it reads one detail per race.
 
 ## Local development
 

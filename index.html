@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ibtTlcoBHcYV9Vvb5v29zTO8yz5W3GoEN7QONTT2zuw=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-Lb16bdH3GeboQGPdwH5o1HRp0Zpf/XRCUah9nbOSlio=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Run Hub</title>
-  <meta name="description" content="A personal running board: Local Legend titles to defend and chase, and your mileage against your normal.">
+  <meta name="description" content="A personal running board: your races, what's coming up, and your mileage against your normal.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0C1424">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
-  <link rel="stylesheet" href="styles.css?v=40">
+  <link rel="stylesheet" href="styles.css?v=41">
 </head>
 <body>
   <header class="top">
@@ -25,7 +25,6 @@
       <nav id="nav" aria-label="Pages" hidden>
         <a href="#hub" data-view="hub">Hub</a>
         <a href="#races" data-view="races">Races</a>
-        <a href="#legends" data-view="legends">Legends</a>
       </nav>
       <a href="#data" id="dataLink" class="datalink" hidden>Data</a>
       <button type="button" id="addRaceBtn" class="btn small primary wide-only" hidden>Add race</button>
@@ -40,7 +39,7 @@
   <main>
     <!-- Setup: shown until this browser is connected -->
     <section id="setup" hidden>
-      <p class="lede">Before a run: which Local Legend titles are about to slip and which are within reach. After a run: how your mileage compares with your normal.</p>
+      <p class="lede">Your races and records, a countdown to the next start, and how your mileage compares with your normal.</p>
 
       <div class="privacy">
         <strong>Your keys and data stay in this browser.</strong>
@@ -61,7 +60,7 @@
         </li>
         <li>Agree to Strava's terms, click <em>Create</em>, then upload any small image as the app icon.</li>
         <li>On the “My API Application” page, copy your <em>Client ID</em> and <em>Client Secret</em> (click “show”) and paste them below.</li>
-        <li>On Strava's approval screen, leave both boxes ticked, including <em>View data about your private activities</em>, so your mileage is complete. Private runs never count toward Local Legends here.</li>
+        <li>On Strava's approval screen, leave both boxes ticked, including <em>View data about your private activities</em>, so your mileage and race history are complete.</li>
       </ol>
 
       <form id="connectForm" class="connect" novalidate>
@@ -104,54 +103,6 @@
 
       <section id="view-race" aria-label="Race" hidden></section>
 
-      <section id="view-legends" aria-label="Local Legends" hidden>
-      <div class="bans">
-        <article class="card hero" id="riskCard">
-          <p class="label">Titles at risk this week</p>
-          <p class="num" id="riskN">…</p>
-          <p class="sub" id="riskS">Loading Local Legend counts</p>
-        </article>
-        <article class="card" id="reachCard">
-          <p class="label">Within reach</p>
-          <p class="num" id="reachN">…</p>
-          <p class="sub" id="reachS">Segments where you're 3 or fewer efforts behind</p>
-        </article>
-        <article class="card" id="heldCard">
-          <p class="label">Titles held</p>
-          <p class="num" id="heldN">…</p>
-          <p class="sub" id="heldS">Local Legend titles you hold now</p>
-        </article>
-        <article class="card mini">
-          <p class="label">This week</p>
-          <p class="num" id="weekN">…</p>
-          <p class="sub" id="weekS">Monday to today, runs only</p>
-        </article>
-        <article class="card mini">
-          <p class="label">Year to date</p>
-          <p class="num" id="ytdN">…</p>
-          <p class="sub" id="ytdS">Since January 1, runs only</p>
-        </article>
-      </div>
-
-      <details id="dMap">
-        <summary>Map</summary>
-        <div id="map" role="region" aria-label="Map of your tracked segments"></div>
-        <p class="legend"><span class="sw risk"></span>At risk <span class="sw reach"></span>Within reach <span class="sw held"></span>Held <span class="sw other"></span>Other</p>
-      </details>
-      <details id="dDefend">
-        <summary>Defend: titles you hold</summary>
-        <div id="defend"></div>
-      </details>
-      <details id="dAttack">
-        <summary>Attack: titles to chase</summary>
-        <div id="attack"></div>
-      </details>
-      <details id="dMiles">
-        <summary>Mileage detail</summary>
-        <div id="miles"></div>
-      </details>
-      </section>
-
       <section id="view-data" aria-label="Data and connection" hidden>
         <h2 class="view-title">Data and connection</h2>
         <div class="panel">
@@ -171,44 +122,43 @@
   </main>
 
   <footer>
-    <p>Compatible with Strava. Not affiliated with or endorsed by Strava. Local Legend leader counts come from an undocumented Strava field and may stop working without notice. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Map tiles © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>. Place names from <a href="https://nominatim.openstreetmap.org/ui/about.html" target="_blank" rel="noopener noreferrer">OpenStreetMap Nominatim</a>.</p>
+    <p>Compatible with Strava. Not affiliated with or endorsed by Strava. Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Map tiles © <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>. Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a>. Place names from <a href="https://nominatim.openstreetmap.org/ui/about.html" target="_blank" rel="noopener noreferrer">OpenStreetMap Nominatim</a>.</p>
   </footer>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO" crossorigin="anonymous" defer></script>
   <script type="importmap">
   {
     "imports": {
-      "./js/add-race.js": "./js/add-race.js?v=40",
-      "./js/core.js": "./js/core.js?v=40",
-      "./js/data-view.js": "./js/data-view.js?v=40",
-      "./js/dom.js": "./js/dom.js?v=40",
-      "./js/enrich-sync.js": "./js/enrich-sync.js?v=40",
-      "./js/hub.js": "./js/hub.js?v=40",
-      "./js/legends-model.js": "./js/legends-model.js?v=40",
-      "./js/legends-sync.js": "./js/legends-sync.js?v=40",
-      "./js/legends-view.js": "./js/legends-view.js?v=40",
-      "./js/main.js": "./js/main.js?v=40",
-      "./js/map-tiles.js": "./js/map-tiles.js?v=40",
-      "./js/places.js": "./js/places.js?v=40",
-      "./js/probe.js": "./js/probe.js?v=40",
-      "./js/race-draw.js": "./js/race-draw.js?v=40",
-      "./js/race-map.js": "./js/race-map.js?v=40",
-      "./js/race-rules.js": "./js/race-rules.js?v=40",
-      "./js/race-view.js": "./js/race-view.js?v=40",
-      "./js/races-demo.js": "./js/races-demo.js?v=40",
-      "./js/races-model.js": "./js/races-model.js?v=40",
-      "./js/races-sync.js": "./js/races-sync.js?v=40",
-      "./js/races-view.js": "./js/races-view.js?v=40",
-      "./js/router.js": "./js/router.js?v=40",
-      "./js/setup-link.js": "./js/setup-link.js?v=40",
-      "./js/strava.js": "./js/strava.js?v=40",
-      "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=40",
-      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=40",
-      "./js/upcoming.js": "./js/upcoming.js?v=40",
-      "./js/weather.js": "./js/weather.js?v=40"
+      "./js/add-race.js": "./js/add-race.js?v=41",
+      "./js/core.js": "./js/core.js?v=41",
+      "./js/data-view.js": "./js/data-view.js?v=41",
+      "./js/dom.js": "./js/dom.js?v=41",
+      "./js/enrich-sync.js": "./js/enrich-sync.js?v=41",
+      "./js/hub.js": "./js/hub.js?v=41",
+      "./js/main.js": "./js/main.js?v=41",
+      "./js/map-tiles.js": "./js/map-tiles.js?v=41",
+      "./js/places.js": "./js/places.js?v=41",
+      "./js/probe.js": "./js/probe.js?v=41",
+      "./js/race-draw.js": "./js/race-draw.js?v=41",
+      "./js/race-map.js": "./js/race-map.js?v=41",
+      "./js/race-rules.js": "./js/race-rules.js?v=41",
+      "./js/race-view.js": "./js/race-view.js?v=41",
+      "./js/races-demo.js": "./js/races-demo.js?v=41",
+      "./js/races-model.js": "./js/races-model.js?v=41",
+      "./js/races-sync.js": "./js/races-sync.js?v=41",
+      "./js/races-view.js": "./js/races-view.js?v=41",
+      "./js/router.js": "./js/router.js?v=41",
+      "./js/runs-model.js": "./js/runs-model.js?v=41",
+      "./js/setup-link.js": "./js/setup-link.js?v=41",
+      "./js/strava.js": "./js/strava.js?v=41",
+      "./js/sync.js": "./js/sync.js?v=41",
+      "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=41",
+      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=41",
+      "./js/upcoming.js": "./js/upcoming.js?v=41",
+      "./js/weather.js": "./js/weather.js?v=41"
     }
   }
   </script>
-  <script type="module" src="js/main.js?v=40"></script>
+  <script type="module" src="js/main.js?v=41"></script>
 </body>
 </html>

@@ -284,7 +284,7 @@ test('a race noteListed adds during a scan survives the end-of-scan prune', asyn
   const rc = S.races;
   const first = fakeCall(ACTS, { throwOn: 2 });
   await assert.rejects(scanHistory(rc, first.call), RateLimited);
-  // listed by the Legends sync while the scan is paused: older than scan.started, not on a scanned page
+  // listed by the runs sync while the scan is paused: older than scan.started, not on a scanned page
   const extra = { id: 9001, name: 'Frostbite 5 Miler', sport_type: 'Run', workout_type: 1, distance: 8047, elapsed_time: 2400, start_date: iso(T - 3 * 86400 + 600), start_date_local: iso(T - 3 * 86400 + 600) };
   noteListed(rc, [extra], T - 10 * 86400);
   assert.ok(rc.scan.seen.includes('9001'));

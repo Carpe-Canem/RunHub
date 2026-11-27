@@ -10,19 +10,9 @@ export const DEAUTH_URL = 'https://www.strava.com/oauth/deauthorize';
 
 export const RUN_TYPES = ['Run', 'TrailRun', 'VirtualRun'];
 
-export const WINDOW = 90;            // Local Legend window, days
-
-export const REACH_GAP = 3;          // "within reach" = this many efforts behind or fewer
-
 export const LIMIT_15 = 90;          // stay under Strava's 100 reads / 15 min
 
 export const LIMIT_DAY = 900;        // stay under Strava's 1,000 reads / day
-
-export const HOT_MAX_AGE = 6 * 3600e3;
-
-export const COLD_MAX_AGE = 24 * 3600e3;
-
-export const MANUAL_MAX_AGE = 15 * 60e3;
 
 export const DAY = 864e5;
 
@@ -49,7 +39,7 @@ export class RateLimited extends Error { constructor(until) { super('rate limite
 
 export const S = {
   demo: false, cache: null, races: null, raceDet: null, raceEnv: null, upcoming: null, athleteId: null, syncing: false, progress: null,
-  error: null, warn: null, pausedUntil: 0, resumeTimer: null, map: null, layers: {},
+  error: null, warn: null, pausedUntil: 0, resumeTimer: null,
   probe: null, probeBusy: false, probeError: null,
 };
 

@@ -25,7 +25,7 @@ test('an athlete ID sent as digits comes back as a number', () => {
   assert.equal(decodeSetup(b64url({ ...RAW, a: '42' })).athleteId, 42);
 });
 test('decodeSetup returns null for garbage', () => {
-  for (const x of [undefined, null, 42, '', '   ', 'abc', '%%%', '#setup=', 'https://example.test/#legends', Buffer.from('not json').toString('base64url'), b64url([1]), b64url('text'), b64url(null)])
+  for (const x of [undefined, null, 42, '', '   ', 'abc', '%%%', '#setup=', 'https://example.test/#races', Buffer.from('not json').toString('base64url'), b64url([1]), b64url('text'), b64url(null)])
     assert.equal(decodeSetup(x), null, String(x));
 });
 test('decodeSetup returns null for a wrong version', () => {

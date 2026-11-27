@@ -1,8 +1,22 @@
 // Pure race model: turns cached Strava summaries and details into rows, records and series.
 import { UNIT_M, RUN_TYPES } from './core.js';
 import { STANDARDS, classColour, classify, seriesKey, agePlace, isVirtual } from './race-rules.js';
-import { decodePolyline } from './legends-model.js';
 import { pointKey } from './places.js';
+
+// Strava's encoded polyline to [[lat, lng], ...].
+export function decodePolyline(str) {
+  let i = 0; let lat = 0; let lng = 0; const out = [];
+  while (i < str.length) {
+    for (let k = 0; k < 2; k++) {
+      let b; let shift = 0; let result = 0;
+      do { b = str.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+      const d = result & 1 ? ~(result >> 1) : result >> 1;
+      if (k === 0) lat += d; else lng += d;
+    }
+    out.push([lat / 1e5, lng / 1e5]);
+  }
+  return out;
+}
 
 export const isRace = (a) => RUN_TYPES.includes(a.sport_type || a.type) && a.workout_type === 1;
 

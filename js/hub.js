@@ -1,7 +1,7 @@
-// Hub: the first view. Next start, races and Legends cards, the latest results and the records.
-import { bus, units, fmt0, plural, UNIT_M } from './core.js';
+// Hub: the first view. Next start, the races card, mileage, the latest results and the records.
+import { bus, units, fmt0, fmt1, plural, dayLabel, UNIT_M } from './core.js';
 import { $, h, led } from './dom.js';
-import { riskSummary } from './legends-model.js';
+import { miles } from './runs-model.js';
 import { racesDown } from './races-view.js';
 import { hubStats, fmtTime } from './races-model.js';
 import { routeTile } from './race-draw.js';
@@ -84,15 +84,26 @@ function racesCardFor(rm) {
     h('span', { class: 'rowlink-num' }, led(loading ? '--' : p2(st.count), { ghost: true })));
 }
 
-function legendsCard(model) {
-  const rs = model ? riskSummary(model) : { count: 0, sub: 'Loading your runs from Strava', loading: true };
-  const num = rs.loading ? '--' : p2(rs.count);
-  return h('a', { class: 'rowlink', href: '#legends', 'data-focus': 'hub-legends' },
-    h('span', { class: 'rowlink-text' },
-      h('strong', null, 'Local Legends'),
-      h('span', { class: 'label' }, 'Titles at risk this week'),
-      h('span', { class: 'sub' }, rs.sub)),
-    h('span', { class: 'rowlink-num' }, led(num, { ghost: true })));
+// cache: the cache of runs, or null until the first sync has loaded the athlete.
+function mileage(cache) {
+  const head = h('h3', { class: 'sub-title' }, 'Mileage');
+  if (!cache) return h('section', { class: 'hub-sec', 'aria-label': 'Mileage' }, head, h('p', { class: 'empty' }, 'Loading your runs from Strava'));
+  const mi = miles(cache);
+  const u = mi.unit;
+  const line = (label, value, cmp) => h('div', { class: 'mline' }, h('span', null, label), h('strong', null, value), h('span', { class: 'cmp' }, cmp));
+  const max = Math.max(...mi.weeks, mi.weekAvg, 1);
+  const bars = mi.weeks.map((v, i) => h('div', { class: `bar${i === 12 ? ' cur' : ''}`, style: `height:${Math.max(2, (v / max) * 100)}%`, title: `Week of ${dayLabel(mi.ws - (12 - i) * 7)}: ${fmt1(v)} ${u}` }));
+  return h('section', { class: 'hub-sec', 'aria-label': 'Mileage' }, head,
+    h('div', { class: 'panel miles' },
+      line('Today', `${fmt1(mi.today)} ${u}`, plural(mi.runsToday, 'run')),
+      line('This week', `${fmt1(mi.week)} ${u}`, `12-week average ${fmt1(mi.weekAvg)}`),
+      line('This month', `${fmt1(mi.month)} ${u}`, `6-month average ${fmt1(mi.monthAvg)}`),
+      line('Year to date', `${fmt0(mi.ytd)} ${u}`, mi.hasLastYear ? `Same date last year ${fmt0(mi.lytd)}` : '–'),
+      h('p', { class: 'chart-title' }, `Last 13 weeks (${u}), current week highlighted`),
+      h('div', { class: 'bars', role: 'img', 'aria-label': `Weekly distance for the last 13 weeks. This week ${fmt1(mi.week)} ${u}, 12-week average ${fmt1(mi.weekAvg)} ${u}.` },
+        h('div', { class: 'avg', style: `bottom:${(mi.weekAvg / max) * 100}%`, title: `12-week average ${fmt1(mi.weekAvg)} ${u}` }),
+        bars),
+      h('div', { class: 'bar-axis' }, h('span', null, dayLabel(mi.ws - 12 * 7)), h('span', null, 'This week'))));
 }
 
 function latest(st) {
@@ -124,9 +135,9 @@ function part(draw, note) {
   try { return draw(); } catch (e) { console.error(e); return note ? h('p', { class: 'empty races-down' }, note) : null; }
 }
 
-// legends: null until the first sync has loaded the athlete. races: null until the race cache is loaded, or
-// {failed: true}. up: the upcoming rows, or null when reading them threw.
-export function renderHub(legends, races, up) {
+// cache: the cache of runs, null until the first sync has loaded the athlete. races: null until the race cache
+// is loaded, or {failed: true}. up: the upcoming rows, or null when reading them threw.
+export function renderHub(cache, races, up) {
   const box = $('view-hub');
   const a = document.activeElement;
   const key = a && a.closest && a.closest('#view-hub') ? a.dataset.focus : null;
@@ -143,9 +154,8 @@ export function renderHub(legends, races, up) {
   box.replaceChildren(...[
     h('h2', { class: 'hub-title' }, 'Run Hub'),
     next,
-    h('div', { class: 'hub-rows' },
-      racesCard(races),
-      part(() => legendsCard(legends), 'Local Legends are not available right now.')),
+    h('div', { class: 'hub-rows' }, racesCard(races)),
+    part(() => mileage(cache), 'Mileage is not available right now.'),
     part(() => latest(st), 'Latest results are not available right now.'),
     part(() => records(st), 'Personal records are not available right now.'),
     h('p', null, h('a', { class: 'textlink', href: '#data', 'data-focus': 'hub-data' }, 'Data and connection')),

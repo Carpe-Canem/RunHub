@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isRace, summaryFrom, detailFrom, reduceProfile, buildRaces, contextLine, chips, paceTrend, fmtTime, fmtPace, fmtDist, hubStats } from '../js/races-model.js';
+import { isRace, summaryFrom, detailFrom, reduceProfile, buildRaces, contextLine, chips, paceTrend, fmtTime, fmtPace, fmtDist, hubStats, decodePolyline } from '../js/races-model.js';
+
+test('decodePolyline', () => {
+  assert.deepEqual(decodePolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@'), [[38.5, -120.2], [40.7, -120.95], [43.252, -126.453]]);
+});
 
 const S = (id, n, d, t, m, extra = {}) => ({ id, n, d, s: 0, t, m, el: 0, ll: [1, 2], p: 'a', st: 'Run', se: null, pr: null, ach: null, hr: null, ...extra });
 const sums = {

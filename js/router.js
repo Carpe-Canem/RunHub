@@ -1,6 +1,6 @@
 // Which view the address hash names. Parsing is pure; only startRouter() and current() touch the page.
 
-export const VIEWS = ['hub', 'races', 'race', 'legends', 'data'];
+export const VIEWS = ['hub', 'races', 'race', 'data'];
 
 const HUB = () => ({ view: 'hub', id: null });
 const ID = /^[A-Za-z0-9_-]{1,32}$/;

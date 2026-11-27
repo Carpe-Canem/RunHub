@@ -1,4 +1,4 @@
-// Races: a cache of the athlete's whole race history, kept apart from the Local Legends cache.
+// Races: a cache of the athlete's whole race history, kept apart from the cache of runs.
 import { S, store, RateLimited } from './core.js';
 import { api } from './strava.js';
 import { isRace, summaryFrom, detailFrom, reduceProfile } from './races-model.js';
@@ -39,7 +39,7 @@ export function saveRaceDet() {
 
 const startOf = (a) => (a.start_date ? Date.parse(a.start_date) / 1000 || 0 : 0);
 
-// Races in an activity list the Legends sync already fetched. A cached race inside the listed window
+// Races in an activity list the sync already fetched for the runs. A cached race inside the listed window
 // that is no longer a race there was un-flagged or deleted.
 export function noteListed(rc, list, after) {
   if (!rc) return;
