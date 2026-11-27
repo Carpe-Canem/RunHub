@@ -2,18 +2,18 @@
 // Runs outside sync(): it uses fetch directly, never api(), so it neither spends nor waits on the Strava budget.
 import { S, K, bus, store } from './core.js';
 import { FULL } from './races-sync.js';
-import { weatherUrl, pickHour, needsWeather, isProvisional } from './weather.js';
+import { weatherUrl, utcStart, pickHour, needsWeather, isProvisional } from './weather.js';
 import { PLACE_LOOKUPS, pointKey, placeUrl, placeLabel } from './places.js';
 
 const envKey = (id) => `lw.raceEnv.${id}`;
 const MAX_FAILS = 3;
 const SAVE_EVERY = 5;
 
-export const emptyEnv = () => ({ v: 1, wx: {}, pl: {} });
+export const emptyEnv = () => ({ v: 2, wx: {}, pl: {} });
 
 export function loadEnv(id) {
   const c = store.get(envKey(id));
-  return c && c.v === 1 && c.wx && c.pl ? c : emptyEnv();
+  return c && c.v === 2 && c.wx && c.pl ? c : emptyEnv();
 }
 
 export function saveEnv() {
@@ -23,7 +23,9 @@ export function saveEnv() {
 
 // One archive request per race with a start point that needs weather, newest first. Three request failures in a
 // row (an HTTP error or a thrown fetch) end the pass; the next pass asks again. An answer with no usable start
-// hour is not a failure: it is stored as {at, none: true}, which is asked again only a week later.
+// hour is not a failure: it is stored as {at, none: true}, which is asked again only a week later. A permanent
+// client error (4xx other than 429) is the same: no point asking again at once. A race with no UTC start is skipped.
+// The hour is read in GMT from the race's UTC start s.
 export async function fetchWeather(rc, env, get = fetch, nowSec = Date.now() / 1000) {
   if (!rc || !env) return;
   let dropped = 0;
@@ -33,26 +35,28 @@ export async function fetchWeather(rc, env, get = fetch, nowSec = Date.now() / 1
   try {
     for (const r of todo) {
       if (S.raceEnv !== env) break;   // wiped or replaced mid-pass: send nothing more
-      const date = r.d.slice(0, 10);
-      let json;
+      const { date, time } = utcStart(r.s);
+      let json = null;
       try {
         const res = await get(weatherUrl(r.ll, date));
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        json = await res.json();
+        if (!res.ok) {
+          if (res.status >= 400 && res.status < 500 && res.status !== 429) json = {};   // permanent: stored as none below
+          else throw new Error(`HTTP ${res.status}`);
+        } else json = await res.json();
       } catch (e) {
         console.warn('Weather request failed', e);
         if (++fails >= MAX_FAILS) break;
         continue;
       }
       fails = 0;
-      const hour = pickHour(json, date, r.d.slice(11, 16));
+      const hour = pickHour(json, date, time);
       env.wx[r.id] = hour ? { ...hour, at: nowSec, prov: isProvisional(r.s, nowSec) } : { at: nowSec, none: true };
-      if (++stored % SAVE_EVERY === 0) saveEnv();
+      if (++stored % SAVE_EVERY === 0) { saveEnv(); bus.emit('data'); }
     }
   } finally {
-    if (stored) saveEnv();
+    if (stored || dropped) saveEnv();
   }
-  if (stored || dropped) bus.emit('data');
+  if (stored % SAVE_EVERY !== 0 || dropped) bus.emit('data');
 }
 
 export const placesOn = () => PLACE_LOOKUPS && store.get(K.places) !== false;
@@ -92,12 +96,12 @@ export async function fetchPlaces(rc, env, get = fetch, sleep = (ms) => new Prom
         break;
       }
       env.pl[k] = { n: placeLabel(json), at: nowSec };
-      if (++stored % SAVE_EVERY === 0) saveEnv();
+      if (++stored % SAVE_EVERY === 0) { saveEnv(); bus.emit('data'); }
     }
   } finally {
     if (stored) saveEnv();
   }
-  if (stored) bus.emit('data');
+  if (stored % SAVE_EVERY !== 0) bus.emit('data');
 }
 
 let running = false, again = false;

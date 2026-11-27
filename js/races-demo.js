@@ -36,7 +36,7 @@ export function demoRaces() {
   let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const t0 = todayIdx();
   const out = emptyRaces();
-  const det = {}, env = { v: 1, wx: {}, pl: {} };
+  const det = {}, env = { v: 2, wx: {}, pl: {} };
   SPECS.forEach(([name, ago, m, t, o], k) => {
     const id = String(8000 + k);
     const day = t0 - ago;

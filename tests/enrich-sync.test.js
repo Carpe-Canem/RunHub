@@ -2,6 +2,7 @@ import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, bus } from '../js/core.js';
 import { emptyRaces, FULL } from '../js/races-sync.js';
+import { utcStart } from '../js/weather.js';
 import { emptyEnv, loadEnv, saveEnv, fetchWeather, fetchPlaces, placesOn, setPlaces, resetPlaces, enrich } from '../js/enrich-sync.js';
 
 let mem;
@@ -15,8 +16,9 @@ afterEach(() => { delete globalThis.localStorage; Object.assign(S, { athleteId: 
 const NOW = 1780000000;
 const DAYS = 86400;
 const stamp = (s) => new Date(s * 1000).toISOString().slice(0, 19);
-// invented races at an invented point; the start time is 08:xx local
-const mkRace = (id, ago, ll = [40.02, -105.27]) => ({ id: String(id), d: stamp(NOW - ago * DAYS).replace(/T\d\d/, 'T08'), s: NOW - ago * DAYS, ll, n: 'Riverbend 10K' });
+// invented races at an invented point; d is the local start, six hours behind the UTC start s
+const mkRace = (id, ago, ll = [40.02, -105.27]) => ({ id: String(id), d: stamp(NOW - ago * DAYS - 6 * 3600), s: NOW - ago * DAYS, ll, n: 'Riverbend 10K' });
+const utcDate = (r) => utcStart(r.s).date;
 const racesOf = (...rs) => { const rc = emptyRaces(); for (const r of rs) rc.races[r.id] = r; return rc; };
 const block = (d) => ({ hourly: {
   time: Array.from({ length: 24 }, (_, i) => `${d}T${String(i).padStart(2, '0')}:00`),
@@ -25,14 +27,14 @@ const block = (d) => ({ hourly: {
 const NULLS = (d) => { const b = block(d); b.hourly.temperature_2m = Array(24).fill(null); return b; };
 const dateOf = (url) => /start_date=([\d-]+)/.exec(url)[1];
 
-// answers: array of 'ok' | 'none' | 500 | 'throw', consumed in order; 'ok' once exhausted
+// answers: array of 'ok' | 'none' | an HTTP status | 'throw', consumed in order; 'ok' once exhausted
 function fakeGet(answers = []) {
   const urls = []; let i = 0;
   const get = async (url) => {
     urls.push(url);
     const a = i < answers.length ? answers[i] : 'ok'; i++;
     if (a === 'throw') throw new TypeError('offline');
-    if (a === 500) return { ok: false, status: 500, json: async () => ({}) };
+    if (typeof a === 'number') return { ok: false, status: a, json: async () => ({}) };
     const d = dateOf(url);
     return { ok: true, status: 200, json: async () => (a === 'none' ? NULLS(d) : block(d)) };
   };
@@ -44,7 +46,7 @@ test('fetchWeather asks once per race with a start point, newest first, and stor
   const env = S.raceEnv; const { get, urls } = fakeGet();
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 3);
-  assert.deepEqual(urls.map(dateOf), [rc.races[2], rc.races[3], rc.races[1]].map((r) => r.d.slice(0, 10)));
+  assert.deepEqual(urls.map(dateOf), [rc.races[2], rc.races[3], rc.races[1]].map(utcDate));
   assert.deepEqual(Object.keys(env.wx).sort(), ['1', '2', '3']);
   for (const id of ['1', '2', '3']) { const w = env.wx[id]; assert.equal(w.t, 12.3); assert.equal(w.c, 1); assert.equal(w.at, NOW); assert.equal(typeof w.prov, 'boolean'); }
   assert.equal(env.wx['2'].prov, true);
@@ -60,7 +62,7 @@ test('fetchWeather skips races it already has final weather for, and asks again 
   const { get, urls } = fakeGet();
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 1);
-  assert.equal(dateOf(urls[0]), rc.races[2].d.slice(0, 10));
+  assert.equal(dateOf(urls[0]), utcDate(rc.races[2]));
   assert.equal(env.wx['2'].prov, false);
   assert.equal(env.wx['2'].t, 12.3);
 });
@@ -82,6 +84,46 @@ test('an answer with no usable hour stores a dated marker and does not count tow
   assert.equal(urls.length, 4);
   for (const id of ['1', '2', '3']) assert.deepEqual(env.wx[id], { at: NOW, none: true });
   assert.equal(env.wx['4'].t, 12.3);
+});
+
+test('a permanent 4xx answer is stored as none and does not count toward the cap; 429 and 5xx do', quiet(async () => {
+  const rc = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30), mkRace(4, 40), mkRace(5, 50));
+  const env = S.raceEnv; const { get, urls } = fakeGet([400, 404, 400, 404, 'ok']);
+  await fetchWeather(rc, env, get, NOW);
+  assert.equal(urls.length, 5);
+  for (const id of ['1', '2', '3', '4']) assert.deepEqual(env.wx[id], { at: NOW, none: true });
+  assert.equal(env.wx['5'].t, 12.3);
+  const rc2 = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30), mkRace(4, 40));
+  const f2 = fakeGet([429, 500, 429, 'ok']); const env2 = emptyEnv(); S.raceEnv = env2;
+  await fetchWeather(rc2, env2, f2.get, NOW);
+  assert.equal(f2.urls.length, 3);
+  assert.deepEqual(env2.wx, {});
+}));
+
+test('the request is GMT and reads the UTC date and hour of the start, not the local ones', async () => {
+  // 19:30 local (UTC-6) on 5 June is 01:30Z on 6 June
+  const s = Date.UTC(2026, 5, 6, 1, 30) / 1000;
+  const r = { id: '1', d: '2026-06-05T19:30:00', s, ll: [40.02, -105.27], n: 'Riverbend 10K' };
+  const rc = racesOf(r); const env = S.raceEnv;
+  const urls = [];
+  const get = async (url) => {
+    urls.push(url);
+    const b = block('2026-06-06'); b.hourly.temperature_2m = b.hourly.temperature_2m.map((_, i) => (i === 1 ? 20 : 3));
+    return { ok: true, status: 200, json: async () => b };
+  };
+  await fetchWeather(rc, env, get, s + 30 * DAYS);
+  assert.match(urls[0], /start_date=2026-06-06&end_date=2026-06-06/);
+  assert.match(urls[0], /&timezone=GMT$/);
+  assert.equal(env.wx['1'].t, 20);
+});
+
+test('a race with no UTC start is skipped: nothing asked, nothing stored, no failure counted', async () => {
+  const bad = { ...mkRace(1, 10), s: 0 };
+  const rc = racesOf(bad, mkRace(2, 20));
+  const env = S.raceEnv; const { get, urls } = fakeGet();
+  await fetchWeather(rc, env, get, NOW);
+  assert.equal(urls.length, 1);
+  assert.deepEqual(Object.keys(env.wx), ['2']);
 });
 
 test('a success resets the run of failures', quiet(async () => {
@@ -135,6 +177,30 @@ test('fetchWeather emits data only when something was stored or dropped', async 
   } finally { counting = false; }
 });
 
+test('a pass that only drops entries still saves', async () => {
+  const rc = racesOf(mkRace(1, 10));
+  const env = S.raceEnv;
+  env.wx.gone = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW, prov: false };
+  env.wx['1'] = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW, prov: false };
+  await fetchWeather(rc, env, fakeGet().get, NOW);
+  assert.deepEqual(Object.keys(JSON.parse(mem['lw.raceEnv.42']).wx), ['1']);
+});
+
+test('fetchWeather and fetchPlaces emit data with each every-5 save, once more at the end', async () => {
+  const at = []; const off = bus.on('data', () => at.push(counted));
+  let counted = 0;
+  try {
+    const rc = racesOf(...[1, 2, 3, 4, 5, 6, 7].map((i) => mkRace(i, i * 10, [40 + i * 0.1, -105.27])));
+    const get = async (url) => { counted++; return { ok: true, status: 200, json: async () => block(dateOf(url)) }; };
+    await fetchWeather(rc, S.raceEnv, get, NOW);
+    assert.deepEqual(at, [5, 7]);   // after the fifth request, then at the end
+    at.length = 0; counted = 0;
+    const pget = async () => { counted++; return { ok: true, status: 200, json: async () => town }; };
+    await fetchPlaces(rc, S.raceEnv, pget, async () => {}, NOW);
+    assert.deepEqual(at, [5, 7]);
+  } finally { if (typeof off === 'function') off(); }
+});
+
 test('fetchWeather saves to storage', async () => {
   const rc = racesOf(mkRace(1, 10), mkRace(2, 20));
   const { get } = fakeGet();
@@ -145,7 +211,7 @@ test('fetchWeather saves to storage', async () => {
 
 test('loadEnv gives an empty env for nothing or a wrong version', () => {
   assert.deepEqual(loadEnv(42), emptyEnv());
-  mem['lw.raceEnv.42'] = JSON.stringify({ v: 2, wx: { a: 1 }, pl: {} });
+  mem['lw.raceEnv.42'] = JSON.stringify({ v: 1, wx: { a: 1 }, pl: {} });
   assert.deepEqual(loadEnv(42), emptyEnv());
 });
 

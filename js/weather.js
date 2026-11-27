@@ -5,10 +5,18 @@ const r1 = (n) => Math.round(n * 10) / 10;
 export function weatherUrl(ll, date) {
   const lat = String(Number(ll[0].toFixed(2))), lon = String(Number(ll[1].toFixed(2)));
   return `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}`
-    + '&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=auto';
+    + '&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=GMT';
 }
 
-// The row for the hour of the start time ('08:47' reads 08:00); null when the answer has no usable figures there.
+// The UTC date and 'HH:MM' of a start given as epoch seconds; null when there is no usable start. The request asks for
+// GMT because timezone=auto applies one offset (today's) to every date, which misreads the hour across daylight saving.
+export function utcStart(s) {
+  if (typeof s !== 'number' || !Number.isFinite(s) || s <= 0) return null;
+  const iso = new Date(s * 1000).toISOString();
+  return { date: iso.slice(0, 10), time: iso.slice(11, 16) };
+}
+
+// The row for the UTC hour of the start time ('14:47' reads the 14:00Z row); null when the answer has no usable figures there.
 export function pickHour(json, date, time) {
   const hr = json && json.hourly;
   if (!hr || !Array.isArray(hr.time)) return null;
@@ -26,7 +34,7 @@ export function pickHour(json, date, time) {
 export const isProvisional = (raceS, nowSec) => nowSec - raceS < 7 * DAY;
 
 export function needsWeather(race, entry, nowSec) {
-  if (!race || !race.ll) return false;
+  if (!race || !race.ll || !utcStart(race.s)) return false;   // no UTC start, no hour to read: skipped, nothing stored
   if (!entry) return true;
   if (entry.none) return nowSec - entry.at >= 7 * DAY;
   if (entry.prov) return !isProvisional(race.s, nowSec);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { weatherUrl, pickHour, needsWeather, isProvisional, skyText, fmtTemp, fmtWind, fmtPrecip, weatherLines } from '../js/weather.js';
+import { weatherUrl, utcStart, pickHour, needsWeather, isProvisional, skyText, fmtTemp, fmtWind, fmtPrecip, weatherLines } from '../js/weather.js';
 
 const DAY = 86400;
 const hours = Array.from({ length: 24 }, (_, i) => `2026-03-14T${String(i).padStart(2, '0')}:00`);
@@ -17,11 +17,20 @@ const json = {
   },
 };
 
-test('weatherUrl rounds the point to two decimals and asks for the start-hour fields in local time', () => {
+test('weatherUrl rounds the point to two decimals and asks for the start-hour fields in GMT', () => {
   assert.equal(
     weatherUrl([40.01549, -105.27051], '2026-03-14'),
-    'https://archive-api.open-meteo.com/v1/archive?latitude=40.02&longitude=-105.27&start_date=2026-03-14&end_date=2026-03-14&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=auto',
+    'https://archive-api.open-meteo.com/v1/archive?latitude=40.02&longitude=-105.27&start_date=2026-03-14&end_date=2026-03-14&hourly=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&timezone=GMT',
   );
+});
+
+test('utcStart gives the UTC date and time of a start: summer, winter, and an evening start on the next UTC day', () => {
+  assert.deepEqual(utcStart(Date.UTC(2026, 6, 4, 14, 47) / 1000), { date: '2026-07-04', time: '14:47' });   // 08:47 MDT
+  assert.deepEqual(utcStart(Date.UTC(2026, 0, 10, 15, 47) / 1000), { date: '2026-01-10', time: '15:47' });  // 08:47 MST
+  assert.deepEqual(utcStart(Date.UTC(2026, 5, 6, 1, 30) / 1000), { date: '2026-06-06', time: '01:30' });    // 19:30 MDT the evening before
+  assert.equal(utcStart(0), null);
+  assert.equal(utcStart(undefined), null);
+  assert.equal(utcStart(NaN), null);
 });
 
 test("pickHour reads the start hour's row", () => {
