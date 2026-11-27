@@ -4,6 +4,7 @@ import { $, h, led } from './dom.js';
 import { contextLine, fmtTime, fmtPace, fmtDist } from './races-model.js';
 import { fetchProfile, saveRaceDet } from './races-sync.js';
 import { fmtTemp, weatherLines } from './weather.js';
+import { courseMap, canMap } from './race-map.js';
 import { routeTile, elevationChart, splitsTable, fmtHeight } from './race-draw.js';
 
 // Elevation fetches, by race id: 'loading' while in flight, 'failed' until the page is opened again, or the
@@ -80,7 +81,7 @@ function course(r) {
       : plan.show === 'unavailable' ? h('p', { class: 'empty' }, 'Elevation not available yet') : null;
   return h('section', { class: 'race-sec race-course', 'aria-label': 'Course' },
     h('h3', { class: 'sub-title' }, 'Course'),
-    h('div', { class: 'course-tile' }, routeTile(r.pts, r.colour, 240)),
+    canMap(window.L, r.pts) ? courseMap(r) : h('div', { class: 'course-tile' }, routeTile(r.pts, r.colour, 240)),
     r.pts ? h('p', { class: 'course-key' }, h('span', { class: 'key-start' }), 'Start ', h('span', { class: 'key-finish' }), 'Finish') : h('p', { class: 'course-key' }, 'No GPS for this race'),
     elev);
 }

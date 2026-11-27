@@ -22,6 +22,7 @@ import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
 import { renderRaces, racesDown } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
+import { dropCourseMap } from './race-map.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 
@@ -148,6 +149,7 @@ function startDemo() {
 
 function exitDemo() {
   S.demo = false; S.cache = null; S.races = null; S.raceDet = null; S.raceEnv = null;
+  dropCourseMap();
   if (location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo(0, 0);
@@ -163,6 +165,7 @@ function wipe() {
   clearTimeout(S.resumeTimer);
   Object.assign(S, { cache: null, races: null, raceDet: null, raceEnv: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }
+  dropCourseMap();
   hideSetupLink();
 }
 

@@ -10,6 +10,7 @@ import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
 import { enrich, placesOn, setPlaces } from './enrich-sync.js';
 import { PLACE_LOOKUPS, pointKey } from './places.js';
+import { dropCourseMap } from './race-map.js';
 import { currentSource, setMapPref } from './map-tiles.js';
 
 // races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
@@ -118,7 +119,7 @@ function mapRow() {
   const choose = (p) => {
     setMapPref(p);
     if (S.map) { S.map.remove(); S.map = null; }
-    // Task 7: dropCourseMap() goes here, so a shown race map is rebuilt on the new source too.
+    dropCourseMap();   // a shown race map is rebuilt on the new source too
     bus.emit('data');
     const el = document.querySelector(`#dataStatus [data-focus="map-${p}"]`);
     if (el) el.focus();
