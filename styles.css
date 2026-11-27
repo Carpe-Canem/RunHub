@@ -313,6 +313,10 @@ button.zs-say { cursor: pointer; }
 .tag.go { color: var(--go); border-color: var(--go); }
 .tag.slow { color: var(--slow); border-color: var(--slow); }
 .race-row[aria-current="page"], .route-card[aria-current="page"] { background: color-mix(in srgb, var(--led) 12%, transparent); box-shadow: inset 3px 0 var(--led); }
+/* The route picture covers an inset shadow, so the card draws its stripe on top. */
+.route-card { position: relative; }
+.route-card[aria-current="page"] { box-shadow: none; }
+.route-card[aria-current="page"]::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--led); pointer-events: none; }
 
 /* Races and one race: one at a time on narrow screens, side by side on wide ones */
 #view-race { min-width: 0; }
