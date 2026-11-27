@@ -28,7 +28,7 @@ export const DAY = 864e5;
 
 export const Q = 15 * 60e3;
 
-export const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState', probe: 'lw.probe', units: 'lw.units', ui: 'lw.ui' };
+export const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState', probe: 'lw.probe', units: 'lw.units', ui: 'lw.ui', map: 'lw.map', places: 'lw.places' };
 
 export const store = {
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
@@ -48,7 +48,7 @@ export class UserError extends Error {}
 export class RateLimited extends Error { constructor(until) { super('rate limited'); this.until = until; } }
 
 export const S = {
-  demo: false, cache: null, races: null, raceDet: null, athleteId: null, syncing: false, progress: null,
+  demo: false, cache: null, races: null, raceDet: null, raceEnv: null, athleteId: null, syncing: false, progress: null,
   error: null, warn: null, pausedUntil: 0, resumeTimer: null, map: null, layers: {},
   probe: null, probeBusy: false, probeError: null,
 };

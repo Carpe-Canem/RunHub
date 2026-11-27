@@ -3,7 +3,7 @@ import { S, store, RateLimited } from './core.js';
 import { api } from './strava.js';
 import { isRace, summaryFrom, detailFrom, reduceProfile } from './races-model.js';
 
-const FULL = 'This browser\'s storage is full, so some data will be fetched again next time.';
+export const FULL = 'This browser\'s storage is full, so some data will be fetched again next time.';
 const SKIPPED = 'Some race details could not be read; they will be retried.';
 const PER = 200;
 const racesKey = (id) => `lw.races.${id}`;

@@ -2,6 +2,7 @@
 import { S, bus, RUN_TYPES, WINDOW, DAY, HOT_MAX_AGE, COLD_MAX_AGE, MANUAL_MAX_AGE, UserError, RateLimited, dayOf, todayIdx } from './core.js';
 import { api, token } from './strava.js';
 import { saveCache, compute, legendCount } from './legends-model.js';
+import { enrich } from './enrich-sync.js';
 import { noteListed, saveRaces, scanHistory, fetchRaceDetails, detailStepEvent } from './races-sync.js';
 
 export async function sync(manual) {
@@ -80,6 +81,7 @@ async function syncRaces() {
   S.progress = { label: 'Scanning your race history', done: 0, total: 0 };
   bus.emit('status');
   await scanHistory(S.races);
+  enrich();   // not awaited: it runs outside the Strava budget
   bus.emit('data');
   S.progress = { label: 'Reading race details', done: 0, total: 0 };
   bus.emit('status');

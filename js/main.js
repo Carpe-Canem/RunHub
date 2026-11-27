@@ -2,7 +2,8 @@
  * Run Hub: a static, browser-only Strava dashboard.
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
  * The only network destinations are www.strava.com (API + OAuth), cdnjs.cloudflare.com (Leaflet script and CSS)
- * and OpenStreetMap tiles.
+ * OpenStreetMap tiles, and archive-api.open-meteo.com, which gets a start point rounded to about 1 km and a date
+ * for each race (to read that day's weather) and nothing else.
  */
 import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
 import { $ } from './dom.js';
@@ -12,6 +13,7 @@ import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { demoRaces } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
+import { loadEnv, enrich } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
@@ -142,7 +144,7 @@ function startDemo() {
 }
 
 function exitDemo() {
-  S.demo = false; S.cache = null; S.races = null; S.raceDet = null;
+  S.demo = false; S.cache = null; S.races = null; S.raceDet = null; S.raceEnv = null;
   if (location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo(0, 0);
@@ -153,10 +155,10 @@ function wipe() {
   const t = token();
   const id = (t && t.athleteId) || S.athleteId;
   store.del(rateKey());
-  if (id) { store.del(`lw.cache.${id}`); store.del(`lw.races.${id}`); store.del(`lw.raceDet.${id}`); }
-  store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe); store.del(K.units); store.del(K.ui);
+  if (id) { store.del(`lw.cache.${id}`); store.del(`lw.races.${id}`); store.del(`lw.raceDet.${id}`); store.del(`lw.raceEnv.${id}`); }
+  store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe); store.del(K.units); store.del(K.ui); store.del(K.map); store.del(K.places);
   clearTimeout(S.resumeTimer);
-  Object.assign(S, { cache: null, races: null, raceDet: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
+  Object.assign(S, { cache: null, races: null, raceDet: null, raceEnv: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }
   hideSetupLink();
 }
@@ -185,10 +187,11 @@ function enter() {
   S.demo = false; S.error = null;
   S.athleteId = t.athleteId;
   S.cache = loadCache(t.athleteId);
-  S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId);
+  S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId); S.raceEnv = loadEnv(t.athleteId);
   if (location.hash) history.replaceState(null, '', location.pathname);   // a new connection opens on the hub
   render();
   window.scrollTo(0, 0);
+  enrich();
   sync(false);
 }
 
@@ -294,13 +297,13 @@ async function init() {
   if (t) {
     S.athleteId = t.athleteId;
     S.cache = loadCache(t.athleteId);
-    S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId);
+    S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId); S.raceEnv = loadEnv(t.athleteId);
   } else if (new URLSearchParams(location.search).has('demo')) {
     S.demo = true; S.cache = demoCache(); setDemoRaces(); S.error = null;
   }
   // After handleCallback, which strips the sign-in code (and any hash) from the address.
   startRouter({ enabled: ENABLED, onRoute });   // draws the first view
-  if (t) sync(false);
+  if (t) { enrich(); sync(false); }
   setInterval(renderStatus, 60e3);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !S.demo && token() && S.cache && Date.now() - (S.cache.lastSync || 0) > 15 * 60e3) sync(false);

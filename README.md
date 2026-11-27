@@ -11,7 +11,7 @@ Live at **https://carpe-canem.github.io/RunHub/**. To try it without connecting 
 
 ## Privacy
 
-- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside hosts are `cdnjs.cloudflare.com`, which serves the Leaflet map library (script and stylesheet) on every page view, and OpenStreetMap, for the map tiles on the Legends map.
+- **No server.** The page is static: HTML, CSS and a few JavaScript files. Your browser talks to `www.strava.com` directly. The only other outside hosts are `cdnjs.cloudflare.com`, which serves the Leaflet map library (script and stylesheet) on every page view, OpenStreetMap, for the map tiles on the Legends map, and `archive-api.open-meteo.com`, which reads each race's weather. Open-Meteo is sent a start point rounded to about 1 km and a date, for each race, and nothing else: no names, times, tokens or athlete ID.
 - **Everything stays in your browser.** Your Client ID, Client Secret, tokens and cached data (race history included) are kept in that browser's `localStorage`. Nothing is sent to the site owner or anyone else.
 - **Each runner brings their own Strava API app**, so everyone's keys, data and rate limits are separate.
 - **Leaders stay anonymous.** The page keeps only the Local Legend leader's athlete ID, to tell whether the leader is you, and their effort count. It never stores or shows their name or photo.
