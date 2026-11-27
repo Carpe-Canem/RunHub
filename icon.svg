@@ -1,8 +1,47 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Run Hub: a finish clock at 0:00. Full-bleed so the home screen's own mask rounds the corners. -->
-  <rect width="512" height="512" fill="#04070D"/>
-  <rect x="30" y="30" width="452" height="452" rx="92" fill="none" stroke="#233358" stroke-width="10"/>
-  <g fill="#FFB52E" opacity=".13"><rect x="59" y="171.5" width="19" height="19"/><rect x="134" y="171.5" width="19" height="19"/><rect x="234" y="171.5" width="19" height="19"/><rect x="309" y="171.5" width="19" height="19"/><rect x="359" y="171.5" width="19" height="19"/><rect x="434" y="171.5" width="19" height="19"/><rect x="84" y="196.5" width="19" height="19"/><rect x="109" y="196.5" width="19" height="19"/><rect x="259" y="196.5" width="19" height="19"/><rect x="284" y="196.5" width="19" height="19"/><rect x="384" y="196.5" width="19" height="19"/><rect x="409" y="196.5" width="19" height="19"/><rect x="84" y="221.5" width="19" height="19"/><rect x="109" y="221.5" width="19" height="19"/><rect x="259" y="221.5" width="19" height="19"/><rect x="284" y="221.5" width="19" height="19"/><rect x="384" y="221.5" width="19" height="19"/><rect x="409" y="221.5" width="19" height="19"/><rect x="84" y="246.5" width="19" height="19"/><rect x="109" y="246.5" width="19" height="19"/><rect x="259" y="246.5" width="19" height="19"/><rect x="284" y="246.5" width="19" height="19"/><rect x="384" y="246.5" width="19" height="19"/><rect x="409" y="246.5" width="19" height="19"/><rect x="84" y="271.5" width="19" height="19"/><rect x="109" y="271.5" width="19" height="19"/><rect x="259" y="271.5" width="19" height="19"/><rect x="284" y="271.5" width="19" height="19"/><rect x="384" y="271.5" width="19" height="19"/><rect x="409" y="271.5" width="19" height="19"/><rect x="84" y="296.5" width="19" height="19"/><rect x="109" y="296.5" width="19" height="19"/><rect x="259" y="296.5" width="19" height="19"/><rect x="284" y="296.5" width="19" height="19"/><rect x="384" y="296.5" width="19" height="19"/><rect x="409" y="296.5" width="19" height="19"/><rect x="59" y="321.5" width="19" height="19"/><rect x="134" y="321.5" width="19" height="19"/><rect x="234" y="321.5" width="19" height="19"/><rect x="309" y="321.5" width="19" height="19"/><rect x="359" y="321.5" width="19" height="19"/><rect x="434" y="321.5" width="19" height="19"/></g>
-  <g fill="#FFB52E"><rect x="84" y="171.5" width="19" height="19"/><rect x="109" y="171.5" width="19" height="19"/><rect x="259" y="171.5" width="19" height="19"/><rect x="284" y="171.5" width="19" height="19"/><rect x="384" y="171.5" width="19" height="19"/><rect x="409" y="171.5" width="19" height="19"/><rect x="59" y="196.5" width="19" height="19"/><rect x="134" y="196.5" width="19" height="19"/><rect x="234" y="196.5" width="19" height="19"/><rect x="309" y="196.5" width="19" height="19"/><rect x="359" y="196.5" width="19" height="19"/><rect x="434" y="196.5" width="19" height="19"/><rect x="59" y="221.5" width="19" height="19"/><rect x="134" y="221.5" width="19" height="19"/><rect x="184" y="221.5" width="19" height="19"/><rect x="234" y="221.5" width="19" height="19"/><rect x="309" y="221.5" width="19" height="19"/><rect x="359" y="221.5" width="19" height="19"/><rect x="434" y="221.5" width="19" height="19"/><rect x="59" y="246.5" width="19" height="19"/><rect x="134" y="246.5" width="19" height="19"/><rect x="234" y="246.5" width="19" height="19"/><rect x="309" y="246.5" width="19" height="19"/><rect x="359" y="246.5" width="19" height="19"/><rect x="434" y="246.5" width="19" height="19"/><rect x="59" y="271.5" width="19" height="19"/><rect x="134" y="271.5" width="19" height="19"/><rect x="184" y="271.5" width="19" height="19"/><rect x="234" y="271.5" width="19" height="19"/><rect x="309" y="271.5" width="19" height="19"/><rect x="359" y="271.5" width="19" height="19"/><rect x="434" y="271.5" width="19" height="19"/><rect x="59" y="296.5" width="19" height="19"/><rect x="134" y="296.5" width="19" height="19"/><rect x="234" y="296.5" width="19" height="19"/><rect x="309" y="296.5" width="19" height="19"/><rect x="359" y="296.5" width="19" height="19"/><rect x="434" y="296.5" width="19" height="19"/><rect x="84" y="321.5" width="19" height="19"/><rect x="109" y="321.5" width="19" height="19"/><rect x="259" y="321.5" width="19" height="19"/><rect x="284" y="321.5" width="19" height="19"/><rect x="384" y="321.5" width="19" height="19"/><rect x="409" y="321.5" width="19" height="19"/></g>
-  <rect x="59" y="392" width="394" height="10" fill="#FFB52E"/>
+  <!-- Run Hub: a runner and Ziggy, out on a leash. Full-bleed so the home screen's own mask rounds the corners. -->
+  <rect width="512" height="512" fill="#FFB52E"/>
+  <g transform="translate(256 256) scale(.96) translate(-259 -250)" fill="none" stroke-linecap="butt" stroke-linejoin="miter">
+    <!-- Runner -->
+    <g transform="translate(160 326) scale(1.45)" stroke="#0A0E18">
+      <polyline points="8,-100 -34,-84 -52,-54" stroke-width="16"/>
+      <polyline points="-6,-30 -34,22 -88,10" stroke-width="22"/>
+      <polygon points="-1,-118 37,-106 6,-26 -18,-34" fill="#0A0E18" stroke="none"/>
+      <polyline points="-6,-30 50,-8 38,52 62,56" stroke-width="22"/>
+      <polyline points="14,-104 50,-84 84,-78" stroke-width="16"/>
+      <polygon points="10,-158 34,-172 54,-152 44,-128 18,-130" fill="#0A0E18" stroke="none"/>
+    </g>
+    <!-- Leash: front hand to the harness ring -->
+    <path d="M281.8 212.9 Q326 290 391.8 316.3" stroke="#0A0E18" stroke-width="9"/>
+    <!-- Ziggy -->
+    <g transform="translate(372 346) scale(.9)" stroke="#0A0E18">
+      <polyline points="-64,-10 -92,-34 -90,-78" stroke-width="12"/>
+      <polyline points="-91.2,-51.1 -90,-78" stroke-width="12" stroke="#FFFFFF"/>
+      <g stroke-width="13">
+        <polyline points="-48,8 -74,38 -98,60"/>
+        <polyline points="-40,10 -36,46 -56,70"/>
+        <polyline points="44,14 66,42 90,60"/>
+        <polyline points="36,16 22,48 4,68"/>
+        <g stroke="#FFFFFF">
+          <polyline points="-80.2,43.7 -98,60"/>
+          <polyline points="-41.6,52.7 -56,70"/>
+          <polyline points="72.5,46.9 90,60"/>
+          <polyline points="17.8,52.7 4,68"/>
+        </g>
+      </g>
+      <polygon points="-58,-24 40,-30 64,-8 48,24 -8,8 -50,16 -68,-4" fill="#0A0E18" stroke="none"/>
+      <polygon points="54,-15 64,-8 48,24 40,21.7 47,8" fill="#FFFFFF" stroke="none"/>
+      <g stroke="#2E9BC6">
+        <polyline points="22,-30 26,17" stroke-width="10"/>
+        <polyline points="22,-27 57,-11 32,19" stroke-width="8"/>
+      </g>
+      <polygon points="34,-30 62,-10 84,-44 64,-62" fill="#0A0E18" stroke="none"/>
+      <polygon points="60,-74 88,-78 98,-64 128,-54 130,-44 100,-38 72,-40" fill="#0A0E18" stroke="none"/>
+      <polygon points="112,-59.3 120,-56.7 120,-42 112,-40.4" fill="#FFFFFF" stroke="none"/>
+      <polygon points="62,-74 80,-76 60,-46" fill="#27324F" stroke="none"/>
+      <circle cx="92" cy="-63" r="4" fill="#FFFFFF" stroke="none"/>
+      <polyline points="49,-46 73,-27" stroke="#2E9BC6" stroke-width="8"/>
+      <circle cx="22" cy="-33" r="7" fill="#2E9BC6" stroke="none"/>
+    </g>
+  </g>
 </svg>

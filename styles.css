@@ -6,7 +6,7 @@
   color-scheme: dark;
   --night: #0C1424; --panel: #131E35; --bar: #0A1120; --line: #233358; --board: #04070D;
   --tx: #E6ECF8; --mut: #8D9EC0;
-  --led: #FFB52E; --go: #35D69B; --slow: #FF7373;
+  --led: #FFB52E; --go: #35D69B; --slow: #FF7373; --collar: #6EC6E6;
   --f: Manrope, system-ui, -apple-system, "Segoe UI", sans-serif;
   --fl: Doto, "Courier New", monospace;
   --radius: 12px;
@@ -259,6 +259,20 @@ main { padding-top: 18px; padding-bottom: 28px; }
 @media (min-width: 600px) { .race-kv { grid-template-columns: 180px minmax(0, 1fr); } }
 .race-missing { padding: 8px 0; }
 .choose { padding: 48px 0; text-align: center; }
+
+/* Ziggy: the dot-matrix dog. The collar is the only blue on the board. */
+.zg { display: block; flex: none; }
+.zg-o { fill: var(--led); opacity: .42; }
+.zg-e { fill: var(--led); opacity: .2; }
+.zg-w { fill: var(--led); }
+.zg-c { fill: var(--collar); }
+.zg-f2 { visibility: hidden; }
+.zg-trot .zg-f1 { animation: zg-out .36s steps(1) infinite; }
+.zg-trot .zg-f2 { animation: zg-in .36s steps(1) infinite; }
+@keyframes zg-out { 50%, 100% { visibility: hidden; } }
+@keyframes zg-in { 50%, 100% { visibility: visible; } }
+.zg-note { display: flex; align-items: flex-end; gap: 12px; }
+.zg-note > :last-child { margin-bottom: 0; min-width: 0; }
 
 /* Cards: Next start, the race clock, the pace trend */
 .card { background: var(--panel); border-radius: var(--radius); padding: 12px 14px; margin: 0; }
