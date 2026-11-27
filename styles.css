@@ -124,9 +124,9 @@ main { padding-top: 18px; padding-bottom: 28px; }
 .next-name { font-size: 19px; font-weight: 800; overflow-wrap: anywhere; }
 .next-when { font-size: 13px; color: var(--mut); margin: 0 0 6px; }
 .next-start .empty { margin: 2px 0 6px; }
-.next-clock { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 18px; }
-.cd-grp { display: inline-flex; align-items: baseline; gap: 6px; }
-.cd-grp .led { font-size: clamp(40px, 12vw, 64px); }
+.next-clock { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px clamp(10px, 3.5vw, 22px); }
+.cd-grp { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cd-grp .led { font-size: clamp(34px, 11vw, 64px); }
 .cd-unit { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
 .cd-today { font-family: var(--fl); font-weight: 900; font-size: clamp(30px, 9vw, 44px); color: var(--led); line-height: 1; }
 .hub-sec { margin-top: 14px; }

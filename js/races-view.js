@@ -7,7 +7,7 @@ import { fmtTemp, skyText } from './weather.js';
 import { routeTile, paceChart } from './race-draw.js';
 import { current } from './router.js';
 import { daysText, isoDay, dayChanged } from './upcoming.js';
-import { removeHand, upcomingRows } from './upcoming-sync.js';
+import { removeHand, nextRows } from './upcoming-sync.js';
 import { openAddSheet } from './add-race.js';
 
 const FIRST = 10;
@@ -25,7 +25,7 @@ export const racesDown = () => h('p', { class: 'empty races-down' }, RACES_DOWN)
 
 // Redraw, then put focus back on the control that was used (the redraw replaces it).
 function redraw(model, focusKey) {
-  try { renderRaces(model, upcomingRows()); } catch (e) { console.error(e); $('view-races').replaceChildren(racesDown()); return; }
+  try { renderRaces(model, nextRows()); } catch (e) { console.error(e); $('view-races').replaceChildren(racesDown()); return; }
   const el = focusKey && document.querySelector(`#view-races [data-focus="${focusKey}"]`);
   if (el) el.focus();
 }
@@ -102,7 +102,7 @@ export function upNext(up) {
     up.length ? h('ul', { class: 'up-list' }, up.map((r) => upRow(r, today))) : h('p', { class: 'empty' }, UP_EMPTY));
 }
 
-// The 30-second tick on Races: after midnight the days text is old and a race may have dropped off. Only Up next
+// The one-second tick on Races: after midnight the days text is old and a race may have dropped off. Only Up next
 // is replaced, so the rest of the page, the open race and the scroll position stay as they are.
 export function tickUpNext(rows) {
   const el = document.querySelector('#view-races .up-next');

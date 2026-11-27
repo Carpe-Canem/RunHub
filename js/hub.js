@@ -17,18 +17,19 @@ const p2 = (n) => String(n).padStart(2, '0');
 const dateText = (r) => new Date(`${r.date}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls);
 
-// The countdown digits. Only these are replaced by the 30-second tick.
+// The countdown digits. Only these are replaced by the one-second tick.
 function clockParts(cd) {
   const grp = (n, unit) => h('span', { class: 'cd-grp' }, led(p2(n), { ghost: true }), h('span', { class: 'cd-unit' }, unit));
-  // On race day (days 0) the days group is left out, never "00 days"; the tick rebuilds the whole clock.
-  if (cd.kind === 'clock') return [cd.days ? grp(cd.days, 'days') : null, grp(cd.hours, 'hrs'), grp(cd.mins, 'min')].filter(Boolean);
-  if (cd.kind === 'days') return [grp(cd.days, 'days')];
+  // On the last day (days 0) the days group is left out, never "00 days"; the tick rebuilds the whole clock.
+  if (cd.kind === 'clock') return [cd.days ? grp(cd.days, 'days') : null, grp(cd.hours, 'hrs'), grp(cd.mins, 'min'), grp(cd.secs, 'sec')].filter(Boolean);
   return [h('span', { class: 'cd-today' }, 'Race day')];
 }
 
 function setClock(el, cd) {
   el.replaceChildren(...clockParts(cd));
   const label = countdownLabel(cd);
+  // The label has no seconds: it is only written when it changes, so a screen reader is not told every second.
+  if (label === el.getAttribute('aria-label')) return;
   if (label) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', label); }
   else { el.removeAttribute('role'); el.removeAttribute('aria-label'); }
 }
@@ -54,7 +55,7 @@ function nextStart(up) {
     clock);
 }
 
-// The 30-second tick: only the digits change, so focus on the hub's links and buttons stays where it is.
+// The one-second tick: only the digits change, so focus on the hub's links and buttons stays where it is.
 export function tickHub(up) {
   const el = $('nextClock');
   const act = tickAction(shown, up, new Date(), !!el);

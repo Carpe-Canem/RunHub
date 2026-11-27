@@ -82,15 +82,22 @@ export function daysText(row, today) {
   return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
 }
 
+// Counts to local midnight at the start of race day, whatever the start time; from then on it is race day.
 export function countdown(row, now) {
-  const days = dayDiff(row.date, isoDay(now));
-  if (days < 0) return { kind: 'today' };
-  if (!row.time) return days === 0 ? { kind: 'today' } : { kind: 'days', days };
   const [y, m, d] = row.date.split('-').map(Number);
-  const [hh, mm] = row.time.split(':').map(Number);
-  const mins = Math.floor((new Date(y, m - 1, d, hh, mm) - now) / 60000);
-  if (mins <= 0) return { kind: 'today' };
-  return { kind: 'clock', days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60), mins: mins % 60 };
+  const s = Math.ceil((new Date(y, m - 1, d) - now) / 1000);
+  if (!(s > 0)) return { kind: 'today' };
+  return { kind: 'clock', days: Math.floor(s / 86400), hours: Math.floor((s % 86400) / 3600), mins: Math.floor((s % 3600) / 60), secs: s % 60 };
+}
+
+// Upcoming rows without the ones Strava already has: a race logged on the row's date with the same name or the
+// same distance (any race that day when the row's distance is Other). races: the cached Strava race summaries.
+export function dropLogged(rows, races) {
+  const dates = new Set(rows.map((r) => r.date));
+  const done = Object.values(races || {}).filter((r) => r && typeof r.d === 'string' && dates.has(r.d.slice(0, 10)))
+    .map((r) => ({ date: r.d.slice(0, 10), n: r.n || '', cls: classify(r.n, r.m).cls }));
+  if (!done.length) return rows;
+  return rows.filter((row) => !done.some((r) => r.date === row.date && (row.cls === 'Other' || r.cls === row.cls || sameRace(r, row))));
 }
 
 // What the hub's tick does, given what Next start last drew ({id, kind}, or null when it could not draw).
@@ -106,12 +113,11 @@ export function tickAction(shown, up, now, hasClock) {
 // Has the local day moved on from the one (YYYY-MM-DD) that was drawn?
 export const dayChanged = (drawn, now) => isoDay(now) !== drawn;
 
-// What a screen reader hears for the countdown. No days part on race day; null for "Race day".
+// What a screen reader hears for the countdown: no seconds, and no days part on the last day; null for "Race day".
 export function countdownLabel(cd) {
-  if (cd.kind === 'days') return `${plural(cd.days, 'day')} to the start`;
   if (cd.kind !== 'clock') return null;
   const hm = `${plural(cd.hours, 'hour')} and ${plural(cd.mins, 'minute')}`;
-  return `${cd.days ? `${plural(cd.days, 'day')}, ` : ''}${hm} to the start`;
+  return `${cd.days ? `${plural(cd.days, 'day')}, ` : ''}${hm} to race day`;
 }
 
 const NOT_EXPORT = "This isn't a Run Hub races export.";

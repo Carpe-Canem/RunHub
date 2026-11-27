@@ -17,7 +17,7 @@ import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
-import { loadUp, upcomingRows, handCount } from './upcoming-sync.js';
+import { loadUp, nextRows, handCount } from './upcoming-sync.js';
 import { loadEnv, enrich, placesOn } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
@@ -114,10 +114,10 @@ const RACE_VIEWS = ['hub', 'races', 'race', 'data'];
 
 // null when reading the upcoming races threw: Next start then shows its note and the rest of the hub draws.
 function hubUp() {
-  try { return upcomingRows(); } catch (e) { console.error(e); return null; }
+  try { return nextRows(); } catch (e) { console.error(e); return null; }
 }
 
-// Every 30 s while the hub or Races is on screen: the Next start countdown moves on, and Up next catches up
+// Every second while the hub or Races is on screen: the Next start countdown moves on, and Up next catches up
 // after midnight. One timer: render() starts it when either shows and stops it otherwise, and never restarts a
 // running one (redraws during a sync would keep putting it off).
 let ticker = null;
@@ -131,7 +131,7 @@ function viewTicks() {
         const up = hubUp();
         if (up) (current().view === 'hub' ? tickHub : tickUpNext)(up);
       } catch (e) { console.error(e); }
-    }, 30e3);
+    }, 1000);
   } else if (!on && ticker) { clearInterval(ticker); ticker = null; }
 }
 
@@ -155,9 +155,9 @@ function renderRacePanes(races, id) {
     const box = $('view-races');
     const title = h('h2', { class: 'view-title' }, 'Races');
     let up = null;
-    try { up = upNext(upcomingRows()); } catch (e) { console.error(e); }
+    try { up = upNext(nextRows()); } catch (e) { console.error(e); }
     box.replaceChildren(...[title, up, racesDown()].filter(Boolean));
-  } else pane('view-races', () => renderRaces(races, upcomingRows()));
+  } else pane('view-races', () => renderRaces(races, nextRows()));
   pane('view-race', () => renderRace(races, id, raceFrom));
   const el = key && document.querySelector(`#view-races [data-focus="${key}"]`);
   if (el) el.focus({ preventScroll: true });

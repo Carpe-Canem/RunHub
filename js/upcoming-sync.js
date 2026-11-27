@@ -2,7 +2,7 @@
 import { S, store, DAY, RateLimited } from './core.js';
 import { api, token } from './strava.js';
 import { FULL } from './races-sync.js';
-import { parseBio, mergeUpcoming, isoDay, importUpcoming } from './upcoming.js';
+import { parseBio, mergeUpcoming, dropLogged, isoDay, importUpcoming } from './upcoming.js';
 
 export const NOT_SAVED = 'This browser couldn\'t save the race (its storage is full or blocked), so nothing was added.';
 const upKey = (id) => `lw.upcoming.${id}`;
@@ -103,6 +103,12 @@ export function removeHand(id, today = isoDay(new Date())) {
 
 export function upcomingRows(today = isoDay(new Date())) {
   return S.upcoming ? mergeUpcoming(S.upcoming, today) : [];
+}
+
+// What Next start and Up next show: the upcoming rows without the races Strava already has. The export, the
+// Data counts and Remove keep using upcomingRows.
+export function nextRows(today = isoDay(new Date())) {
+  return dropLogged(upcomingRows(today), S.races && S.races.races);
 }
 
 // All or nothing: a failed save adds none. Checked against hand-added races only, so a race that is in the bio can be added.

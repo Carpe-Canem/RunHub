@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, classColour } from '../js/race-rules.js';
-import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, exportUpcoming, importUpcoming, mergeUpcoming, daysText, countdown, countdownLabel, tickAction, dayChanged } from '../js/upcoming.js';
+import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, exportUpcoming, importUpcoming, mergeUpcoming, daysText, countdown, dropLogged, countdownLabel, tickAction, dayChanged } from '../js/upcoming.js';
 
 const today = '2027-06-01';
 
@@ -93,12 +93,29 @@ test('daysText', () => {
   assert.equal(daysText({ date: '2027-06-14' }, today), 'In 13 days');
 });
 
-test('countdown with a start time counts days, hours and minutes to it', () => {
-  const now = new Date(2027, 5, 1, 9, 0);
-  assert.deepEqual(countdown({ date: '2027-06-14', time: '08:00' }, now), { kind: 'clock', days: 12, hours: 23, mins: 0 });
-  assert.deepEqual(countdown({ date: '2027-06-14', time: null }, now), { kind: 'days', days: 13 });
-  assert.deepEqual(countdown({ date: '2027-06-01', time: '08:00' }, now), { kind: 'today' });
-  assert.deepEqual(countdown({ date: '2027-06-01', time: null }, now), { kind: 'today' });
+test('countdown counts days, hours, minutes and seconds to midnight on race day, whatever the start time', () => {
+  const now = new Date(2027, 5, 1, 9, 0, 30);
+  const cd = { kind: 'clock', days: 12, hours: 14, mins: 59, secs: 30 };
+  assert.deepEqual(countdown({ date: '2027-06-14', time: '08:00' }, now), cd);
+  assert.deepEqual(countdown({ date: '2027-06-14', time: null }, now), cd);
+  assert.deepEqual(countdown({ date: '2027-06-02', time: null }, new Date(2027, 5, 1, 23, 59, 59)), { kind: 'clock', days: 0, hours: 0, mins: 0, secs: 1 });
+  assert.deepEqual(countdown({ date: '2027-06-02', time: null }, new Date(2027, 5, 1, 23, 59, 59, 400)), { kind: 'clock', days: 0, hours: 0, mins: 0, secs: 1 });
+  assert.deepEqual(countdown({ date: '2027-06-02', time: '08:00' }, new Date(2027, 5, 2, 0, 0, 0)), { kind: 'today' });
+  assert.deepEqual(countdown({ date: '2027-06-01', time: '18:00' }, now), { kind: 'today' });
+  assert.deepEqual(countdown({ date: '2027-05-31', time: null }, now), { kind: 'today' });
+});
+
+test('dropLogged: a Strava race on the same date with the same name or distance clears the upcoming race', () => {
+  const row = (n, cls, date = '2027-06-01') => ({ id: n, n, date, cls });
+  const strava = (n, m, d = '2027-06-01T08:00:00Z') => ({ a: { id: 'a', n, m, d } });
+  const rows = [row('Riverbend 5K', '5K'), row('Old Mill 10K', '10K'), row('Canyon Scramble', 'Other', '2027-06-02')];
+  assert.deepEqual(dropLogged(rows, null), rows);
+  assert.deepEqual(dropLogged(rows, {}), rows);
+  assert.deepEqual(dropLogged(rows, strava('Morning race', 5020)).map((r) => r.n), ['Old Mill 10K', 'Canyon Scramble'], 'same distance');
+  assert.deepEqual(dropLogged(rows, strava('Old Mill 10k', 0)).map((r) => r.n), ['Riverbend 5K', 'Canyon Scramble'], 'same name');
+  assert.deepEqual(dropLogged(rows, strava('Riverbend 5K', 5000, '2027-05-31T08:00:00Z')), rows, 'another day');
+  assert.deepEqual(dropLogged(rows, strava('Half', 21100)), rows, 'another distance and name');
+  assert.deepEqual(dropLogged(rows, strava('Trail thing', 7300, '2027-06-02T09:00:00Z')).map((r) => r.n), ['Riverbend 5K', 'Old Mill 10K'], 'Other: any race that day');
 });
 
 test('isoDay uses the local date', () => assert.equal(isoDay(new Date(2027, 5, 1, 23, 30)), '2027-06-01'));
@@ -110,15 +127,13 @@ test('mergeUpcoming drops a bio race that repeats an earlier bio race, so ids st
 });
 
 test('countdownLabel: singular for 1, no days on race day, nothing for today', () => {
-  assert.equal(countdownLabel({ kind: 'clock', days: 9, hours: 2, mins: 59 }), '9 days, 2 hours and 59 minutes to the start');
-  assert.equal(countdownLabel({ kind: 'clock', days: 1, hours: 1, mins: 1 }), '1 day, 1 hour and 1 minute to the start');
-  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 2, mins: 59 }), '2 hours and 59 minutes to the start');
-  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 0, mins: 5 }), '0 hours and 5 minutes to the start');
-  assert.equal(countdownLabel({ kind: 'days', days: 1 }), '1 day to the start');
-  assert.equal(countdownLabel({ kind: 'days', days: 40 }), '40 days to the start');
+  assert.equal(countdownLabel({ kind: 'clock', days: 9, hours: 2, mins: 59, secs: 7 }), '9 days, 2 hours and 59 minutes to race day');
+  assert.equal(countdownLabel({ kind: 'clock', days: 1, hours: 1, mins: 1, secs: 1 }), '1 day, 1 hour and 1 minute to race day');
+  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 2, mins: 59, secs: 0 }), '2 hours and 59 minutes to race day');
+  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 0, mins: 5, secs: 0 }), '0 hours and 5 minutes to race day');
   assert.equal(countdownLabel({ kind: 'today' }), null);
-  // a race later today with a start time: the countdown itself has days 0
-  assert.equal(countdownLabel(countdown({ date: '2027-06-15', time: '11:00' }, new Date(2027, 5, 15, 8, 1))), '2 hours and 59 minutes to the start');
+  // the day before the race: the countdown itself has days 0
+  assert.equal(countdownLabel(countdown({ date: '2027-06-15', time: '11:00' }, new Date(2027, 5, 14, 21, 1))), '2 hours and 59 minutes to race day');
 });
 
 const H = (n, date, time, cls, place) => ({ id: 'h1', n, date, time, cls, place, at: 1 });
@@ -168,9 +183,9 @@ test('tickAction: what the hub tick does with what Next start last drew', () => 
   assert.deepEqual(tickAction(drawn, [], now, true), redraw, 'the last race went away');
   assert.deepEqual(tickAction({ id: null, kind: null }, [row], now, false), redraw, 'a first race arrived');
   assert.deepEqual(tickAction(drawn, [{ ...row, id: 'b' }], now, true), redraw, 'another race is next');
-  assert.deepEqual(tickAction(drawn, [row], new Date(2027, 5, 5, 9, 0), true), redraw, 'the start time passed');
+  assert.deepEqual(tickAction(drawn, [row], new Date(2027, 5, 5, 0, 0), true), redraw, 'race day began');
   assert.deepEqual(tickAction(drawn, [row], now, false), redraw, 'no clock element');
-  assert.deepEqual(tickAction(drawn, [row], now, true), { do: 'clock', cd: { kind: 'clock', days: 4, hours: 1, mins: 0 } });
+  assert.deepEqual(tickAction(drawn, [row], now, true), { do: 'clock', cd: { kind: 'clock', days: 3, hours: 16, mins: 0, secs: 0 } });
 });
 
 test('dayChanged: true only once the local day differs from the drawn one', () => {

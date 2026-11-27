@@ -42,7 +42,7 @@ The link is for your own devices. A friend connects with their own Strava app, a
 
 ## Upcoming races
 
-Up next on Races, and the countdown on the hub, come from two places.
+Up next on Races, and the countdown on the hub, come from two places. The countdown runs to midnight at the start of race day, then reads "Race day". A race leaves both once Strava has a race on that date with the same name or distance, or at the end of race day.
 
 - **Your Strava bio.** Put one race per line, with the date first as month/day/year (the page reads that order only):
 

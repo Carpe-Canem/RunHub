@@ -112,7 +112,7 @@ Distance classes each have a colour, used for the class badge and the route line
 ### Views
 
 **Hub (`#hub`, the default).**
-- "Next start": countdown clock to the next upcoming race, with its name and date. If the race has no start time, show days only. If nothing is upcoming, say so and offer "Add race".
+- "Next start": countdown clock to the next upcoming race, with its name and date. It counts days, hours, minutes and seconds to midnight at the start of race day, whatever the start time, then reads "Race day". The race leaves once Strava has it or race day ends. If nothing is upcoming, say so and offer "Add race".
 - Races card: number of races, age-group podiums, total race distance. Opens Races.
 - Local Legends card: titles at risk this week, from the existing calculation. Opens Legends.
 - Latest results: a sideways strip of the ten most recent races (route tile, time, class, date).
