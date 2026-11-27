@@ -1,0 +1,93 @@
+// Upcoming races: pure rules for bio lines, hand-added races and countdowns.
+import { STANDARDS, classify, classColour, seriesKey } from './race-rules.js';
+
+export const CLASS_OPTIONS = [...STANDARDS.map((s) => s.cls), 'Other'];
+export const PAST = 'Finished races come in from Strava.';
+export const DUP = 'That race is already in Up next.';
+
+const pad = (n) => String(n).padStart(2, '0');
+export const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+const validDate = (y, m, d) => {
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
+};
+const isoOk = (s) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
+  return !!m && validDate(+m[1], +m[2], +m[3]);
+};
+const utcDay = (iso) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+const dayDiff = (a, b) => Math.round((utcDay(a) - utcDay(b)) / 86400000);
+const cleanName = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
+
+const DATE_LIKE = /^\s*\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/;
+const READABLE = /^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(.+)$/;
+
+// Only MM/DD/YYYY with "/" is readable; other separators count as unreadable.
+export function parseBio(text) {
+  const races = [];
+  let bad = 0;
+  for (const line of String(text ?? '').split(/\r\n|\r|\n/)) {
+    if (!DATE_LIKE.test(line)) continue;
+    const m = READABLE.exec(line);
+    const n = m ? cleanName(m[4]).slice(0, 80).trim() : '';
+    if (m && n && validDate(+m[3], +m[1], +m[2])) races.push({ date: `${m[3]}-${pad(+m[1])}-${pad(+m[2])}`, n });
+    else bad++;
+  }
+  return { races, bad };
+}
+
+export function sameRace(a, b) {
+  if (a.date !== b.date) return false;
+  const ka = seriesKey(a.n), kb = seriesKey(b.n);
+  if (!ka || !kb) return cleanName(a.n).toLowerCase() === cleanName(b.n).toLowerCase();
+  return ka === kb || ka.includes(kb) || kb.includes(ka);
+}
+
+export function checkHand(f, today, existing) {
+  const n = cleanName(f.n);
+  if (!n) return { error: 'Enter the race name.' };
+  if (n.length > 80) return { error: 'Keep the name to 80 characters.' };
+  if (!isoOk(f.date)) return { error: 'Enter the race date.' };
+  if (f.date < today) return { error: PAST };
+  const time = f.time ? String(f.time).trim() : '';
+  if (time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return { error: 'Enter the start time as hours and minutes, or leave it empty.' };
+  let cls = f.cls || '';
+  if (cls && !CLASS_OPTIONS.includes(cls)) return { error: 'Choose a distance from the list.' };
+  if (!cls) { const c = classify(n, 0).cls; cls = CLASS_OPTIONS.includes(c) ? c : 'Other'; }
+  const place = cleanName(f.place);
+  if (place.length > 60) return { error: 'Keep the place to 60 characters.' };
+  const race = { n, date: f.date, time: time || null, cls, place: place || null };
+  if ((existing || []).some((e) => sameRace(e, race))) return { error: DUP };
+  return { race };
+}
+
+const bioId = (r) => 'bio-' + r.date + '-' + cleanName(r.n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+export function mergeUpcoming(up, today) {
+  const hand = ((up && up.hand) || []).filter((r) => r.date >= today)
+    .map((r) => ({ id: r.id, n: r.n, date: r.date, time: r.time || null, cls: r.cls, colour: classColour(r.cls), place: r.place || null, src: 'hand' }));
+  const bio = ((up && up.bio && up.bio.races) || []).filter((r) => r.date >= today && !hand.some((h) => sameRace(h, r)))
+    .map((r) => {
+      const cls = classify(r.n, 0).cls;
+      return { id: bioId(r), n: r.n, date: r.date, time: null, cls, colour: classColour(cls), place: null, src: 'bio' };
+    });
+  return [...hand, ...bio].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : (a.time || '99:99') < (b.time || '99:99') ? -1 : (a.time || '99:99') > (b.time || '99:99') ? 1 : 0);
+}
+
+export function daysText(row, today) {
+  const d = dayDiff(row.date, today);
+  return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+}
+
+export function countdown(row, now) {
+  const days = dayDiff(row.date, isoDay(now));
+  if (days < 0) return { kind: 'today' };
+  if (!row.time) return days === 0 ? { kind: 'today' } : { kind: 'days', days };
+  const [y, m, d] = row.date.split('-').map(Number);
+  const [hh, mm] = row.time.split(':').map(Number);
+  const mins = Math.floor((new Date(y, m - 1, d, hh, mm) - now) / 60000);
+  if (mins <= 0) return { kind: 'today' };
+  return { kind: 'clock', days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60), mins: mins % 60 };
+}
