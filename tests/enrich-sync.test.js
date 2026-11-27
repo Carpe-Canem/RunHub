@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { S } from '../js/core.js';
+import { S, bus } from '../js/core.js';
 import { emptyRaces, FULL } from '../js/races-sync.js';
 import { emptyEnv, loadEnv, saveEnv, fetchWeather, enrich } from '../js/enrich-sync.js';
 
@@ -41,7 +41,7 @@ function fakeGet(answers = []) {
 
 test('fetchWeather asks once per race with a start point, newest first, and stores the start hour', async () => {
   const rc = racesOf(mkRace(1, 400), mkRace(2, 3), mkRace(3, 40), mkRace(4, 10, null));
-  const env = emptyEnv(); const { get, urls } = fakeGet();
+  const env = S.raceEnv; const { get, urls } = fakeGet();
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 3);
   assert.deepEqual(urls.map(dateOf), [rc.races[2], rc.races[3], rc.races[1]].map((r) => r.d.slice(0, 10)));
@@ -53,7 +53,7 @@ test('fetchWeather asks once per race with a start point, newest first, and stor
 
 test('fetchWeather skips races it already has final weather for, and asks again for provisional weather once the race is a week old', async () => {
   const rc = racesOf(mkRace(1, 400), mkRace(2, 8), mkRace(3, 2));
-  const env = emptyEnv();
+  const env = S.raceEnv;
   env.wx['1'] = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW - 1000, prov: false };
   env.wx['2'] = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW - 9 * DAYS, prov: true };   // the race is now a week old: ask again
   env.wx['3'] = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW - 1000, prov: true };       // still provisional: leave
@@ -65,38 +65,74 @@ test('fetchWeather skips races it already has final weather for, and asks again 
   assert.equal(env.wx['2'].t, 12.3);
 });
 
-test('three request failures in a row end the pass', async () => {
+const quiet = (fn) => async () => { const w = console.warn; console.warn = () => {}; try { await fn(); } finally { console.warn = w; } };
+
+test('three request failures in a row end the pass', quiet(async () => {
   const rc = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30), mkRace(4, 40));
-  const env = emptyEnv(); const { get, urls } = fakeGet([500, 'throw', 500, 'ok']);
+  const env = S.raceEnv; const { get, urls } = fakeGet([500, 'throw', 500, 'ok']);
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 3);
   assert.deepEqual(env.wx, {});
-});
+}));
 
 test('an answer with no usable hour stores a dated marker and does not count toward the cap', async () => {
   const rc = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30), mkRace(4, 40));
-  const env = emptyEnv(); const { get, urls } = fakeGet(['none', 'none', 'none', 'ok']);
+  const env = S.raceEnv; const { get, urls } = fakeGet(['none', 'none', 'none', 'ok']);
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 4);
   for (const id of ['1', '2', '3']) assert.deepEqual(env.wx[id], { at: NOW, none: true });
   assert.equal(env.wx['4'].t, 12.3);
 });
 
-test('a success resets the run of failures', async () => {
+test('a success resets the run of failures', quiet(async () => {
   const rc = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30), mkRace(4, 40), mkRace(5, 50));
-  const env = emptyEnv(); const { get, urls } = fakeGet([500, 500, 'ok', 500, 500]);
+  const env = S.raceEnv; const { get, urls } = fakeGet([500, 500, 'ok', 500, 500]);
   await fetchWeather(rc, env, get, NOW);
   assert.equal(urls.length, 5);
   assert.deepEqual(Object.keys(env.wx), ['3']);
-});
+  assert.deepEqual(Object.keys(JSON.parse(mem['lw.raceEnv.42']).wx), ['3']);   // the partial result is saved
+}));
 
 test('fetchWeather drops weather for races no longer in the cache', async () => {
   const rc = racesOf(mkRace(1, 10));
-  const env = emptyEnv();
+  const env = S.raceEnv;
   env.wx.gone = { t: 1, f: 1, h: 1, w: 1, p: 0, c: 0, at: NOW, prov: false };
   const { get } = fakeGet();
   await fetchWeather(rc, env, get, NOW);
   assert.deepEqual(Object.keys(env.wx), ['1']);
+});
+
+test('fetchWeather saves every 5 stored races and at the end', async () => {
+  const rc = racesOf(...[1, 2, 3, 4, 5, 6, 7].map((i) => mkRace(i, i * 10)));
+  const seen = [];
+  const get = async (url) => { seen.push(mem['lw.raceEnv.42'] ? Object.keys(JSON.parse(mem['lw.raceEnv.42']).wx).length : 0); return { ok: true, status: 200, json: async () => block(dateOf(url)) }; };
+  await fetchWeather(rc, S.raceEnv, get, NOW);
+  assert.deepEqual(seen, [0, 0, 0, 0, 0, 5, 5]);
+  assert.equal(Object.keys(JSON.parse(mem['lw.raceEnv.42']).wx).length, 7);
+});
+
+test('a wipe mid-pass stops further requests', async () => {
+  const rc = racesOf(mkRace(1, 10), mkRace(2, 20), mkRace(3, 30));
+  const urls = [];
+  const get = async (url) => { urls.push(url); S.raceEnv = null; return { ok: true, status: 200, json: async () => block(dateOf(url)) }; };
+  await fetchWeather(rc, S.raceEnv, get, NOW);
+  assert.equal(urls.length, 1);
+});
+
+let emits = 0, counting = false;
+bus.on('data', () => { if (counting) emits++; });
+test('fetchWeather emits data only when something was stored or dropped', async () => {
+  counting = true;
+  try {
+    const rc = racesOf(mkRace(1, 10));
+    await fetchWeather(rc, S.raceEnv, fakeGet().get, NOW);
+    assert.equal(emits, 1);
+    await fetchWeather(rc, S.raceEnv, fakeGet().get, NOW);   // nothing needed
+    assert.equal(emits, 1);
+    delete rc.races['1'];
+    await fetchWeather(rc, S.raceEnv, fakeGet().get, NOW);   // one dropped
+    assert.equal(emits, 2);
+  } finally { counting = false; }
 });
 
 test('fetchWeather saves to storage', async () => {
@@ -146,9 +182,9 @@ test('enrich does nothing in the demo, and a call during a pass runs exactly one
   assert.deepEqual(Object.keys(S.raceEnv.wx).sort(), ['1', '2']);
 });
 
-test('enrich never rejects', async () => {
+test('enrich never rejects', quiet(async () => {
   S.races = racesOf(mkRace(1, 10));
   await enrich(async () => { throw new Error('boom'); }, async () => {});
   S.raceEnv = null;
   await enrich(async () => { throw new Error('boom'); }, async () => {});
-});
+}));

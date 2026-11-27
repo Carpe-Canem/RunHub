@@ -1,7 +1,7 @@
 /*
  * Run Hub: a static, browser-only Strava dashboard.
  * Everything (credentials, tokens, cached data) lives in this browser's localStorage.
- * The only network destinations are www.strava.com (API + OAuth), cdnjs.cloudflare.com (Leaflet script and CSS)
+ * The only network destinations are www.strava.com (API + OAuth), cdnjs.cloudflare.com (Leaflet script and CSS),
  * OpenStreetMap tiles, and archive-api.open-meteo.com, which gets a start point rounded to about 1 km and a date
  * for each race (to read that day's weather) and nothing else.
  */

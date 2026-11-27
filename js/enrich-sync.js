@@ -25,11 +25,13 @@ export function saveEnv() {
 // hour is not a failure: it is stored as {at, none: true}, which is asked again only a week later.
 export async function fetchWeather(rc, env, get = fetch, nowSec = Date.now() / 1000) {
   if (!rc || !env) return;
-  for (const id of Object.keys(env.wx)) if (!rc.races[id]) delete env.wx[id];
+  let dropped = 0;
+  for (const id of Object.keys(env.wx)) if (!rc.races[id]) { delete env.wx[id]; dropped++; }
   const todo = Object.values(rc.races).filter((r) => needsWeather(r, env.wx[r.id], nowSec)).sort((a, b) => b.s - a.s);
   let fails = 0, stored = 0;
   try {
     for (const r of todo) {
+      if (S.raceEnv !== env) break;   // wiped or replaced mid-pass: send nothing more
       const date = r.d.slice(0, 10);
       let json;
       try {
@@ -49,7 +51,7 @@ export async function fetchWeather(rc, env, get = fetch, nowSec = Date.now() / 1
   } finally {
     if (stored) saveEnv();
   }
-  bus.emit('data');
+  if (stored || dropped) bus.emit('data');
 }
 
 let running = false, again = false;
