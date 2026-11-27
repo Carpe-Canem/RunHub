@@ -8,6 +8,9 @@ import { exportUpcoming } from './upcoming.js';
 export const standalone = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
 let exportOpen = false, pasted = '', result = null;
+// The two text boxes are made once and kept: the panel is redrawn on every 'data' event (every few seconds during
+// a sync), and a new box would lose focus, the paste menu and a selection.
+let exportTa = null, importTa = null;
 
 export function hideExport() { exportOpen = false; pasted = ''; result = null; }
 
@@ -46,12 +49,14 @@ function exportBox(rows) {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
   };
+  exportTa = exportTa || h('textarea', { class: 'probe-text', id: 'upExportText', readonly: true, 'aria-label': 'Your hand-added races as text' });
+  if (exportTa.value !== text) exportTa.value = text;
   return [
     h('div', { class: 'row' },
-      h('button', { type: 'button', class: 'btn small', onclick: copy }, 'Copy'),
-      standalone() ? null : h('button', { type: 'button', class: 'btn small', onclick: download }, 'Download file'),
-      h('button', { type: 'button', class: 'btn small', onclick: () => { exportOpen = false; bus.emit('data'); } }, 'Hide')),
-    h('textarea', { class: 'probe-text', readonly: true, 'aria-label': 'Your hand-added races as text' }, text),
+      h('button', { type: 'button', class: 'btn small', id: 'upCopyBtn', onclick: copy }, 'Copy'),
+      standalone() ? null : h('button', { type: 'button', class: 'btn small', id: 'upDownloadBtn', onclick: download }, 'Download file'),
+      h('button', { type: 'button', class: 'btn small', id: 'upHideBtn', onclick: () => { exportOpen = false; bus.emit('data'); } }, 'Hide')),
+    exportTa,
   ];
 }
 
@@ -61,8 +66,9 @@ function importBox() {
     if (!result.error) pasted = '';
     bus.emit('data');
   };
-  const ta = h('textarea', { class: 'probe-text', 'aria-label': 'Paste an export here', placeholder: 'Paste an export here', oninput: (ev) => { pasted = ev.currentTarget.value; } });
-  ta.value = pasted;
+  importTa = importTa || h('textarea', { class: 'probe-text', id: 'upImportText', 'aria-label': 'Paste an export here', placeholder: 'Paste an export here', oninput: (ev) => { pasted = ev.currentTarget.value; } });
+  const ta = importTa;
+  if (ta.value !== pasted) ta.value = pasted;
   const pick = async (ev) => {
     const input = ev.currentTarget;
     const f = input.files && input.files[0];
@@ -75,9 +81,9 @@ function importBox() {
   return [
     ta,
     h('div', { class: 'row' },
-      h('button', { type: 'button', class: 'btn small', onclick: () => run(ta.value) }, 'Import'),
+      h('button', { type: 'button', class: 'btn small', id: 'upImportBtn', onclick: () => run(ta.value) }, 'Import'),
       h('label', { class: 'btn small filebtn' }, 'Choose a file',
-        h('input', { type: 'file', accept: '.json,application/json', 'aria-label': 'Choose an export file', onchange: pick }))),
+        h('input', { type: 'file', id: 'upFileInput', accept: '.json,application/json', 'aria-label': 'Choose an export file', onchange: pick }))),
     result ? h('p', { class: result.error ? 'error' : 'note', role: 'status' }, resultLine(result)) : h('p', { role: 'status', class: 'note' }),
   ];
 }
@@ -89,13 +95,19 @@ export function renderUpcomingPanel() {
   if (el.hidden) { el.replaceChildren(); return; }
   const rows = handRows();
   const had = el.contains(document.activeElement) && document.activeElement.id ? document.activeElement.id : null;
-  el.replaceChildren(
+  place(el, [
     h('h3', { class: 'sub-title' }, 'Races you added'),
     h('p', { class: 'note' }, `${plural(rows.length)} added in this browser. They are kept only here. Export them to move them to another browser or the home-screen app.`),
     h('div', { class: 'row' },
       h('button', { type: 'button', class: 'btn small', id: 'upExportBtn', disabled: !rows.length, onclick: () => { exportOpen = true; bus.emit('data'); } }, 'Export')),
     ...(exportOpen && rows.length ? exportBox(rows) : []),
     h('h3', { class: 'sub-title' }, 'Import'),
-    ...importBox());
-  if (had) { const f = document.getElementById(had); if (f) f.focus(); }
+    ...importBox()]);
+  if (had && document.activeElement.id !== had) { const f = document.getElementById(had); if (f) f.focus(); }
+}
+
+// Like replaceChildren, but a node that is already in place is never taken out, so a kept text box keeps focus.
+function place(el, nodes) {
+  for (const c of [...el.childNodes]) if (!nodes.includes(c)) c.remove();
+  nodes.forEach((n, i) => { if (el.childNodes[i] !== n) el.insertBefore(n, el.childNodes[i] || null); });
 }

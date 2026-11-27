@@ -17,11 +17,11 @@ import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
-import { loadUp, upcomingRows } from './upcoming-sync.js';
+import { loadUp, upcomingRows, handCount } from './upcoming-sync.js';
 import { loadEnv, enrich, placesOn } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
-import { showExport, hideExport } from './upcoming-panel.js';
+import { showExport, hideExport, renderUpcomingPanel } from './upcoming-panel.js';
 import { renderHub, tickHub } from './hub.js';
 import { renderRaces, racesDown, upNext } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
@@ -97,6 +97,8 @@ function render() {
   const races = S.races && RACE_VIEWS.includes(view) ? raceModel() : null;
   if (view === 'hub') { renderHub(ready ? compute(c) : null, races, hubUp()); return; }
   if (section === 'races') { renderRacePanes(races, view === 'race' ? current().id : null); return; }
+  // The export does not wait for the first sync: the offer before leaving can open Data before it has run.
+  if (view === 'data') { try { renderUpcomingPanel(); } catch (e) { console.error(e); } }
   if (!ready) return;
 
   const model = compute(c);
@@ -208,7 +210,7 @@ function wipe() {
 // "Forget this browser" wipes here only. "Disconnect everywhere" also revokes the grant at Strava,
 // which signs out every device and cancels every setup link.
 async function leave(everywhere) {
-  const hand = S.demo ? 0 : upcomingRows().filter((r) => r.src === 'hand').length;
+  const hand = S.demo ? 0 : handCount(S.upcoming);
   if (hand && window.confirm(`You added ${hand} race${hand === 1 ? '' : 's'} by hand, and leaving removes ${hand === 1 ? 'it' : 'them'} from this browser. Press OK to export ${hand === 1 ? 'it' : 'them'} first, or Cancel to continue without exporting.`)) {
     location.hash = '#data';
     showExport();
@@ -252,7 +254,8 @@ async function useSetup(text) {
   if (!f) return fail(LINK_DEAD);
   const was = { creds: creds(), token: token() };
   const other = !!was.token && !sameAthlete(was.token.athleteId, f.athleteId);
-  const hand = other ? upcomingRows().filter((r) => r.src === 'hand').length : 0;
+  // Counted from storage when the page opened with the link, before this athlete's races were loaded.
+  const hand = other ? handCount(S.upcoming || loadUp(was.token.athleteId)) : 0;
   if (other && !window.confirm('This browser is connected as a different Strava athlete. Replace that connection with the one in the setup link?'
     + (hand ? ' The races you added by hand here will be removed; export them from Data first if you want them.' : ''))) return false;
   const keep = !other && !!was.token && !!was.creds;   // same athlete already here: put it back if the link fails
@@ -356,6 +359,12 @@ async function init() {
   startRouter({ enabled: ENABLED, onRoute });   // draws the first view
   if (t) { enrich(); sync(false); }
   setInterval(renderStatus, 60e3);
+  // Another tab added, removed or imported races, or wiped this browser: show what is stored now.
+  window.addEventListener('storage', (e) => {
+    if (S.demo || !S.athleteId || (e.key !== null && e.key !== `lw.upcoming.${S.athleteId}`)) return;
+    S.upcoming = loadUp(S.athleteId);
+    bus.emit('data');
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !S.demo && token() && S.cache && Date.now() - (S.cache.lastSync || 0) > 15 * 60e3) sync(false);
   });

@@ -44,7 +44,7 @@ export function renderData(model, c, races) {
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
-  renderUpcomingPanel();
+  try { renderUpcomingPanel(); } catch (e) { console.error(e); }
 }
 
 // Upcoming races: counts only, never names or bio text.

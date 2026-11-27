@@ -1,6 +1,6 @@
 // Upcoming races: the stored list (hand-added races and the parsed Strava bio), kept apart from the other caches.
 import { S, store, DAY, RateLimited } from './core.js';
-import { api } from './strava.js';
+import { api, token } from './strava.js';
 import { FULL } from './races-sync.js';
 import { parseBio, mergeUpcoming, isoDay, importUpcoming } from './upcoming.js';
 
@@ -13,21 +13,43 @@ export const emptyUp = () => ({ v: 1, hand: [], bio: null });
 export function loadUp(athleteId, today = isoDay(new Date())) {
   const c = store.get(upKey(athleteId));
   if (!c || c.v !== 1 || !Array.isArray(c.hand)) return emptyUp();
-  return { v: 1, hand: c.hand.filter((r) => r && typeof r.date === 'string' && r.date >= today), bio: c.bio && typeof c.bio === 'object' ? c.bio : null };
+  const ok = (r) => r && typeof r.n === 'string' && typeof r.date === 'string' && typeof r.cls === 'string' && r.date >= today;
+  return { v: 1, hand: c.hand.filter(ok), bio: c.bio && typeof c.bio === 'object' ? c.bio : null };
+}
+
+// Hand-added races still to come, counted without the merge rules so a malformed list cannot throw.
+export function handCount(up, today = isoDay(new Date())) {
+  const hand = up && Array.isArray(up.hand) ? up.hand : [];
+  return hand.filter((r) => r && typeof r.date === 'string' && r.date >= today).length;
 }
 
 // True without writing in the demo or with no athlete; false only when the browser refused the write.
-export function saveUp() {
-  if (S.demo || !S.athleteId || !S.upcoming) return true;
-  return store.set(upKey(S.athleteId), S.upcoming);
+export function saveUp(up = S.upcoming) {
+  if (S.demo || !S.athleteId || !up) return true;
+  return store.set(upKey(S.athleteId), up);
+}
+
+// What a change starts from. Another tab may have changed the stored list since this one loaded it, so outside
+// the demo it is read again. null when this athlete is no longer connected here (another tab wiped this
+// browser or connected someone else): nothing is then written, so a wipe is not undone.
+function current() {
+  if (!S.upcoming) return null;
+  if (S.demo || !S.athleteId) return S.upcoming;
+  const t = token();
+  if (!t || String(t.athleteId) !== String(S.athleteId)) return null;
+  return loadUp(S.athleteId);
 }
 
 // Keeps the parsed lines and the count of unreadable ones, never the bio text itself.
 export function readBio(athlete, nowMs = Date.now()) {
   if (!S.upcoming) return;
   const text = athlete && typeof athlete.bio === 'string' ? athlete.bio : null;
-  if (text === null) S.upcoming.bio = { at: nowMs, races: [], bad: 0, none: true };
-  else { const { races, bad } = parseBio(text); S.upcoming.bio = { at: nowMs, races, bad }; }
+  let bio;
+  if (text === null) bio = { at: nowMs, races: [], bad: 0, none: true };
+  else { const { races, bad } = parseBio(text); bio = { at: nowMs, races, bad }; }
+  const cur = current();
+  if (!cur) { S.upcoming = { ...S.upcoming, bio }; return; }
+  S.upcoming = { ...cur, bio };
   if (!saveUp()) S.warn = FULL;   // the bio is fetched again, like the other caches
 }
 
@@ -46,27 +68,37 @@ export async function syncBio(manual, call = api, nowMs = Date.now()) {
   readBio(a, nowMs);
 }
 
-const newId = (nowMs) => 'h' + nowMs.toString(36) + Math.floor(Math.random() * 36 ** 4).toString(36).padStart(4, '0');
+// Unique among `taken` (the ids already used, which it adds to): races added in one go share nowMs.
+function newId(nowMs, taken) {
+  const base = 'h' + nowMs.toString(36) + Math.floor(Math.random() * 36 ** 4).toString(36).padStart(4, '0');
+  let id = base;
+  for (let i = 1; taken.has(id); i++) id = base + i.toString(36);
+  taken.add(id);
+  return id;
+}
+const ids = (hand) => new Set(hand.map((r) => r.id));
 
-// Hand-added races cannot be fetched again, so a failed save is undone and reported to the caller.
+// Hand-added races cannot be fetched again: memory takes the change only once it is saved, so a failed save
+// leaves it as it was and the caller reports it.
 export function addHand(race, nowMs = Date.now()) {
-  if (!S.upcoming) return null;
-  const before = S.upcoming.hand;
-  const r = { id: newId(nowMs), n: race.n, date: race.date, time: race.time || null, cls: race.cls, place: race.place || null, at: nowMs };
-  S.upcoming.hand = [...before, r];
-  if (saveUp()) return r;
-  S.upcoming.hand = before;
-  return null;
+  const cur = current();
+  if (!cur) return null;
+  const r = { id: newId(nowMs, ids(cur.hand)), n: race.n, date: race.date, time: race.time || null, cls: race.cls, place: race.place || null, at: nowMs };
+  const next = { ...cur, hand: [...cur.hand, r] };
+  if (!saveUp(next)) return null;
+  S.upcoming = next;
+  return r;
 }
 
 export function removeHand(id) {
   if (!S.upcoming) return true;
-  const before = S.upcoming.hand;
-  if (!before.some((r) => r.id === id)) return true;
-  S.upcoming.hand = before.filter((r) => r.id !== id);
-  if (saveUp()) return true;
-  S.upcoming.hand = before;
-  return false;
+  const cur = current();
+  if (!cur) return false;
+  if (!cur.hand.some((r) => r.id === id)) { S.upcoming = cur; return true; }
+  const next = { ...cur, hand: cur.hand.filter((r) => r.id !== id) };
+  if (!saveUp(next)) return false;
+  S.upcoming = next;
+  return true;
 }
 
 export function upcomingRows(today = isoDay(new Date())) {
@@ -75,12 +107,14 @@ export function upcomingRows(today = isoDay(new Date())) {
 
 // All or nothing: a failed save adds none. Checked against hand-added races only, so a race that is in the bio can be added.
 export function importHand(text, today = isoDay(new Date()), nowMs = Date.now()) {
-  if (!S.upcoming) return { error: NOT_SAVED };
-  const res = importUpcoming(text, S.upcoming.hand, today);
+  const cur = current();
+  if (!cur) return { error: NOT_SAVED };
+  const res = importUpcoming(text, cur.hand, today);
   if (res.error) return res;
-  if (!res.add.length) return { added: 0, dup: res.dup, past: res.past, bad: res.bad };
-  const before = S.upcoming.hand;
-  S.upcoming.hand = [...before, ...res.add.map((r) => ({ id: newId(nowMs), n: r.n, date: r.date, time: r.time, cls: r.cls, place: r.place, at: nowMs }))];
-  if (!saveUp()) { S.upcoming.hand = before; return { error: NOT_SAVED }; }
+  if (!res.add.length) { S.upcoming = cur; return { added: 0, dup: res.dup, past: res.past, bad: res.bad }; }
+  const taken = ids(cur.hand);
+  const next = { ...cur, hand: [...cur.hand, ...res.add.map((r) => ({ id: newId(nowMs, taken), n: r.n, date: r.date, time: r.time, cls: r.cls, place: r.place, at: nowMs }))] };
+  if (!saveUp(next)) return { error: NOT_SAVED };
+  S.upcoming = next;
   return { added: res.add.length, dup: res.dup, past: res.past, bad: res.bad };
 }
