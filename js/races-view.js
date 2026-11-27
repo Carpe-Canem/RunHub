@@ -56,10 +56,9 @@ function routeCard(r) {
     h('span', { class: 'rc-time' }, led(fmtTime(r.t)))));
 }
 
-function trend(model, filter, list, unit) {
-  if (filter === 'other') return null;
-  const cls = filter === 'all' ? (list[1] && list[1].key !== 'other' ? list[1].key : null) : filter;
-  if (!cls) return null;
+function trend(model, filter, unit) {
+  if (filter === 'all' || filter === 'other') return null;
+  const cls = filter;
   const pts = paceTrend(model, cls);
   const label = `Pace trend · ${cls}`;
   return h('div', { class: 'card trend' },
@@ -159,7 +158,7 @@ export function renderRaces(model, up = []) {
   box.replaceChildren(...[
     title,
     chipBar,
-    trend(model, filter, list, unit),
+    trend(model, filter, unit),
     upEl,
     h('div', { class: 'finished-head' },
       h('h3', { class: 'sub-title' }, 'Finished'),
