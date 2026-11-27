@@ -15,7 +15,7 @@ import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { demoRaces } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
-import { loadEnv, enrich } from './enrich-sync.js';
+import { loadEnv, enrich, placesOn } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
@@ -104,7 +104,7 @@ const RACE_VIEWS = ['hub', 'races', 'race', 'data'];
 
 function raceModel() {
   try {
-    return Object.assign(buildRaces(S.races.races, S.raceDet, units()), { scanning: !(S.races.scan && S.races.scan.done) });
+    return Object.assign(buildRaces(S.races.races, S.raceDet, units(), S.raceEnv ? { wx: S.raceEnv.wx, pl: placesOn() ? S.raceEnv.pl : {} } : undefined), { scanning: !(S.races.scan && S.races.scan.done) });
   } catch (e) { console.error(e); return { failed: true }; }
 }
 
@@ -138,7 +138,7 @@ function onRoute(route, prev) {
   if (prev) window.scrollTo(0, route.view === 'race' ? 0 : scrolls[route.view] || 0);
 }
 
-function setDemoRaces() { const d = demoRaces(); S.races = d.races; S.raceDet = d.det; }
+function setDemoRaces() { const d = demoRaces(); S.races = d.races; S.raceDet = d.det; S.raceEnv = d.env; }
 
 function startDemo() {
   S.demo = true; S.cache = demoCache(); setDemoRaces(); S.error = null;

@@ -2,6 +2,7 @@
 import { UNIT_M, RUN_TYPES } from './core.js';
 import { STANDARDS, classColour, classify, seriesKey, agePlace, isVirtual } from './race-rules.js';
 import { decodePolyline } from './legends-model.js';
+import { pointKey } from './places.js';
 
 export const isRace = (a) => RUN_TYPES.includes(a.sport_type || a.type) && a.workout_type === 1;
 
@@ -36,8 +37,10 @@ export function reduceProfile(distance, altitude, max) {
 
 const clsOrder = (cls) => { const i = STANDARDS.findIndex((s) => s.cls === cls); return i < 0 ? STANDARDS.length : i; };
 
-export function buildRaces(summaries, details, unit) {
+// env = {wx: {raceId: weather}, pl: {pointKey: place}}, both optional. Weather stays metric here; views convert.
+export function buildRaces(summaries, details, unit, env) {
   const per = UNIT_M[unit] || UNIT_M.mi;
+  const wxs = (env && env.wx) || {}, pls = (env && env.pl) || {};
   const rows = Object.values(summaries || {}).map((s) => {
     const dt = details && details[s.id];
     const det = dt && !dt.missing ? dt : null;
@@ -51,6 +54,8 @@ export function buildRaces(summaries, details, unit) {
       virtual: isVirtual(s.st, null) || !!(det && det.virt),
       record: false, gap: null, ag: det ? det.ag : null, key: seriesKey(s.n), others: [],
       pts: s.p ? decodePolyline(s.p) : (s.pts || null), det,
+      wx: wxs[s.id] && !wxs[s.id].none ? wxs[s.id] : null,
+      place: s.ll && pls[pointKey(s.ll)] ? pls[pointKey(s.ll)].n || null : null,
     };
   });
   rows.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0));

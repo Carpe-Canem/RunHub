@@ -126,3 +126,28 @@ test('a race with no time (0 or missing) never wins its class record', () => {
   assert.equal(m.byId.c.record, false);
   assert.equal(m.byId.a.gap, null);   // no "+-41:40 off your record"
 });
+
+test('buildRaces joins weather by race id and the place by rounded start point', () => {
+  const two = { r1: S('r1', 'A 5K', '2024-01-01T08:00:00', 1500, 5000, { ll: [10.123, 20.456] }),
+    r2: S('r2', 'B 5K', '2024-02-01T08:00:00', 1500, 5000, { ll: null }),
+    r3: S('r3', 'C 5K', '2024-03-01T08:00:00', 1500, 5000, { ll: [30.5, 40.5] }),
+    r4: S('r4', 'D 5K', '2024-04-01T08:00:00', 1500, 5000, { ll: [50.5, 60.5] }) };
+  const wx = { r1: { t: 12, f: 11, h: 50, w: 9, p: 0, c: null, at: 5, prov: false }, r2: { t: 1, f: 1, h: 1, w: 1, p: 0, c: 1, at: 5, prov: false }, r4: { at: 9, none: true } };
+  const pl = { '10.12,20.46': { n: 'Riverbend, CO', at: 1 }, '30.5,40.5': { n: null, at: 1 }, '50.5,60.5': { n: 'Orchard, CO', at: 1 } };
+  const m = buildRaces(two, {}, 'mi', { wx, pl });
+  assert.equal(m.byId.r1.wx.t, 12);
+  assert.equal(m.byId.r1.place, 'Riverbend, CO');
+  assert.equal(m.byId.r2.place, null);          // no start point
+  assert.equal(m.byId.r3.place, null);          // {n: null}
+  assert.equal(m.byId.r3.wx, null);
+  assert.equal(m.byId.r4.wx, null);             // none: true is no weather (Ruling A)
+  const bare = buildRaces(two, {}, 'mi');
+  assert.equal(bare.byId.r1.wx, null);
+  assert.equal(bare.byId.r1.place, null);
+});
+
+test('weather stays metric in the model whatever the unit', () => {
+  const one = { r1: S('r1', 'A 5K', '2024-01-01T08:00:00', 1500, 5000) };
+  const env = { wx: { r1: { t: 12, f: 11, h: 50, w: 9, p: 0, c: null, at: 5, prov: false } }, pl: {} };
+  assert.equal(buildRaces(one, {}, 'km', env).rows[0].wx.t, buildRaces(one, {}, 'mi', env).rows[0].wx.t);
+});

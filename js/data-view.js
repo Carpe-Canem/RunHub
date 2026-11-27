@@ -9,7 +9,7 @@ import { rescan, saveRaces } from './races-sync.js';
 import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
 import { enrich, placesOn, setPlaces } from './enrich-sync.js';
-import { PLACE_LOOKUPS } from './places.js';
+import { PLACE_LOOKUPS, pointKey } from './places.js';
 
 // races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
 export function renderData(model, c, races) {
@@ -46,7 +46,8 @@ function raceItems(races) {
   const rc = S.races;
   if (!rc) return [['Race history', 'Not loaded yet'], ['Race details', '–'], ['Races by class', '–']];
   if (races && races.failed) return [['Race history', RACES_DOWN]];
-  const m = races || buildRaces(rc.races, S.raceDet || {}, units());
+  const env = S.raceEnv || { wx: {}, pl: {} };
+  const m = races || buildRaces(rc.races, S.raceDet || {}, units(), { wx: env.wx, pl: placesOn() ? env.pl : {} });
   const when = (ms, o) => new Date(ms).toLocaleDateString(undefined, o);
   const sc = rc.scan || {};
   const history = sc.done
@@ -57,7 +58,15 @@ function raceItems(races) {
   const byClass = m.classes.length
     ? `${m.classes.map((x) => `${x.cls} ${x.count}`).join(' · ')} · ${gps} classed by GPS distance`
     : 'None yet';
-  return [['Race history', history], ['Race details', `${read} of ${m.rows.length} read`], ['Races by class', byClass]];
+  const withLl = m.rows.filter((r) => r.ll);
+  const wxRows = withLl.filter((r) => env.wx[r.id] && !env.wx[r.id].none);
+  const prov = wxRows.filter((r) => env.wx[r.id].prov).length;
+  const weather = `${wxRows.length} of ${withLl.length} races with a start point${prov > 0 ? `, ${prov} provisional` : ''}`;
+  const points = new Set(withLl.map((r) => pointKey(r.ll)));
+  const named = [...points].filter((k) => env.pl[k] && env.pl[k].n).length;
+  const places = placesOn() ? `${named} of ${points.size} start points named` : 'Lookups off';
+  return [['Race history', history], ['Race details', `${read} of ${m.rows.length} read`], ['Races by class', byClass],
+    ['Race weather', weather], ['Place names', places]];
 }
 
 function rescanRow() {

@@ -1,12 +1,14 @@
 // Invented races for the ?demo showcase. Every name, place and number here is made up.
 import { DAY, todayIdx } from './core.js';
 import { emptyRaces } from './races-sync.js';
+import { pointKey } from './places.js';
 
 const MI = 1609.344;
 const p2 = (n) => String(n).padStart(2, '0');
 
 // [name or (year) => name, days ago, GPS metres, seconds, options]
 // o: ll=false for no GPS, st for sport type, ag for age-group place, virt for a detail-only virtual flag
+const TOWNS = ['Riverbend', 'Frostbite', 'Canyon', 'Library Hill', 'Creekside', 'Orchard', 'Old Mill', 'Water Tower', 'Rail Trail'];
 const SPECS = [
   [(y) => `Riverbend 10K ${y}`, 1130, 10080, 2700, {}],
   [() => 'Riverbend 10K', 760, 10040, 2585, {}],
@@ -34,7 +36,7 @@ export function demoRaces() {
   let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
   const t0 = todayIdx();
   const out = emptyRaces();
-  const det = {};
+  const det = {}, env = { v: 1, wx: {}, pl: {} };
   SPECS.forEach(([name, ago, m, t, o], k) => {
     const id = String(8000 + k);
     const day = t0 - ago;
@@ -67,8 +69,15 @@ export function demoRaces() {
     };
     det[id] = { at: Date.now(), ag: o.ag || null, virt: !!o.virt, cal: Math.round(m / 1000 * 62), sp: { mi: mkSplits(MI), km: mkSplits(1000) } };
     if (prof) det[id].prof = prof;
+    if (ll) {
+      const t = Math.round((4 + rnd() * 18) * 10) / 10;
+      env.wx[id] = { t, f: Math.round((t - 1 - rnd() * 3) * 10) / 10, h: Math.round(35 + rnd() * 50), w: Math.round((2 + rnd() * 16) * 10) / 10,
+        p: rnd() < 0.2 ? Math.round(rnd() * 20) / 10 : 0, c: Math.round(rnd() * 100), at: Date.now(), prov: false };
+      const pk = pointKey(ll);
+      if (!env.pl[pk]) env.pl[pk] = { n: `${TOWNS[Object.keys(env.pl).length % TOWNS.length]}, CO`, at: Date.now() };
+    }
   });
   out.scan = { done: true, started: Date.now(), cursor: 0, seen: [] };
   out.lastScan = Date.now();
-  return { races: out, det };
+  return { races: out, det, env };
 }

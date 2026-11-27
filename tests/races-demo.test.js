@@ -40,3 +40,17 @@ test('demo race names are invented', () => {
   const re = new RegExp(`^${place}(?: ${tok})*$`);
   for (const s of Object.values(demoRaces().races.races)) assert.match(s.n, re);
 });
+
+test('demo weather and places', async () => {
+  const { pointKey } = await import('../js/places.js');
+  const d = demoRaces();
+  const words = ['Riverbend', 'Frostbite', 'Canyon', 'Library Hill', 'Creekside', 'Orchard', 'Old Mill', 'Water Tower', 'Rail Trail'];
+  for (const r of Object.values(d.races.races)) {
+    const w = d.env.wx[r.id];
+    if (r.ll) { assert.ok(w && w.prov === false && typeof w.t === 'number' && w.at, r.id); assert.ok(d.env.pl[pointKey(r.ll)], r.id); }
+    else assert.equal(w, undefined);
+  }
+  const names = Object.values(d.env.pl);
+  assert.ok(names.length > 0);
+  for (const p of names) { assert.match(p.n, /^.+, CO$/); assert.ok(words.includes(p.n.slice(0, -4)), p.n); }
+});
