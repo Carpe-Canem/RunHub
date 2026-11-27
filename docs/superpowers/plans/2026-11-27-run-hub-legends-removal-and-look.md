@@ -119,6 +119,13 @@ when the owner says.
 
 ## Phase 6: Announcer hub and Live board (v42)
 
+> **Note, 2026-11-27:** the hub's sentences ("Announcer") and the dot-matrix ticker in the top bar were
+> replaced after the owner reviewed v42. The design is
+> `docs/superpowers/specs/2026-11-27-hub-at-a-glance-and-ziggy-speaks-design.md` and the plan is
+> `docs/superpowers/plans/2026-11-27-hub-at-a-glance-and-ziggy-speaks.md` (v43). Ziggy's dot-matrix
+> sprite is retired there too. The lamp test, the run-up, the finish line and the app icon below still
+> stand. The rest of this phase is left as history.
+
 ### Announcer: the hub as sentences
 
 Layout, top to bottom. Left aligned, one column, max about 34 characters per line on a phone.
