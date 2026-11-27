@@ -16,7 +16,7 @@
 
 **Out:** weather, place names, the CARTO map and the Legends map change (phase 3); Up next, Add race, the bio reader, export and import, the hub's Races card with podiums, personal-record tiles, latest-results strip and countdown (phase 4). The race page shows no temperature in this phase; the "temperature" stat and weather tag arrive in phase 3.
 
-**For the owner at plan review:** the pace trend chart and the Rows/Routes list modes are in the spec's Races view but not named in its phasing line. This plan includes both. Say if either should wait.
+**Approved by the owner 2026-11-26**, with subagent-driven execution; the units setting and the import-map hash were accepted. The pace trend chart and Rows/Routes modes stay in.
 
 ## Global Constraints
 
@@ -178,7 +178,7 @@ Rules the tests pin:
 - Consumes: `isRace`, `summaryFrom`, `detailFrom`, `reduceProfile` (Task 3); `api`, `RateLimited`, `store`, `S`.
 - Produces:
   - `emptyRaces(): RaceCache = {v: 1, races: {}, scan: {done: false, started: 0, cursor: 0, seen: []}, lastScan: 0}`.
-  - `loadRaces(id): RaceCache` and `loadRaceDet(id): {[id]: Detail & {pr?: [number, number][]}}`. Each starts fresh if the stored value is missing or the wrong version.
+  - `loadRaces(id): RaceCache` and `loadRaceDet(id): {[id]: Detail & {prof?: [number, number][]}}`. Each starts fresh if the stored value is missing or the wrong version.
   - `saveRaces(): void` and `saveRaceDet(): void`, which write `S.races` and `S.raceDet` and do nothing in demo.
   - `noteListed(rc, list: object[], after: number): void`.
   - `scanHistory(rc, call = api): Promise<void>`.
@@ -193,7 +193,7 @@ Behaviour:
 - **`fetchRaceDetails`.** Takes races with no entry in `rd`, newest first. It calls `GET /activities/<id>` and stores `detailFrom(a)`; a 404 (`null`) stores `{at, missing: true}`. It saves every 5 races.
 - **`fetchProfile`.** Calls `GET /activities/<id>/streams?keys=altitude,distance&key_by_type=true` and returns `reduceProfile(…, 80)`, or `null` when there is no altitude.
 - **`saveRaces` when storage is full.** It deletes `lw.raceDet.<id>`, empties `S.raceDet` and tries again. If that still fails, it sets `S.warn` to the existing storage-full sentence.
-- **`saveRaceDet` when storage is full.** It drops every `pr` profile, tries again, then sets `S.warn`.
+- **`saveRaceDet` when storage is full.** It drops every `prof` profile, tries again, then sets `S.warn`.
 - **In `legends-sync.js`.** `syncActivities` calls `noteListed(S.races, list, after)` once, with every item it listed across all its pages. That is the raw list, before the run filter, so `Ride`s never become races. `sync()` then calls `scanHistory(S.races)` and `fetchRaceDetails(S.races, S.raceDet, api, …)` after `syncLeaders`. Progress labels are "Scanning your race history" and "Reading race details: N of M", with `bus.emit('data')` after each.
 - **In `main.js`.** `enter()` and `init()` load `S.races` and `S.raceDet` next to `S.cache`. `wipe()` deletes `lw.races.<id>` and `lw.raceDet.<id>` and clears both.
 
@@ -220,7 +220,7 @@ Behaviour:
 
 **Interfaces:**
 - Consumes: `buildRaces` (Task 3), `todayIdx`, `DAY`.
-- Produces: `demoRaces(): {races: RaceCache, det: {[id]: Detail}}`. These are 20 invented races dated relative to today, with `pts` instead of `p`, the start points near the existing demo's segments, splits for both units, and an 80-point `pr` profile on each race that has GPS. `startDemo` and the `?demo` start set `S.races`/`S.raceDet` from it, and `exitDemo` clears them.
+- Produces: `demoRaces(): {races: RaceCache, det: {[id]: Detail}}`. These are 20 invented races dated relative to today, with `pts` instead of `p`, the start points near the existing demo's segments, splits for both units, and an 80-point `prof` profile on each race that has GPS. `startDemo` and the `?demo` start set `S.races`/`S.raceDet` from it, and `exitDemo` clears them.
 
 - [ ] **Step 1: Write the failing test** `demo races cover every case the spec names`. `buildRaces(demo, 'mi')` has:
   - at least one `record` in each of 5K, 10K and Half;
@@ -300,7 +300,7 @@ The page, top to bottom:
 2. **Clock.** Class badge, the date and start time from `d`, the name, `led(fmtTime(t), {ghost: true})` and `contextLine`.
 3. **Stats.** Pace, official distance, climb.
 4. **Tags.** Record, age-group place ("3rd in age group"), Virtual, Short course.
-5. **Course.** A large `routeTile` with the start and finish, then the elevation chart. Its profile is read from `S.raceDet[id].pr`, or fetched with `fetchProfile` on first open (not in demo) and saved. While loading it reads "Loading elevation…". On `RateLimited` or an error it reads "Elevation not available yet", and the page opens again without it.
+5. **Course.** A large `routeTile` with the start and finish, then the elevation chart. Its profile is read from `S.raceDet[id].prof`, or fetched with `fetchProfile` on first open (not in demo) and saved. While loading it reads "Loading elevation…". On `RateLimited` or an error it reads "Elevation not available yet", and the page opens again without it.
 6. **Splits.** In the units setting's set (`det.sp.mi` or `det.sp.km`), or "Splits not available yet" before details arrive.
 7. **Same race, other years.** Each `others` race with its year, time, pace, and a link.
 8. **From Strava.** Relative effort, Strava PRs (or "achievements" from `ach`), GPS distance, average and maximum heart rate, calories, and "View on Strava" (`https://www.strava.com/activities/<id>`, `rel="noopener"`). Rows with no value are left out.
