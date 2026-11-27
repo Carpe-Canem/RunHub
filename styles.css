@@ -210,3 +210,6 @@ footer a { color: #B9C5E0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+.units { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 14px; }
+.units .radio { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer; }

@@ -104,7 +104,7 @@ function wipe() {
   const id = (t && t.athleteId) || S.athleteId;
   store.del(rateKey());
   if (id) store.del(`lw.cache.${id}`);
-  store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe);
+  store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe); store.del(K.units); store.del(K.ui);
   clearTimeout(S.resumeTimer);
   Object.assign(S, { cache: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }

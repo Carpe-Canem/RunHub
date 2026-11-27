@@ -28,13 +28,20 @@ export const DAY = 864e5;
 
 export const Q = 15 * 60e3;
 
-export const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState', probe: 'lw.probe' };
+export const K = { creds: 'lw.creds', token: 'lw.token', state: 'lw.oauthState', probe: 'lw.probe', units: 'lw.units', ui: 'lw.ui' };
 
 export const store = {
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
   del(k) { try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
+
+// Display units: metres per unit. The choice lives in this browser only.
+export const UNIT_M = { mi: 1609.344, km: 1000 };
+
+export function units() { const u = store.get(K.units); return u === 'km' ? 'km' : 'mi'; }
+
+export function setUnits(u) { return u in UNIT_M && store.set(K.units, u); }
 
 export class UserError extends Error {}
 

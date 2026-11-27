@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { todayIdx, DAY } from '../js/core.js';
-import { emptyCache, loadCache, legendCount, compute, riskSummary, decodePolyline } from '../js/legends-model.js';
+import { todayIdx, DAY, setUnits } from '../js/core.js';
+import { emptyCache, loadCache, legendCount, compute, riskSummary, decodePolyline, miles } from '../js/legends-model.js';
 
 const iso = (daysAgo) => `${new Date((todayIdx() - daysAgo) * DAY).toISOString().slice(0, 10)}T07:00:00Z`;
 function fixture() {
@@ -46,4 +46,19 @@ test('an existing version-1 cache is still read after the upgrade', () => {
   assert.equal(loadCache(42).lastSync, 123);
   assert.equal(loadCache(99).lastSync, 0);
   delete globalThis.localStorage;
+});
+
+test('miles() follows the units setting', () => {
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
+  try {
+    for (const athleteUnits of ['mi', 'km']) {
+      const c = emptyCache(); c.athlete = { id: 1, units: athleteUnits };
+      c.acts.r1 = { s: 0, d: iso(0), m: 5000, v: 'everyone' };
+      setUnits('km');
+      let m = miles(c); assert.equal(m.unit, 'km'); assert.equal(m.today, 5);
+      setUnits('mi');
+      m = miles(c); assert.equal(m.unit, 'mi'); assert.ok(Math.abs(m.today - 3.1069) < 0.001);
+    }
+  } finally { delete globalThis.localStorage; }
 });

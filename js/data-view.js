@@ -1,5 +1,5 @@
 // Data: sync and storage status, the field check (counts only, never values) and the setup link.
-import { S, K, bus, store, RUN_TYPES, WINDOW, LIMIT_15, LIMIT_DAY, UserError, RateLimited, dayOf, todayIdx, timeLabel, ago } from './core.js';
+import { S, K, bus, store, units, setUnits, RUN_TYPES, WINDOW, LIMIT_15, LIMIT_DAY, UserError, RateLimited, dayOf, todayIdx, timeLabel, ago } from './core.js';
 import { $, h, table } from './dom.js';
 import { api, token, creds, redirectUri, rateState } from './strava.js';
 import { encodeSetup } from './setup-link.js';
@@ -26,9 +26,17 @@ export function renderData(model, c) {
   if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(...probePanel());
+  box.append(unitsRow());
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
+}
+
+function unitsRow() {
+  const now = units();
+  const pick = (u, label) => h('label', { class: 'radio' },
+    h('input', { type: 'radio', name: 'units', value: u, checked: now === u, onchange: () => { setUnits(u); bus.emit('data'); } }), ` ${label}`);
+  return h('div', { class: 'units', role: 'radiogroup', 'aria-label': 'Units' }, h('strong', null, 'Units '), pick('mi', 'Miles'), ' ', pick('km', 'Kilometres'));
 }
 
 // The setup link is built when asked for and kept nowhere: not in storage, not in state, not in the log.

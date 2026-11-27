@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { store, dayOf, plural, bus, ghost } from '../js/core.js';
+import { store, dayOf, plural, bus, ghost, units, setUnits } from '../js/core.js';
 
 test('dayOf reads the local date and ignores the Z', () => {
   assert.equal(dayOf('2026-03-01T23:30:00Z'), Date.UTC(2026, 2, 1) / 864e5);
@@ -20,4 +20,22 @@ test('bus delivers to every listener', () => {
 });
 test('ghost turns every digit into 8 and keeps the rest', () => {
   assert.equal(ghost('1:02:33'), '8:88:88'); assert.equal(ghost('07'), '88'); assert.equal(ghost('--'), '--');
+});
+
+test("units() is 'mi' by default and for junk, 'km' after setUnits('km')", () => {
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
+  try {
+    assert.equal(units(), 'mi');
+    mem['lw.units'] = JSON.stringify('furlongs'); assert.equal(units(), 'mi');
+    assert.equal(setUnits('km'), true); assert.equal(units(), 'km');
+    assert.equal(setUnits('mi'), true); assert.equal(units(), 'mi');
+  } finally { delete globalThis.localStorage; }
+});
+test("setUnits('yards') returns false and leaves 'mi'", () => {
+  const mem = {};
+  globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
+  try {
+    assert.equal(setUnits('yards'), false); assert.equal(units(), 'mi'); assert.equal(mem['lw.units'], undefined);
+  } finally { delete globalThis.localStorage; }
 });

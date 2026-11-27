@@ -1,5 +1,5 @@
 // Local Legends: the cache and everything computed from it.
-import { store, S, DAY, WINDOW, REACH_GAP, dayOf, todayIdx, weekStart, plural } from './core.js';
+import { store, S, DAY, UNIT_M, units, WINDOW, REACH_GAP, dayOf, todayIdx, weekStart, plural } from './core.js';
 
 export function emptyCache() { return { v: 1, athlete: null, acts: {}, det: {}, eff: {}, seg: {}, lastStart: 0, lastSync: 0, lastFull: 0 }; }
 
@@ -62,8 +62,8 @@ export function compute(c) {
 }
 
 export function miles(c) {
-  const t0 = todayIdx(); const unit = c.athlete ? c.athlete.units : 'mi';
-  const f = unit === 'km' ? 1 / 1000 : 1 / 1609.344;
+  const t0 = todayIdx(); const unit = units();
+  const f = 1 / UNIT_M[unit];
   const td = new Date(t0 * DAY); const Y = td.getUTCFullYear(); const M = td.getUTCMonth(); const D = td.getUTCDate();
   const ws = weekStart(t0);
   const lySame = Date.UTC(Y - 1, M, D) / DAY; const ly0 = Date.UTC(Y - 1, 0, 1) / DAY;
