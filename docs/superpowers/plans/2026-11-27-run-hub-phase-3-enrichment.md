@@ -16,7 +16,7 @@
 
 **Out (phase 4):** hub content, Up next, the bio reader, Add race, export and import, countdown. **Out (parked, not planned):** duplicate "Races are not available" note in both wide panes; the elevation line dropped silently for a profile under 2 points.
 
-## Rulings made while planning (owner may overrule at review)
+## Rulings made while planning (accepted by the owner 2026-11-27; Task 8 kept)
 
 1. **Storage.** Weather and places go in a new key `lw.raceEnv.<athleteId>` = `{v: 1, wx: {<raceId>: Weather}, pl: {<pointKey>: Place}}`, not inside `lw.raceDet`, because the details pass treats any `lw.raceDet` entry as "detail read" and the spec makes each enrichment independent. Two new settings: `lw.map` (`'carto'` or `'osm'`; absent = automatic) and `lw.places` (`false` = lookups off; absent = on). Both leave paths remove all three.
 2. **Enrichment runs outside `sync()`.** `enrich()` uses `fetch` directly, never `api()`, so it neither spends nor waits on the Strava budget, and a Strava rate-limit pause does not hold back weather. One pass in flight at a time; a call during a pass queues exactly one more pass. It starts after the race cache loads and after each race scan. The demo never fetches.

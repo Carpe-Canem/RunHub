@@ -204,7 +204,9 @@ iPhone, reported by the owner the same day: the home-screen app has its own stor
 | Key | Holds |
 |---|---|
 | `lw.races.<athleteId>` | race summaries (ID, name, local start, times, distance, climb, start point, summary polyline, sport type) and scan state |
-| `lw.raceDet.<athleteId>` | per-race detail, weather and place, each with a fetched-at time |
+| `lw.raceDet.<athleteId>` | per-race detail, with a fetched-at time |
+| `lw.raceEnv.<athleteId>` | per-race weather and per-start-point place, each with a fetched-at time (amended 2026-11-27, phase 3 plan ruling 1: kept apart from `lw.raceDet` so a weather or place entry never reads as "detail read") |
+| `lw.map`, `lw.places` | map source override and the place-lookup switch (phase 3) |
 | `lw.upcoming.<athleteId>` | hand-added races |
 | `lw.ui` | list mode and last filter |
 
