@@ -1,6 +1,6 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { applySetup, ensureToken, revokeEverywhere } from '../js/strava.js';
+import { applySetup, ensureToken, revokeEverywhere, api } from '../js/strava.js';
 
 const FIELDS = { clientId: '123456', clientSecret: 'secret-abc', refreshToken: 'refresh-xyz', athleteId: 42, scope: 'read,activity:read_all' };
 let mem;
@@ -98,4 +98,18 @@ test('two concurrent ensureToken calls on an expired token share one refresh', a
   const c = await ensureToken(false);
   assert.equal(n, 2);
   assert.equal(c.access_token, 'access-2');
+});
+test('api marks a second 401 as an auth failure', async () => {
+  applySetup(FIELDS);
+  globalThis.fetch = async (url) => (String(url).includes('/oauth/token')
+    ? answer(200, { access_token: 'a', refresh_token: 'r', expires_at: 2000000000 })()
+    : answer(401, {})());
+  await assert.rejects(api('/athlete'), (e) => e.authFailed === true && /refused access/.test(e.message));
+});
+test('api and the token refresh mark an unreachable Strava as offline', async () => {
+  applySetup(FIELDS);
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(api('/athlete'), (e) => e.offline === true && /Couldn't reach Strava/.test(e.message));
+  mem['lw.token'] = JSON.stringify({ ...saved('lw.token'), access_token: 'a', expires_at: 2000000000 });
+  await assert.rejects(api('/athlete'), (e) => e.offline === true);
 });

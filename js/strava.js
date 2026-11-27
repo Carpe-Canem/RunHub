@@ -22,10 +22,13 @@ export function startAuth(clientId) {
   location.assign(`${AUTH_URL}?${p}`);
 }
 
+// Strava could not be reached at all; marked so a caller can tell it from an error Strava returned.
+const offline = () => Object.assign(new UserError("Couldn't reach Strava. Check your connection and try again."), { offline: true });
+
 async function tokenRequest(params) {
   let r;
   try { r = await fetch(TOKEN_URL, { method: 'POST', body: new URLSearchParams(params) }); }
-  catch { throw new UserError("Couldn't reach Strava. Check your connection and try again."); }
+  catch { throw offline(); }
   const body = await r.json().catch(() => ({}));
   if (!r.ok) {
     if (r.status === 400 || r.status === 401) {
@@ -126,13 +129,17 @@ export async function api(path, retried) {
   r.wn++; r.dn++; store.set(rateKey(), r);
   let res;
   try { res = await fetch(API + path, { headers: { Authorization: `Bearer ${t.access_token}` } }); }
-  catch { throw new UserError("Couldn't reach Strava. Check your connection and try again."); }
+  catch { throw offline(); }
   if (res.status === 429) {
     r.until = (Math.floor(Date.now() / Q) + 1) * Q; store.set(rateKey(), r);
     throw new RateLimited(r.until);
   }
   if (res.status === 401 && !retried) return api(path, true);
-  if (res.status === 401) throw new UserError('Strava refused access. Use “Forget this browser” on the Data page, then connect again.');
+  if (res.status === 401) {
+    const e = new UserError('Strava refused access. Use “Forget this browser” on the Data page, then connect again.');
+    e.authFailed = true;
+    throw e;
+  }
   if (res.status === 404) return null;
   if (!res.ok) throw new UserError(`Strava returned an error (${res.status}). Try again later.`);
   return res.json();

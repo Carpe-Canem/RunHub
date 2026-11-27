@@ -259,3 +259,25 @@ test('a race noteListed adds during a scan survives the end-of-scan prune', asyn
   noteListed(rc, [{ ...extra, id: 9002 }], T - 10 * 86400);
   assert.deepEqual(rc.scan.seen, []);
 });
+
+for (const [what, make] of [
+  ['refused', () => Object.assign(new UserError('Strava access expired or was revoked.'), { refused: true })],
+  ['a dead setup link', () => Object.assign(new UserError('This setup link no longer works.'), { linkDead: true })],
+  ['a 401 auth failure', () => Object.assign(new UserError('Strava refused access.'), { authFailed: true })],
+  ['offline', () => Object.assign(new UserError("Couldn't reach Strava."), { offline: true })],
+]) {
+  test(`fetchRaceDetails stops and passes on ${what} instead of skipping`, async () => {
+    const rc = S.races; const rd = S.raceDet;
+    noteListed(rc, ACTS.slice(0, 46), 0);
+    const calls = [];
+    const call = async (path) => {
+      calls.push(path);
+      if (path === '/activities/5015') throw make();
+      return { id: +path.split('/')[2], sport_type: 'Run' };
+    };
+    await assert.rejects(fetchRaceDetails(rc, rd, call), (e) => e instanceof UserError);
+    assert.deepEqual(calls, ['/activities/5000', '/activities/5015']);
+    assert.equal(S.warn, null);
+    assert.ok(saved('lw.raceDet.42').det['5000']);
+  });
+}

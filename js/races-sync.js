@@ -85,9 +85,13 @@ export async function scanHistory(rc, call = api) {
 
 export function rescan(rc) { rc.scan = freshScan(); }
 
-// One detail request per race not yet in rd, newest first. A rate-limit pause stops the pass (the resumed sync
-// picks up where it left off). Any other error skips that race for this pass only: it is not recorded, so the
-// next pass asks again, and the older races still get read.
+// Errors that would fail every remaining request too: lost access or no connection. The sync reports them.
+const stopsPass = (e) => !!(e && (e.refused || e.linkDead || e.authFailed || e.offline));
+
+// One detail request per race not yet in rd, newest first. A rate-limit pause, lost access or no connection
+// stops the pass (the sync says why; a resumed sync picks up where it left off). Any other error (a Strava
+// 5xx, an unexpected throw) skips that race for this pass only: it is not recorded, so the next pass asks
+// again, and the older races still get read.
 export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
   if (!rc || !rd) return;
   const todo = Object.values(rc.races).filter((r) => !rd[r.id]).sort((a, b) => b.s - a.s);
@@ -98,7 +102,7 @@ export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
       let a;
       try { a = await call(`/activities/${r.id}`); }
       catch (e) {
-        if (e instanceof RateLimited) throw e;
+        if (e instanceof RateLimited || stopsPass(e)) throw e;
         console.warn('Race detail request failed', e);
         a = undefined; skipped++;
       }
