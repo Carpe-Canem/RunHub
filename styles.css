@@ -13,6 +13,8 @@
   --gl: max(16px, env(safe-area-inset-left, 0px));
   --gr: max(16px, env(safe-area-inset-right, 0px));
   --tab: 56px;
+  /* The top and bottom safe areas, as tokens so a check can set a phone's. */
+  --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; }
@@ -25,7 +27,7 @@ body {
   font: 15px/1.5 var(--f);
   font-variant-numeric: tabular-nums;
   /* room for the fixed tab bar on narrow screens */
-  padding-bottom: calc(var(--tab) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--tab) + var(--sab));
 }
 a { color: var(--led); }
 code { font: 13px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--board); padding: 2px 6px; border-radius: 6px; word-break: break-all; }
@@ -51,39 +53,33 @@ p { margin: 0 0 10px; }
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* Top bar */
-.top { background: var(--bar); border-bottom: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); }
+.top { position: relative; background: var(--bar); border-bottom: 1px solid var(--line); padding-top: var(--sat); }
 .top-inner, main, footer { max-width: 1000px; margin: 0 auto; padding-left: var(--gl); padding-right: var(--gr); }
 .top-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-top: 8px; padding-bottom: 8px; min-height: 60px; }
 .top h1 { font-size: 17px; margin: 0; margin-right: auto; }
-/* On narrow screens the status has no box of its own: Refresh sits on the first row beside Data, and the strip
-   takes the second row, sharing it with the progress bar during a sync. Its basis is the row less the bar, so
-   it never fits on the first row, at any width, when Refresh is hidden. */
-.status { display: contents; }
-.status progress { order: 4; flex: none; width: 64px; height: 6px; accent-color: var(--led); }
-.status .btn { order: 1; flex: none; }
-/* The status as a dot-matrix sign. Upper case here only: on a sign it is the vernacular. */
-.ticker { order: 3; flex: 1 1 calc(100% - 78px); min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 10px; background: var(--board); border: 0; border-radius: 8px; font: inherit; color: inherit; text-align: left; }
-/* While it scrolls the strip is a button that stops it; the mark at its end says which way pressing goes. */
-.ticker:enabled { cursor: pointer; }
-.ticker:enabled::after { content: ""; flex: none; width: 8px; height: 10px; border: solid var(--mut); border-width: 0 3px; }
-.ticker.still:enabled::after { width: 0; border-width: 5px 0 5px 8px; border-color: transparent transparent transparent var(--mut); }
-.tk-dog { flex: none; }
-.tk-win { flex: 1 1 auto; min-width: 0; overflow: hidden; }
-.tk-text { display: inline-block; white-space: nowrap; vertical-align: middle; font: 900 15px/1.25 var(--fl); letter-spacing: .04em; text-transform: uppercase; color: var(--led); }
-.tk-sq { display: inline-block; width: .5em; height: .5em; margin: 0 .7em .1em; background: var(--led); opacity: .55; }
-.ticker.scroll .tk-text { animation: tk-slide var(--tk-s, 20s) linear infinite; }
-@keyframes tk-slide { to { transform: translateX(-50%); } }
-.ticker.alert .tk-text { white-space: normal; color: var(--slow); }
-.ticker.still .tk-text, .ticker.busy .tk-text { white-space: normal; }
-@media (min-width: 860px) {
-  .status { display: flex; align-items: center; gap: 10px; flex: 0 1 440px; min-width: 0; }
-  .ticker, .status progress, .status .btn { order: 0; }
-  .ticker { flex: 1 1 auto; }
-}
-.datalink { display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 8px; color: var(--mut); text-decoration: none; font-size: 13px; font-weight: 700; }
+/* The sync status is also the refresh button. On narrow screens the row reads title, status, Data; at 860 px and
+   up the document's own order is the layout, so the status ends the bar. */
+.status { order: 1; display: flex; align-items: center; min-width: 0; }
+.sync { display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 2px; font: 600 13px var(--f); color: var(--mut); background: none; border: 0; border-radius: 8px; white-space: nowrap; cursor: pointer; }
+.sync[aria-disabled="true"], .sync.plain { cursor: default; }
+.sync-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; }
+.sync-dot.ok { background: var(--go); }
+.sync-dot.warn { margin: 0; padding: 0; border: 0; background: var(--led); }
+.sync-dot.bad { background: var(--slow); }
+/* A long sentence goes on a row of its own. The two-class .warn rules also undo the page's .warn box. */
+.status-note { order: 5; flex: 1 1 100%; margin: 0; font-size: 12px; font-weight: 600; }
+.status-note.warn { max-width: none; margin: 0; padding: 0; border: 0; color: var(--led); }
+.status-note.bad { color: var(--slow); }
+/* A sync's progress is a bar along the bottom edge of the top bar. */
+#progress { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; -webkit-appearance: none; appearance: none; border: 0; background: var(--line); }
+#progress::-webkit-progress-bar { background: var(--line); }
+#progress::-webkit-progress-value { background: var(--led); }
+#progress::-moz-progress-bar { background: var(--led); }
+.datalink { order: 2; display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; border-radius: 8px; color: var(--mut); text-decoration: none; font-size: 13px; font-weight: 700; }
+@media (min-width: 860px) { .status, .datalink { order: 0; } }
 
 /* Navigation: a tab bar at the bottom on narrow screens, inline in the top bar on wide ones */
-#nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--bar); border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--bar); border-top: 1px solid var(--line); padding: 0 env(safe-area-inset-right, 0px) var(--sab) env(safe-area-inset-left, 0px); }
 #nav a { display: flex; align-items: center; justify-content: center; min-height: var(--tab); color: var(--mut); text-decoration: none; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 #nav a[aria-current="page"] { color: var(--led); }
 @media (min-width: 860px) {
@@ -208,7 +204,7 @@ details.weeks { max-width: 560px; margin: 4px 0 6px; }
 .toggle { display: inline-flex; background: var(--panel); border-radius: 10px; padding: 3px; gap: 2px; }
 .seg-btn { min-height: 44px; min-width: 72px; padding: 0 14px; font: inherit; font-size: 13px; font-weight: 700; color: var(--mut); background: none; border: 0; border-radius: 8px; cursor: pointer; }
 .seg-btn[aria-pressed="true"] { background: var(--line); color: var(--tx); }
-.year-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; margin: 0; padding: 8px 0 6px; background: var(--night); color: var(--mut); font-size: 12px; font-weight: 800; letter-spacing: .14em; }
+.year-head { position: sticky; top: var(--sat); z-index: 5; margin: 0; padding: 8px 0 6px; background: var(--night); color: var(--mut); font-size: 12px; font-weight: 800; letter-spacing: .14em; }
 .race-list, .route-grid { list-style: none; margin: 0 0 6px; padding: 0; }
 .race-list li + li { border-top: 1px solid var(--line); }
 .race-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 60px; padding: 8px 4px; color: inherit; text-decoration: none; border-radius: 8px; }
@@ -384,7 +380,6 @@ footer a { color: #B9C5E0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
-  .tk-text { white-space: normal; }   /* the strip never scrolls, so a long line wraps */
 }
 
 .units { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 14px; }

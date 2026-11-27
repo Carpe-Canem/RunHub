@@ -13,7 +13,7 @@ import { S, K, bus, store, UserError, units } from './core.js';
 import { $, h, motionOK } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
-import { loadCache, demoCache, miles } from './runs-model.js';
+import { loadCache, demoCache } from './runs-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
@@ -28,9 +28,7 @@ import { dropCourseMap, closeCourseDialog } from './race-map.js';
 import { openAddSheet, closeAddSheet } from './add-race.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
-import { statusOf, tickerText, tickerPose, stripMode, SEP } from './ticker.js';
-import { ziggy } from './ziggy.js';
-import { daysText, isoDay } from './upcoming.js';
+import { statusOf, statusRow } from './status.js';
 
 // Views that exist so far. 'race' (one race) belongs to the Races section: on wide screens the list and
 // the race sit side by side (#dash.split); on narrow ones CSS shows one of them, by #dash's data-view.
@@ -40,78 +38,42 @@ const sectionOf = (view) => (view === 'race' ? 'races' : view);
 const scrolls = {};
 let raceFrom = null;   // 'hub' or 'races' when this session opened the current race from there; Back then goes back
 
-// The status: a dot-matrix strip for the eye (hidden from screen readers) and #statusText, a polite live region
-// that is only written when what it says changes, so each state is announced once.
+// The status: a line for the eye, which is also the refresh button, and #statusText, a polite live region that
+// is only written when what it says changes, so each state is announced once.
 function renderStatus() {
-  const prog = $('progress'); const btn = $('refreshBtn');
+  const prog = $('progress');
   const connected = !S.demo && !!token();
-  btn.hidden = !connected || S.syncing;
-  const st = statusOf({
+  const s = {
     demo: S.demo, connected, syncing: S.syncing, progress: S.progress, error: S.error, pausedUntil: S.pausedUntil,
     lastSync: S.cache && S.cache.lastSync, warn: S.warn, now: Date.now(),
-  });
+  };
+  const st = statusOf(s);
   const live = $('statusText');
   if (live.textContent !== st.live) live.textContent = st.live;
   const p = st.state === 'sync' ? S.progress : null;
   prog.hidden = !p;
   if (p && p.total) { prog.max = p.total; prog.value = p.done; } else if (p) prog.removeAttribute('value');
-  // The strip is for the eye only: if drawing it throws, the page and the announced status carry on.
-  try { drawTicker(st); } catch (e) { console.error(e); }
+  // The row is for the eye only: if drawing it throws, the page and the announced status carry on.
+  try { drawStatus(statusRow(s, st)); } catch (e) { console.error(e); }
 }
 
-// What the strip last drew, so a status redraw that changes nothing leaves a scrolling strip alone.
-// still: the user pressed the strip to stop it scrolling (until the page is reloaded).
-const strip = { text: null, alert: false, busy: false, pose: null, still: false, width: 0 };
-
-function drawTicker(st) {
-  const box = $('ticker');
-  box.hidden = st.state === 'off';
-  if (box.hidden) { strip.text = null; return; }   // fitted afresh when it shows again
-  let next = null; let mi = null;
-  if (st.state === 'idle' || st.state === 'demo') {
-    // Either may throw on bad stored data: the hub says so, and the strip just leaves that part out.
-    try { const r = nextRows()[0]; if (r) next = { name: r.n, when: daysText(r, isoDay(new Date())) }; } catch { /* left out */ }
-    try { if (S.cache && S.cache.athlete) mi = miles(S.cache); } catch { /* left out */ }
-  }
-  const pose = tickerPose(st.state);
-  if (pose !== strip.pose) { strip.pose = pose; $('tickerDog').replaceChildren(ziggy(pose, 2)); }
-  const text = tickerText({ status: st, next, mi });
-  const alert = st.state === 'error' || st.state === 'paused';
-  const busy = st.state === 'sync';
-  if (text === strip.text && alert === strip.alert && busy === strip.busy) return;
-  strip.text = text; strip.alert = alert; strip.busy = busy;
-  box.classList.toggle('alert', alert);
-  box.classList.toggle('busy', busy);
-  fitTicker();
-}
-
-// The strip scrolls only when its text is wider than it is. An error, a pause and a sync's progress never
-// scroll: CSS wraps them.
-// Screen readers get the status from #statusText, so the strip is hidden from them, except while it can scroll:
-// then it is a button that stops and restarts the scrolling (moving text must be stoppable).
-function fitTicker() {
-  layTicker();
-  // Noted after laying out: the stop mark at the strip's end takes room from the text when it shows.
-  strip.width = $('tickerText').parentNode.clientWidth;
-}
-
-function layTicker() {
-  const box = $('ticker'); const el = $('tickerText');
-  if (strip.text == null || box.hidden) return;
-  const square = () => h('i', { class: 'tk-sq' });
-  const parts = () => strip.text.split(SEP).flatMap((s, i) => (i ? [square(), s] : [s]));
-  box.classList.remove('scroll', 'still');
-  el.replaceChildren(...parts());
-  const mode = stripMode({ wide: el.scrollWidth > el.parentNode.clientWidth, alert: strip.alert, busy: strip.busy, still: strip.still, motion: motionOK() });
-  box.disabled = !mode.control;
-  if (mode.control) { box.removeAttribute('aria-hidden'); box.setAttribute('aria-label', strip.still ? 'Scroll the status strip' : 'Stop the status strip scrolling'); }
-  else { box.setAttribute('aria-hidden', 'true'); box.removeAttribute('aria-label'); }
-  if (mode.control && !mode.scroll) box.classList.add('still');   // stopped: the whole line, wrapped
-  if (!mode.scroll) return;
-  // Twice over, each copy ending in a square, so sliding by half its width loops without a jump.
-  el.append(square(), ...parts(), square());
-  box.style.setProperty('--tk-s', `${Math.max(10, Math.round(el.scrollWidth / 2 / 40))}s`);
-  box.classList.add('scroll');
+// row: from statusRow, or null when not connected. The demo is plain text, with nothing to press. A row that
+// cannot be pressed is marked aria-disabled, not disabled, so a button with focus keeps it through a sync.
+function drawStatus(row) {
+  const btn = $('refreshBtn'); const plain = $('statusPlain'); const note = $('statusNote');
+  const demo = !!row && S.demo;
+  btn.hidden = !row || demo;
+  plain.hidden = !demo;
+  note.hidden = !(row && row.note);
+  if (!row) return;
+  plain.textContent = demo ? row.text : '';
+  $('syncText').textContent = row.text;
+  $('syncDot').className = `sync-dot ${row.dot || ''}`;
+  $('syncDot').hidden = !row.dot;
+  $('syncArrow').hidden = !row.arrow;
+  if (row.press) btn.removeAttribute('aria-disabled'); else btn.setAttribute('aria-disabled', 'true');
+  note.textContent = row.note || '';
+  note.className = `status-note ${row.tone || ''}`;
 }
 
 // Lamp test: once per page load, on the first connected draw, every clock digit shows all its cells lit.
@@ -362,8 +324,7 @@ function wireSetup() {
   });
   $('demoBtn').addEventListener('click', startDemo);
   $('exitDemoBtn').addEventListener('click', exitDemo);
-  $('refreshBtn').addEventListener('click', () => sync(true));
-  $('ticker').addEventListener('click', () => { strip.still = !strip.still; fitTicker(); });
+  $('refreshBtn').addEventListener('click', () => { if ($('refreshBtn').getAttribute('aria-disabled') !== 'true') sync(true); });
   $('addRaceBtn').addEventListener('click', (e) => openAddSheet(e.currentTarget));
   $('disconnectBtn').addEventListener('click', () => (S.demo ? exitDemo() : leave(true)));
   $('forgetBtn').addEventListener('click', () => leave(false));
@@ -417,17 +378,6 @@ async function init() {
   startRouter({ enabled: ENABLED, onRoute });   // draws the first view
   if (t) { enrich(); sync(false); }
   setInterval(renderStatus, 60e3);
-  let fit = null;
-  // Only a change of width matters: a phone browser's toolbar sliding away resizes the window on every scroll,
-  // and fitting again would send a scrolling strip back to its start.
-  window.addEventListener('resize', () => {
-    clearTimeout(fit);
-    fit = setTimeout(() => { if ($('tickerText').parentNode.clientWidth !== strip.width) fitTicker(); }, 150);
-  });
-  // The strip's font arrives after it is first drawn (later still when the page opened on the setup screen)
-  // and is wider than its stand-in: measure again whenever fonts finish loading.
-  if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', fitTicker);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTicker);
   // Another tab added, removed or imported races, or wiped this browser: show what is stored now.
   window.addEventListener('storage', (e) => {
     if (S.demo || !S.athleteId || (e.key !== null && e.key !== `lw.upcoming.${S.athleteId}`)) return;

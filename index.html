@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-NDRMAimCyWjuvypxC0tevgyVe6QaHiBYH9XgN3uctEA=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ooZ9iajzEONv9RQOQCXUhQVhtBpMqieMqixWrCn1/cY=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Run Hub</title>
   <meta name="description" content="A personal running board: your races, what's coming up, and your mileage against your normal.">
@@ -30,10 +30,11 @@
       <button type="button" id="addRaceBtn" class="btn small primary wide-only" hidden>Add race</button>
       <div class="status" id="status">
         <span id="statusText" class="vh" role="status" aria-live="polite"></span>
-        <button type="button" class="ticker" id="ticker" aria-hidden="true" disabled hidden><span class="tk-dog" id="tickerDog" aria-hidden="true"></span><span class="tk-win" aria-hidden="true"><span class="tk-text" id="tickerText"></span></span></button>
-        <progress id="progress" aria-label="Sync progress" hidden></progress>
-        <button type="button" id="refreshBtn" class="btn small" hidden>Refresh now</button>
+        <button type="button" id="refreshBtn" class="sync" aria-label="Refresh now" hidden><i class="sync-dot" id="syncDot"></i><span id="syncText"></span><span class="sync-arrow" id="syncArrow" aria-hidden="true">↻</span></button>
+        <span id="statusPlain" class="sync plain" aria-hidden="true" hidden></span>
       </div>
+      <p id="statusNote" class="status-note" aria-hidden="true" hidden></p>
+      <progress id="progress" aria-label="Sync progress" hidden></progress>
     </div>
   </header>
 
@@ -153,9 +154,9 @@
       "./js/router.js": "./js/router.js?v=43",
       "./js/runs-model.js": "./js/runs-model.js?v=43",
       "./js/setup-link.js": "./js/setup-link.js?v=43",
+      "./js/status.js": "./js/status.js?v=43",
       "./js/strava.js": "./js/strava.js?v=43",
       "./js/sync.js": "./js/sync.js?v=43",
-      "./js/ticker.js": "./js/ticker.js?v=43",
       "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=43",
       "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=43",
       "./js/upcoming.js": "./js/upcoming.js?v=43",
