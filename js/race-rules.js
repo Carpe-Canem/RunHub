@@ -36,6 +36,11 @@ export function classify(name, gpsM) {
 }
 
 export function seriesKey(name) {
+  const stripped = stripKey(name);
+  return stripped || String(name || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function stripKey(name) {
   return String(name || '').toLowerCase()
     .replace(/\b(?:19|20)\d{2}\b/g, ' ')
     .replace(/\b\d+(?:st|nd|rd|th)\b/g, ' ')

@@ -53,3 +53,9 @@ test('classColour', () => {
   assert.equal(classColour('10K'), '#35D69B');
   assert.equal(classColour('50K'), '#B3A6FF');
 });
+test('seriesKey is never empty for a non-empty name', () => {
+  assert.equal(seriesKey('5K'), '5k');
+  assert.equal(seriesKey('2025 10K'), '2025 10k');
+  assert.ok(seriesKey('5K & 10K').length > 0);
+  assert.equal(seriesKey(''), '');
+});
