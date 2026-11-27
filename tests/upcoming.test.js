@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, classColour } from '../js/race-rules.js';
-import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, mergeUpcoming, daysText, countdown, countdownLabel } from '../js/upcoming.js';
+import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, exportUpcoming, importUpcoming, mergeUpcoming, daysText, countdown, countdownLabel } from '../js/upcoming.js';
 
 const today = '2027-06-01';
 
@@ -119,4 +119,40 @@ test('countdownLabel: singular for 1, no days on race day, nothing for today', (
   assert.equal(countdownLabel({ kind: 'today' }), null);
   // a race later today with a start time: the countdown itself has days 0
   assert.equal(countdownLabel(countdown({ date: '2027-06-15', time: '11:00' }, new Date(2027, 5, 15, 8, 1))), '2 hours and 59 minutes to the start');
+});
+
+const H = (n, date, time, cls, place) => ({ id: 'h1', n, date, time, cls, place, at: 1 });
+const BAD_FILE = "This isn't a Run Hub races export.";
+const file = (races) => JSON.stringify({ app: 'Run Hub', kind: 'upcoming', v: 1, races });
+
+test('exportUpcoming then importUpcoming round-trips every field', () => {
+  const hand = [H('Orchard 10K', '2027-07-04', '08:00', '10K', 'Orchard'), H('Rail Trail Half', '2027-08-01', null, 'Half', null)];
+  const text = exportUpcoming(hand);
+  assert.ok(!text.includes('"id"') && !text.includes('"at"'));
+  const r = importUpcoming(text, [], today);
+  assert.deepEqual(r, { add: hand.map(({ id, at, ...f }) => f), dup: 0, past: 0, bad: 0 });
+});
+
+test('importUpcoming refuses what is not a Run Hub export', () => {
+  for (const t of ['not json', '{}', JSON.stringify({ app: 'Run Hub', kind: 'upcoming', v: 2, races: [] }), '[]', 'null'])
+    assert.deepEqual(importUpcoming(t, [], today), { error: BAD_FILE });
+  const long = 'That is too long to be a Run Hub races export.';
+  assert.deepEqual(importUpcoming(' '.repeat(200001), [], today), { error: long });
+  assert.deepEqual(importUpcoming(file(Array.from({ length: 201 }, (_, i) => ({ n: 'R' + i, date: '2027-09-01' }))), [], today), { error: long });
+});
+
+test('importUpcoming counts duplicates, finished races and unreadable entries', () => {
+  const ok = { n: 'Creekside 5K', date: '2027-06-20', time: null, cls: '5K', place: null };
+  const text = file([
+    { n: 'Riverbend 5K', date: '2027-06-20' }, { n: 'Old Mill 10K', date: '2027-05-01' },
+    { n: 'x'.repeat(5000), date: '2027-06-20' }, { n: 'Canyon', date: 42 }, ok,
+  ]);
+  const r = importUpcoming(text, [{ n: 'Riverbend 5K', date: '2027-06-20' }], today);
+  assert.equal(r.add.length, 1); assert.equal(r.dup, 1); assert.equal(r.past, 1); assert.equal(r.bad, 2);
+  assert.equal(r.add[0].n, 'Creekside 5K');
+  const m = importUpcoming(file([{ n: '<b>Frostbite</b> 5K', date: '2027-06-20' }]), [], today);
+  assert.equal(m.add[0].n, '<b>Frostbite</b> 5K');
+  assert.deepEqual(importUpcoming(file([null, 'x', { n: 5, date: '2027-06-20' }]), [], today), { add: [], dup: 0, past: 0, bad: 3 });
+  const twice = importUpcoming(file([ok, ok]), [], today);
+  assert.equal(twice.add.length, 1); assert.equal(twice.dup, 1);
 });

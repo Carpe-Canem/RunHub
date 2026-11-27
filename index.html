@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-XNL4bu3SbkB795UT1KDNjpTr51Qw9oJD3ow3TND2qfc=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-JQfKVAxy0OKKdfnYyD2igA2G99LdC7CFGwnSLXsWvgY=' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Run Hub</title>
   <meta name="description" content="A personal running board: Local Legend titles to defend and chase, and your mileage against your normal.">
@@ -16,7 +16,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#0C1424">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb" crossorigin="anonymous">
-  <link rel="stylesheet" href="styles.css?v=35">
+  <link rel="stylesheet" href="styles.css?v=36">
 </head>
 <body>
   <header class="top">
@@ -158,6 +158,7 @@
           <div id="dataStatus"></div>
         </div>
         <div class="panel" id="linkPanel" hidden></div>
+        <div class="panel" id="upPanel" hidden></div>
         <div class="panel">
           <p class="note" id="leaveNote"><strong>Forget this browser</strong> wipes your keys and cached data here and leaves your other devices connected. <strong>Disconnect everywhere</strong> also revokes access at Strava, which signs out every device and cancels every setup link.</p>
           <div class="row end">
@@ -177,36 +178,37 @@
   <script type="importmap">
   {
     "imports": {
-      "./js/add-race.js": "./js/add-race.js?v=35",
-      "./js/core.js": "./js/core.js?v=35",
-      "./js/data-view.js": "./js/data-view.js?v=35",
-      "./js/dom.js": "./js/dom.js?v=35",
-      "./js/enrich-sync.js": "./js/enrich-sync.js?v=35",
-      "./js/hub.js": "./js/hub.js?v=35",
-      "./js/legends-model.js": "./js/legends-model.js?v=35",
-      "./js/legends-sync.js": "./js/legends-sync.js?v=35",
-      "./js/legends-view.js": "./js/legends-view.js?v=35",
-      "./js/main.js": "./js/main.js?v=35",
-      "./js/map-tiles.js": "./js/map-tiles.js?v=35",
-      "./js/places.js": "./js/places.js?v=35",
-      "./js/probe.js": "./js/probe.js?v=35",
-      "./js/race-draw.js": "./js/race-draw.js?v=35",
-      "./js/race-map.js": "./js/race-map.js?v=35",
-      "./js/race-rules.js": "./js/race-rules.js?v=35",
-      "./js/race-view.js": "./js/race-view.js?v=35",
-      "./js/races-demo.js": "./js/races-demo.js?v=35",
-      "./js/races-model.js": "./js/races-model.js?v=35",
-      "./js/races-sync.js": "./js/races-sync.js?v=35",
-      "./js/races-view.js": "./js/races-view.js?v=35",
-      "./js/router.js": "./js/router.js?v=35",
-      "./js/setup-link.js": "./js/setup-link.js?v=35",
-      "./js/strava.js": "./js/strava.js?v=35",
-      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=35",
-      "./js/upcoming.js": "./js/upcoming.js?v=35",
-      "./js/weather.js": "./js/weather.js?v=35"
+      "./js/add-race.js": "./js/add-race.js?v=36",
+      "./js/core.js": "./js/core.js?v=36",
+      "./js/data-view.js": "./js/data-view.js?v=36",
+      "./js/dom.js": "./js/dom.js?v=36",
+      "./js/enrich-sync.js": "./js/enrich-sync.js?v=36",
+      "./js/hub.js": "./js/hub.js?v=36",
+      "./js/legends-model.js": "./js/legends-model.js?v=36",
+      "./js/legends-sync.js": "./js/legends-sync.js?v=36",
+      "./js/legends-view.js": "./js/legends-view.js?v=36",
+      "./js/main.js": "./js/main.js?v=36",
+      "./js/map-tiles.js": "./js/map-tiles.js?v=36",
+      "./js/places.js": "./js/places.js?v=36",
+      "./js/probe.js": "./js/probe.js?v=36",
+      "./js/race-draw.js": "./js/race-draw.js?v=36",
+      "./js/race-map.js": "./js/race-map.js?v=36",
+      "./js/race-rules.js": "./js/race-rules.js?v=36",
+      "./js/race-view.js": "./js/race-view.js?v=36",
+      "./js/races-demo.js": "./js/races-demo.js?v=36",
+      "./js/races-model.js": "./js/races-model.js?v=36",
+      "./js/races-sync.js": "./js/races-sync.js?v=36",
+      "./js/races-view.js": "./js/races-view.js?v=36",
+      "./js/router.js": "./js/router.js?v=36",
+      "./js/setup-link.js": "./js/setup-link.js?v=36",
+      "./js/strava.js": "./js/strava.js?v=36",
+      "./js/upcoming-panel.js": "./js/upcoming-panel.js?v=36",
+      "./js/upcoming-sync.js": "./js/upcoming-sync.js?v=36",
+      "./js/upcoming.js": "./js/upcoming.js?v=36",
+      "./js/weather.js": "./js/weather.js?v=36"
     }
   }
   </script>
-  <script type="module" src="js/main.js?v=35"></script>
+  <script type="module" src="js/main.js?v=36"></script>
 </body>
 </html>

@@ -373,3 +373,9 @@ footer a { color: #B9C5E0; }
   .sheet-back { align-items: center; }
   .sheet { width: 440px; max-width: calc(100% - 32px); border-radius: 14px; padding-bottom: 0; }
 }
+
+/* Data: export and import of hand-added races */
+.filebtn { position: relative; display: inline-flex; align-items: center; cursor: pointer; overflow: hidden; }
+.filebtn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.filebtn:focus-within { outline: 2px solid var(--led); outline-offset: 2px; }
+#upPanel .probe-text { height: 7em; }

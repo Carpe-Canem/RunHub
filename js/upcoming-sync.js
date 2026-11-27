@@ -2,7 +2,7 @@
 import { S, store, DAY, RateLimited } from './core.js';
 import { api } from './strava.js';
 import { FULL } from './races-sync.js';
-import { parseBio, mergeUpcoming, isoDay } from './upcoming.js';
+import { parseBio, mergeUpcoming, isoDay, importUpcoming } from './upcoming.js';
 
 export const NOT_SAVED = 'This browser couldn\'t save the race (its storage is full or blocked), so nothing was added.';
 const upKey = (id) => `lw.upcoming.${id}`;
@@ -71,4 +71,16 @@ export function removeHand(id) {
 
 export function upcomingRows(today = isoDay(new Date())) {
   return S.upcoming ? mergeUpcoming(S.upcoming, today) : [];
+}
+
+// All or nothing: a failed save adds none. Checked against hand-added races only, so a race that is in the bio can be added.
+export function importHand(text, today = isoDay(new Date()), nowMs = Date.now()) {
+  if (!S.upcoming) return { error: NOT_SAVED };
+  const res = importUpcoming(text, S.upcoming.hand, today);
+  if (res.error) return res;
+  if (!res.add.length) return { added: 0, dup: res.dup, past: res.past, bad: res.bad };
+  const before = S.upcoming.hand;
+  S.upcoming.hand = [...before, ...res.add.map((r) => ({ id: newId(nowMs), n: r.n, date: r.date, time: r.time, cls: r.cls, place: r.place, at: nowMs }))];
+  if (!saveUp()) { S.upcoming.hand = before; return { error: NOT_SAVED }; }
+  return { added: res.add.length, dup: res.dup, past: res.past, bad: res.bad };
 }

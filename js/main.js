@@ -21,6 +21,7 @@ import { loadUp, upcomingRows } from './upcoming-sync.js';
 import { loadEnv, enrich, placesOn } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
+import { showExport, hideExport } from './upcoming-panel.js';
 import { renderHub, tickHub } from './hub.js';
 import { renderRaces, racesDown, upNext } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
@@ -159,7 +160,7 @@ function renderRacePanes(races, id) {
 // Called by the router at start and on every hash change.
 function onRoute(route, prev) {
   if (prev) scrolls[prev.view] = window.scrollY;
-  if (prev && prev.view === 'data') hideSetupLink();   // a setup link is not left on screen
+  if (prev && prev.view === 'data') { hideSetupLink(); hideExport(); }   // a setup link is not left on screen
   if (prev && prev.view !== route.view) closeAddSheet();
   if (prev && !(route.view === 'race' && route.id === prev.id)) closeCourseDialog();
   const newRace = route.view === 'race' && !(prev && prev.view === 'race' && prev.id === route.id);
@@ -201,11 +202,18 @@ function wipe() {
   dropCourseMap();
   closeAddSheet();
   hideSetupLink();
+  hideExport();
 }
 
 // "Forget this browser" wipes here only. "Disconnect everywhere" also revokes the grant at Strava,
 // which signs out every device and cancels every setup link.
 async function leave(everywhere) {
+  const hand = S.demo ? 0 : upcomingRows().filter((r) => r.src === 'hand').length;
+  if (hand && window.confirm(`You added ${hand} race${hand === 1 ? '' : 's'} by hand, and leaving removes ${hand === 1 ? 'it' : 'them'} from this browser. Press OK to export ${hand === 1 ? 'it' : 'them'} first, or Cancel to continue without exporting.`)) {
+    location.hash = '#data';
+    showExport();
+    return;
+  }
   if (!window.confirm(everywhere
     ? 'Revoke access at Strava and wipe this browser? Every device you connected is signed out and every setup link stops working.'
     : 'Remove your Strava keys and all cached data from this browser? Your other devices stay connected.')) return;
@@ -244,7 +252,9 @@ async function useSetup(text) {
   if (!f) return fail(LINK_DEAD);
   const was = { creds: creds(), token: token() };
   const other = !!was.token && !sameAthlete(was.token.athleteId, f.athleteId);
-  if (other && !window.confirm('This browser is connected as a different Strava athlete. Replace that connection with the one in the setup link?')) return false;
+  const hand = other ? upcomingRows().filter((r) => r.src === 'hand').length : 0;
+  if (other && !window.confirm('This browser is connected as a different Strava athlete. Replace that connection with the one in the setup link?'
+    + (hand ? ' The races you added by hand here will be removed; export them from Data first if you want them.' : ''))) return false;
   const keep = !other && !!was.token && !!was.creds;   // same athlete already here: put it back if the link fails
   if (other) wipe();
   if (!applySetup(f)) {

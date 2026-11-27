@@ -101,3 +101,34 @@ export function countdownLabel(cd) {
   const hm = `${count(cd.hours, 'hour')} and ${count(cd.mins, 'minute')}`;
   return `${cd.days ? `${count(cd.days, 'day')}, ` : ''}${hm} to the start`;
 }
+
+const NOT_EXPORT = "This isn't a Run Hub races export.";
+const TOO_LONG = 'That is too long to be a Run Hub races export.';
+const MAX_TEXT = 200000, MAX_RACES = 200;
+
+export function exportUpcoming(hand) {
+  const races = (hand || []).map((r) => ({ n: r.n, date: r.date, time: r.time || null, cls: r.cls, place: r.place || null }));
+  return JSON.stringify({ app: 'Run Hub', kind: 'upcoming', v: 1, races }, null, 2);
+}
+
+const optText = (v) => v == null || typeof v === 'string';
+
+// Each race goes through the same rules as the Add race sheet; text is only ever data.
+export function importUpcoming(text, existing, today) {
+  if (typeof text !== 'string' || text.length > MAX_TEXT) return { error: TOO_LONG };
+  let j;
+  try { j = JSON.parse(text); } catch { return { error: NOT_EXPORT }; }
+  if (!j || typeof j !== 'object' || Array.isArray(j) || j.app !== 'Run Hub' || j.kind !== 'upcoming' || j.v !== 1 || !Array.isArray(j.races)) return { error: NOT_EXPORT };
+  if (j.races.length > MAX_RACES) return { error: TOO_LONG };
+  const out = { add: [], dup: 0, past: 0, bad: 0 };
+  const seen = [...(existing || [])];
+  for (const f of j.races) {
+    if (!f || typeof f !== 'object' || typeof f.n !== 'string' || typeof f.date !== 'string' || !optText(f.time) || !optText(f.cls) || !optText(f.place)) { out.bad++; continue; }
+    const r = checkHand(f, today, seen);
+    if (r.race) { out.add.push(r.race); seen.push(r.race); }
+    else if (r.error === PAST) out.past++;
+    else if (r.error === DUP) out.dup++;
+    else out.bad++;
+  }
+  return out;
+}

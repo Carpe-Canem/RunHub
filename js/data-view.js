@@ -12,6 +12,7 @@ import { sync } from './legends-sync.js';
 import { enrich, placesOn, setPlaces } from './enrich-sync.js';
 import { PLACE_LOOKUPS, pointKey } from './places.js';
 import { dropCourseMap } from './race-map.js';
+import { standalone, renderUpcomingPanel } from './upcoming-panel.js';
 import { currentSource, setMapPref } from './map-tiles.js';
 
 // races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
@@ -43,6 +44,7 @@ export function renderData(model, c, races) {
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
+  renderUpcomingPanel();
 }
 
 // Upcoming races: counts only, never names or bio text.
@@ -170,8 +172,6 @@ function linkPanel() {
     link ? h('textarea', { class: 'probe-text link-text', readonly: true, 'aria-label': 'Setup link' }, link) : null,
   ].filter(Boolean);
 }
-
-const standalone = () => navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 
 const probeContext = () => [
   `Strava permissions granted: ${(token() || {}).scope || 'unknown'}`,

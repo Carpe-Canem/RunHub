@@ -1,7 +1,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, UserError, RateLimited, DAY } from '../js/core.js';
-import { emptyUp, loadUp, saveUp, readBio, syncBio, addHand, removeHand, upcomingRows, NOT_SAVED } from '../js/upcoming-sync.js';
+import { emptyUp, loadUp, saveUp, readBio, syncBio, addHand, removeHand, importHand, upcomingRows, NOT_SAVED } from '../js/upcoming-sync.js';
 
 let mem, failSet;
 const saved = (k) => JSON.parse(mem[k] || 'null');
@@ -147,4 +147,30 @@ test('upcomingRows merges hand and bio races, and is empty while the store is no
   assert.deepEqual(upcomingRows('2027-06-01'), []);
   S.upcoming = { v: 1, hand: [{ id: 'h1', ...HAND, at: T }], bio: { at: T, races: [{ date: '2027-06-14', n: 'Riverbend 5k' }], bad: 0 } };
   assert.deepEqual(upcomingRows('2027-06-01').map((r) => r.src), ['bio', 'hand']);
+});
+
+const FILE = (races) => JSON.stringify({ app: 'Run Hub', kind: 'upcoming', v: 1, races });
+
+test('importHand adds nothing when the save fails', () => {
+  const before = S.upcoming.hand;
+  failSet = true;
+  assert.deepEqual(importHand(FILE([{ n: 'Orchard 10K', date: '2027-07-04' }]), '2027-06-01'), { error: NOT_SAVED });
+  assert.equal(S.upcoming.hand, before);
+  assert.deepEqual(before, []);
+});
+
+test('importHand adds the races, then counts them as already here', () => {
+  const text = FILE([{ n: 'Orchard 10K', date: '2027-07-04', time: '08:00', cls: '10K', place: 'Orchard' }, { n: 'Creekside 5K', date: '2027-07-10' }]);
+  assert.deepEqual(importHand(text, '2027-06-01'), { added: 2, dup: 0, past: 0, bad: 0 });
+  assert.equal(saved(KEY).hand.length, 2);
+  assert.ok(S.upcoming.hand.every((r) => r.id && r.at));
+  assert.deepEqual(importHand(text, '2027-06-01'), { added: 0, dup: 2, past: 0, bad: 0 });
+  assert.deepEqual(importHand('{}', '2027-06-01'), { error: "This isn't a Run Hub races export." });
+});
+
+test('importHand accepts a race that is only in the bio', () => {
+  S.upcoming.bio = { at: T, races: [{ date: '2027-07-04', n: 'Orchard 10K' }], bad: 0 };
+  assert.deepEqual(importHand(FILE([{ n: 'Orchard 10K', date: '2027-07-04', time: '08:00' }]), '2027-06-01'), { added: 1, dup: 0, past: 0, bad: 0 });
+  const rows = upcomingRows('2027-06-01');
+  assert.equal(rows.length, 1); assert.equal(rows[0].src, 'hand');
 });

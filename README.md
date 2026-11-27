@@ -40,6 +40,22 @@ Every browser keeps its own storage, and so does the iPhone home-screen app, so 
 
 The link is for your own devices. A friend connects with their own Strava app, as above.
 
+## Upcoming races
+
+Up next on Races, and the countdown on the hub, come from two places.
+
+- **Your Strava bio.** Put one race per line, with the date first as month/day/year (the page reads that order only):
+
+  ```
+  06/14/2027 Riverbend 5K
+  7/9/2027 Frostbite Half Marathon
+  ```
+
+  The page reads the bio once a day and on every "Refresh now". A race you delete from the bio disappears on the next read. Data counts the lines that look like a date but could not be read.
+- **Add race.** Adds a race by hand, with an optional start time and place. A race added by hand is kept only in that browser (Strava has no copy), and it is dropped once its date has passed, because finished races come in from Strava.
+
+To move hand-added races to another browser or the home-screen app, open **Data**, find **Races you added** and press **Export**. Where the browser allows it you can **Download file**; copy and paste works everywhere. On the other device paste the text into **Import** (or choose the file). Races already there are not added twice. Leaving ("Forget this browser" or "Disconnect everywhere") offers an export first.
+
 ## How the numbers are counted
 
 | Metric | Definition |
