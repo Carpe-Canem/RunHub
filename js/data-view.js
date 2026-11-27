@@ -10,6 +10,7 @@ import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
 import { enrich, placesOn, setPlaces } from './enrich-sync.js';
 import { PLACE_LOOKUPS, pointKey } from './places.js';
+import { currentSource, setMapPref } from './map-tiles.js';
 
 // races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
 export function renderData(model, c, races) {
@@ -35,7 +36,7 @@ export function renderData(model, c, races) {
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(rescanRow());
   if (!S.demo && token()) box.append(...probePanel());
-  box.append(unitsRow(), ...placesRow());
+  box.append(unitsRow(), ...placesRow(), ...mapRow());
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
@@ -108,6 +109,24 @@ function placesRow() {
     h('p', { class: 'note' }, PLACE_LOOKUPS
       ? "Looks up the town for each race start, once per place, through OpenStreetMap's Nominatim. It sends only a point rounded to about 1 km."
       : 'Place lookups are turned off for this site.')];
+}
+
+// The redraw replaces the radios, so focus goes back to the one now checked. A new source needs new tiles, so the
+// Legends map is removed and drawn again when next shown.
+function mapRow() {
+  const now = currentSource();
+  const choose = (p) => {
+    setMapPref(p);
+    if (S.map) { S.map.remove(); S.map = null; }
+    // Task 7: dropCourseMap() goes here, so a shown race map is rebuilt on the new source too.
+    bus.emit('data');
+    const el = document.querySelector(`#dataStatus [data-focus="map-${p}"]`);
+    if (el) el.focus();
+  };
+  const pick = (p, label) => h('label', { class: 'radio' },
+    h('input', { type: 'radio', name: 'map', value: p, checked: now === p, 'data-focus': `map-${p}`, onchange: () => choose(p) }), ` ${label}`);
+  return [h('div', { class: 'units', role: 'radiogroup', 'aria-label': 'Map' }, h('strong', null, 'Map '), pick('carto', 'CARTO'), ' ', pick('osm', 'OpenStreetMap')),
+    h('p', { class: 'note' }, "CARTO's map works only on this site's own address. Switch to OpenStreetMap if the map shows 'API key required'.")];
 }
 
 // The setup link is built when asked for and kept nowhere: not in storage, not in state, not in the log.

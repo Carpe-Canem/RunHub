@@ -258,6 +258,8 @@ details > :last-child { margin-bottom: 14px; }
 
 /* The current map tiles, recoloured navy in the browser (no new map host) */
 .map-navy { filter: grayscale(1) invert(1) brightness(.82) contrast(1.15) sepia(.75) hue-rotate(178deg) saturate(1.5); }
+.map-carto { filter: sepia(.85) hue-rotate(183deg) saturate(1.25) brightness(.9); }
+.map-labels { filter: brightness(1.25); }
 .leaflet-container { background: #0A0F18; font: 12px var(--f); }
 .leaflet-container a { color: var(--led); }
 .leaflet-control-attribution { background: #04070DCC !important; color: var(--mut) !important; font-size: 10px !important; }

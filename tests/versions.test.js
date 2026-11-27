@@ -7,7 +7,7 @@ const root = new URL('../', import.meta.url);
 const html = readFileSync(new URL('index.html', root), 'utf8').replaceAll('\r\n', '\n'); // browsers read CRLF as LF
 const mapMatch =/<script type="importmap">([\s\S]*?)<\/script>/.exec(html);
 const csp = /http-equiv="Content-Security-Policy" content="([^"]*)"/.exec(html)[1];
-const EXPECTED_CSP = "default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'";
+const EXPECTED_CSP = "default-src 'none'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://tile.openstreetmap.org https://basemaps.cartocdn.com https://cdnjs.cloudflare.com; connect-src https://www.strava.com https://archive-api.open-meteo.com https://nominatim.openstreetmap.org; font-src 'self'; base-uri 'none'; form-action 'none'; manifest-src 'self'";
 
 test('every module is in the import map at the entry script\'s version', () => {
   assert.ok(mapMatch, 'index.html has an import map');

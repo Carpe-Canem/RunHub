@@ -1,6 +1,7 @@
 // Local Legends: drawing the headline cards, tables and map.
 import { S, REACH_GAP, dayLabel, fmt1, fmt0, plural } from './core.js';
 import { $, h, table } from './dom.js';
+import { addTiles } from './map-tiles.js';
 import { compute, decodePolyline, kind, statusText, riskSummary } from './legends-model.js';
 
 function setCard(prefix, num, sub) { $(`${prefix}N`).textContent = num; $(`${prefix}S`).textContent = sub; }
@@ -92,9 +93,7 @@ export function renderMap(model) {
   if (!window.L) { $('map').textContent = 'The map library didn\'t load. Check your connection and reload.'; return; }
   if (!S.map) {
     S.map = L.map('map', { scrollWheelZoom: false });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19, className: 'map-navy', attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(S.map);
+    addTiles(S.map);
     S.group = L.featureGroup().addTo(S.map);
   }
   S.group.clearLayers(); S.layers = {};
