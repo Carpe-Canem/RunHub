@@ -82,3 +82,20 @@ test('revokeEverywhere reports failed when Strava cannot be reached', async () =
   globalThis.fetch = async () => { throw new TypeError('offline'); };
   assert.equal(await revokeEverywhere(), 'failed');
 });
+test('two concurrent ensureToken calls on an expired token share one refresh', async () => {
+  applySetup(FIELDS);
+  let n = 0;
+  globalThis.fetch = async () => {
+    n++;
+    await new Promise((r) => setTimeout(r, 5));
+    return answer(200, { access_token: `access-${n}`, refresh_token: `refresh-${n}`, expires_at: 0 })();
+  };
+  const [a, b] = await Promise.all([ensureToken(false), ensureToken(false)]);
+  assert.equal(n, 1);
+  assert.equal(a.access_token, 'access-1');
+  assert.deepEqual(a, b);
+  // settled, so a later call on a still-expired token refreshes again
+  const c = await ensureToken(false);
+  assert.equal(n, 2);
+  assert.equal(c.access_token, 'access-2');
+});

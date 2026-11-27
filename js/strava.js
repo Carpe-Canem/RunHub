@@ -62,10 +62,20 @@ export async function handleCallback() {
   return true;
 }
 
-export async function ensureToken(force) {
+// One refresh at a time: refresh tokens rotate, so a second request with the same one could be refused.
+// Every caller that arrives while a refresh is in flight gets that refresh's result.
+let refreshing = null;
+
+export function ensureToken(force) {
   const t = token(); const c = creds();
-  if (!t || !c) throw new UserError('Not connected.');
-  if (!force && t.expires_at * 1000 - Date.now() > 3600e3) return t;
+  if (!t || !c) return Promise.reject(new UserError('Not connected.'));
+  if (refreshing) return refreshing;
+  if (!force && t.expires_at * 1000 - Date.now() > 3600e3) return Promise.resolve(t);
+  refreshing = refresh(t, c).finally(() => { refreshing = null; });
+  return refreshing;
+}
+
+async function refresh(t, c) {
   let nt;
   try {
     nt = await tokenRequest({ client_id: c.clientId, client_secret: c.clientSecret, grant_type: 'refresh_token', refresh_token: t.refresh_token });
