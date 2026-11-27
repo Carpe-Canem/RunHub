@@ -40,6 +40,7 @@ export async function sync(manual) {
   } finally {
     S.syncing = false; S.progress = null;
     bus.emit('data');
+    enrich();   // not awaited; also when the race scan was skipped, so new races get weather (it returns at once in the demo or with no caches)
   }
 }
 
