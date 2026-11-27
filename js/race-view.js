@@ -21,7 +21,7 @@ const ordinal = (n) => {
 };
 
 // Date and start time come straight from start_date_local, read as UTC so no time zone shifts them.
-function when(r) {
+export function when(r) {
   const day = new Date(`${r.date}T00:00:00Z`);
   if (Number.isNaN(day.getTime())) return '';
   const date = day.toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });

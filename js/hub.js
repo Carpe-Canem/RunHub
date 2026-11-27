@@ -1,41 +1,160 @@
-// Hub: the first view, leading to every other page.
+// Hub: the first view. Next start, races and Legends cards, the latest results and the records.
+import { bus, units, fmt0, UNIT_M } from './core.js';
 import { $, h, led } from './dom.js';
 import { riskSummary } from './legends-model.js';
 import { racesDown } from './races-view.js';
+import { hubStats, fmtTime } from './races-model.js';
+import { routeTile } from './race-draw.js';
+import { when } from './race-view.js';
+import { countdown } from './upcoming.js';
+import { openAddSheet } from './add-race.js';
 
-// rm.failed: building the race model threw. Any throw here shows the note, and the Legends row still draws.
-function racesRow(rm) {
-  try { if (!(rm && rm.failed)) return racesRowFor(rm); } catch (e) { console.error(e); }
+// What Next start last drew: {id, kind}, id null for "Nothing coming up.", or null when it could not draw.
+let shown = null;
+
+const p2 = (n) => String(n).padStart(2, '0');
+// With the year: the strip and the records can reach back years.
+const dateText = (r) => new Date(`${r.date}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls);
+
+// The countdown digits. Only these are replaced by the 30-second tick.
+function clockParts(cd) {
+  const grp = (n, unit) => h('span', { class: 'cd-grp' }, led(p2(n), { ghost: true }), h('span', { class: 'cd-unit' }, unit));
+  if (cd.kind === 'clock') return [grp(cd.days, 'days'), grp(cd.hours, 'hrs'), grp(cd.mins, 'min')];
+  if (cd.kind === 'days') return [grp(cd.days, 'days')];
+  return [h('span', { class: 'cd-today' }, 'Race day')];
+}
+const clockLabel = (cd) => (cd.kind === 'clock' ? `${cd.days} days, ${cd.hours} hours and ${cd.mins} minutes to the start`
+  : cd.kind === 'days' ? `${cd.days} days to the start` : null);
+
+function setClock(el, cd) {
+  el.replaceChildren(...clockParts(cd));
+  const label = clockLabel(cd);
+  if (label) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', label); }
+  else { el.removeAttribute('role'); el.removeAttribute('aria-label'); }
+}
+
+// up: the upcoming rows, or null when reading them threw.
+function nextStart(up) {
+  if (!Array.isArray(up)) throw new Error('upcoming races not available');
+  const label = h('span', { class: 'label' }, 'Next start');
+  if (!up.length) {
+    shown = { id: null, kind: null };
+    return h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' }, label,
+      h('p', { class: 'empty' }, 'Nothing coming up.'),
+      h('button', { type: 'button', class: 'btn small', 'data-focus': 'hub-add', onclick: (e) => openAddSheet(e.currentTarget) }, 'Add race'));
+  }
+  const r = up[0];
+  const cd = countdown(r, new Date());
+  const clock = h('div', { id: 'nextClock', class: 'next-clock' });
+  setClock(clock, cd);
+  shown = { id: r.id, kind: cd.kind };
+  return h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' }, label,
+    h('strong', { class: 'next-name' }, r.n),
+    h('p', { class: 'next-when' }, badge(r), ' ', when(r), r.place ? ` · ${r.place}` : null),
+    clock);
+}
+
+// The 30-second tick: only the digits change, so focus on the hub's links and buttons stays where it is.
+export function tickHub(up) {
+  if (!shown || !Array.isArray(up)) return;
+  const r = up[0] || null;
+  if (!r && shown.id === null) return;
+  const cd = r ? countdown(r, new Date()) : null;
+  const el = $('nextClock');
+  if (!r || r.id !== shown.id || cd.kind !== shown.kind || !el) { bus.emit('data'); return; }
+  setClock(el, cd);
+}
+
+// rm.failed: building the race model threw. Any throw here shows the note, and the other cards still draw.
+function racesCard(rm) {
+  try { if (!(rm && rm.failed)) return racesCardFor(rm); } catch (e) { console.error(e); }
   return h('a', { class: 'rowlink', href: '#races' },
     h('span', { class: 'rowlink-text' }, h('strong', null, 'Races'), racesDown()));
 }
 
-function racesRowFor(rm) {
+function racesCardFor(rm) {
   const loading = !rm || (rm.scanning && !rm.rows.length);
-  const n = loading ? 0 : rm.rows.length;
-  const sub = loading ? 'Loading your race history' : n ? `Latest: ${rm.rows[0].n || 'Race'}` : 'No races yet';
-  return h('a', { class: 'rowlink', href: '#races' },
+  const st = loading ? null : hubStats(rm);
+  const unit = units();
+  const sub = loading ? 'Loading your race history'
+    : st.count ? `${st.podiums} age-group podiums · ${fmt0(st.metres / UNIT_M[unit])} ${unit} raced` : 'No races yet';
+  return h('a', { class: 'rowlink', href: '#races', 'data-focus': 'hub-races' },
     h('span', { class: 'rowlink-text' },
       h('strong', null, 'Races'),
       h('span', { class: 'label' }, 'Races finished'),
       h('span', { class: 'sub' }, sub)),
-    h('span', { class: 'rowlink-num' }, led(loading ? '--' : String(n).padStart(2, '0'), { ghost: true })));
+    h('span', { class: 'rowlink-num' }, led(loading ? '--' : p2(st.count), { ghost: true })));
 }
 
-// model is null until the first sync has loaded the athlete; raceModel is null until the race cache is loaded.
-export function renderHub(model, raceModel) {
+function legendsCard(model) {
   const rs = model ? riskSummary(model) : { count: 0, sub: 'Loading your runs from Strava', loading: true };
-  const num = rs.loading ? '--' : String(rs.count).padStart(2, '0');
-  $('view-hub').replaceChildren(
+  const num = rs.loading ? '--' : p2(rs.count);
+  return h('a', { class: 'rowlink', href: '#legends', 'data-focus': 'hub-legends' },
+    h('span', { class: 'rowlink-text' },
+      h('strong', null, 'Local Legends'),
+      h('span', { class: 'label' }, 'Titles at risk this week'),
+      h('span', { class: 'sub' }, rs.sub)),
+    h('span', { class: 'rowlink-num' }, led(num, { ghost: true })));
+}
+
+function latest(st) {
+  if (!st || !st.latest.length) return null;
+  const list = st.latest;
+  return h('section', { class: 'hub-sec', 'aria-label': 'Latest results' },
+    h('h3', { class: 'sub-title' }, 'Latest results'),
+    h('ul', { class: 'strip' }, list.map((r) => h('li', null,
+      h('a', { class: 'strip-card', href: `#race/${r.id}`, 'data-focus': `latest-${r.id}`, 'aria-label': `${r.n || 'Race'}, ${fmtTime(r.t)}, ${dateText(r)}` },
+        routeTile(r.pts, r.colour, 72),
+        h('span', { class: 'sc-time' }, led(fmtTime(r.t))),
+        h('span', { class: 'sc-meta' }, badge(r), ' ', dateText(r)))))));
+}
+
+function records(st) {
+  if (!st || !st.records.length) return null;
+  const list = st.records;
+  return h('section', { class: 'hub-sec', 'aria-label': 'Personal records' },
+    h('h3', { class: 'sub-title' }, 'Personal records'),
+    h('ul', { class: 'rec-grid' }, list.map((r) => h('li', null,
+      h('a', { class: 'rec-tile', href: `#race/${r.id}`, 'data-focus': `rec-${r.id}`, 'aria-label': `${r.cls} record, ${fmtTime(r.t)}, ${dateText(r)}` },
+        badge(r),
+        h('span', { class: 'rec-time' }, led(fmtTime(r.t))),
+        h('span', { class: 'rec-date' }, dateText(r)))))));
+}
+
+// Each section draws on its own: a throw shows that section's note and the rest of the hub still draws.
+function part(draw, note) {
+  try { return draw(); } catch (e) { console.error(e); return note ? h('p', { class: 'empty races-down' }, note) : null; }
+}
+
+// legends: null until the first sync has loaded the athlete. races: null until the race cache is loaded, or
+// {failed: true}. up: the upcoming rows, or null when reading them threw.
+export function renderHub(legends, races, up) {
+  const box = $('view-hub');
+  const a = document.activeElement;
+  const key = a && a.closest && a.closest('#view-hub') ? a.dataset.focus : null;
+  const oldStrip = box.querySelector('.strip');
+  const left = oldStrip ? oldStrip.scrollLeft : 0;
+  let next;
+  try { next = nextStart(up); } catch (e) {
+    if (Array.isArray(up)) console.error(e);   // null: main.js has already logged why
+    shown = null;
+    next = h('section', { id: 'nextStart', class: 'card next-start', 'aria-label': 'Next start' },
+      h('span', { class: 'label' }, 'Next start'), h('p', { class: 'empty' }, 'Upcoming races are not available right now.'));
+  }
+  const st = part(() => (races && !races.failed && races.rows ? hubStats(races) : null), null);
+  box.replaceChildren(...[
     h('h2', { class: 'hub-title' }, 'Run Hub'),
+    next,
     h('div', { class: 'hub-rows' },
-      racesRow(raceModel),
-      h('a', { class: 'rowlink', href: '#legends' },
-        h('span', { class: 'rowlink-text' },
-          h('strong', null, 'Local Legends'),
-          h('span', { class: 'label' }, 'Titles at risk this week'),
-          h('span', { class: 'sub' }, rs.sub)),
-        h('span', { class: 'rowlink-num' }, led(num, { ghost: true })))),
-    h('p', null, h('a', { class: 'textlink', href: '#data' }, 'Data and connection')),
-  );
+      racesCard(races),
+      part(() => legendsCard(legends), 'Local Legends are not available right now.')),
+    part(() => latest(st), 'Latest results are not available right now.'),
+    part(() => records(st), 'Personal records are not available right now.'),
+    h('p', null, h('a', { class: 'textlink', href: '#data', 'data-focus': 'hub-data' }, 'Data and connection')),
+  ].filter(Boolean));
+  const el = key && box.querySelector(`[data-focus="${key}"]`);
+  if (el) el.focus({ preventScroll: true });
+  const strip = box.querySelector('.strip');
+  if (strip && left) strip.scrollLeft = left;
 }

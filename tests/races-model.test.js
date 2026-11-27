@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isRace, summaryFrom, detailFrom, reduceProfile, buildRaces, contextLine, chips, paceTrend, fmtTime, fmtPace, fmtDist } from '../js/races-model.js';
+import { isRace, summaryFrom, detailFrom, reduceProfile, buildRaces, contextLine, chips, paceTrend, fmtTime, fmtPace, fmtDist, hubStats } from '../js/races-model.js';
 
 const S = (id, n, d, t, m, extra = {}) => ({ id, n, d, s: 0, t, m, el: 0, ll: [1, 2], p: 'a', st: 'Run', se: null, pr: null, ach: null, hr: null, ...extra });
 const sums = {
@@ -150,4 +150,44 @@ test('weather stays metric in the model whatever the unit', () => {
   const one = { r1: S('r1', 'A 5K', '2024-01-01T08:00:00', 1500, 5000) };
   const env = { wx: { r1: { t: 12, f: 11, h: 50, w: 9, p: 0, c: null, at: 5, prov: false } }, pl: {} };
   assert.equal(buildRaces(one, {}, 'km', env).rows[0].wx.t, buildRaces(one, {}, 'mi', env).rows[0].wx.t);
+});
+
+test('hubStats counts races, podiums and official distance, and lists the latest ten and the records in class order', () => {
+  const list = {
+    a1: S('a1', 'Riverbend 10K', '2027-06-12T08:00:00', 2500, 10020),
+    a2: S('a2', 'Frostbite 5K', '2027-06-11T08:00:00', 1300, 5010),
+    a3: S('a3', 'Canyon Half Marathon', '2027-06-10T08:00:00', 5600, 21150),
+    a4: S('a4', 'Library Hill Mile', '2027-06-09T08:00:00', 380, 1610),
+    a5: S('a5', 'Creekside 5 Miler', '2027-06-08T08:00:00', 2200, 7000),   // short course
+    a6: S('a6', 'Orchard Trail Run', '2027-06-07T08:00:00', 3000, 12345),   // class Other, GPS distance
+    a7: S('a7', 'Old Mill 5K', '2027-06-06T08:00:00', 1250, 5000),
+    a8: S('a8', 'Water Tower 10K', '2027-06-05T08:00:00', 2450, 10000),
+    a9: S('a9', 'Rail Trail Marathon', '2027-06-04T08:00:00', 12000, 42300),
+    b1: S('b1', 'Riverbend 15K', '2027-06-03T08:00:00', 3900, 15010),
+    b2: S('b2', 'Frostbite 10 Mile', '2027-06-02T08:00:00', 4300, 16100),
+    b3: S('b3', 'Canyon 5K', '2027-06-01T08:00:00', 1280, 4990),
+  };
+  const ag = (n) => ({ at: 1, ag: n, virt: false, cal: null, sp: { mi: [], km: [] } });
+  const m = buildRaces(list, { a1: ag(1), a2: ag(3), a3: ag(4), a7: ag(null) }, 'mi');
+  const st = hubStats(m);
+  assert.equal(st.count, 12);
+  assert.equal(st.podiums, 2);
+  assert.equal(st.metres, m.rows.reduce((t, r) => t + r.official, 0));
+  assert.ok(st.metres > 0 && Math.abs(m.byId.a6.official - 12345) < 1e-9);
+  assert.deepEqual(st.latest.map((r) => r.id), ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'b1']);
+  assert.deepEqual(st.records.map((r) => r.cls), ['1 mi', '5K', '10K', '15K', '10 mi', 'Half', 'Marathon']);
+  assert.deepEqual(st.records.map((r) => r.id), ['a4', 'a7', 'a8', 'b1', 'b2', 'a3', 'a9']);
+});
+
+test('hubStats of a model with no rows is zeros and empty lists', () => {
+  assert.deepEqual(hubStats(buildRaces({}, {}, 'mi')), { count: 0, podiums: 0, metres: 0, latest: [], records: [] });
+});
+
+test('hubStats orders a class outside the standards after them, by name', () => {
+  const m = buildRaces({
+    x: S('x', 'Canyon 25K', '2027-06-01T08:00:00', 8000, 25100),
+    y: S('y', 'Orchard 12K', '2027-06-02T08:00:00', 3600, 12010),
+    z: S('z', 'Orchard 5K', '2027-06-03T08:00:00', 1300, 5000),
+  }, {}, 'km');
+  assert.deepEqual(hubStats(m).records.map((r) => r.cls), ['5K', '12K', '25K']);
 });

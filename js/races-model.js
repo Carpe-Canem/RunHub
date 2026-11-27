@@ -79,6 +79,22 @@ export function buildRaces(summaries, details, unit, env) {
   return { rows, byId, records, classes };
 }
 
+// The hub's numbers. podiums: an age-group place of 1, 2 or 3. metres: each race's official distance (for
+// class "Other" that is its GPS distance). latest: the 10 newest. records: one per class, standards first.
+export function hubStats(model) {
+  const rows = (model && model.rows) || [];
+  const recs = (model && model.records) || {};
+  const records = Object.keys(recs).sort((a, b) => clsOrder(a) - clsOrder(b) || (a < b ? -1 : a > b ? 1 : 0))
+    .map((cls) => model.byId[recs[cls]]).filter(Boolean);
+  return {
+    count: rows.length,
+    podiums: rows.filter((r) => r.ag >= 1 && r.ag <= 3).length,
+    metres: rows.reduce((t, r) => t + (r.official > 0 ? r.official : 0), 0),
+    latest: rows.slice(0, 10),
+    records,
+  };
+}
+
 export function fmtTime(sec) {
   const t = Math.round(sec), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
   const p2 = (n) => String(n).padStart(2, '0');
