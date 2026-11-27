@@ -38,25 +38,25 @@ test('loadUp falls back to empty for a missing or malformed entry, drops finishe
 });
 
 test('readBio stores the parsed races and the bad-line count, never the bio text', () => {
-  readBio({ bio: 'Upcoming Races\n06/14/2027 Riverbend 5k\n13/01/2027 Canyon 10K' }, T);
+  readBio({ bio: 'Upcoming Races\n06/14/2027 Riverbend 5k\n13/01/2027 Canyon 10K' }, T, '2027-06-01');
   assert.deepEqual(S.upcoming.bio, { at: T, races: [{ date: '2027-06-14', n: 'Riverbend 5k' }], bad: 1 });
   assert.ok(!mem[KEY].includes('Upcoming Races'));
-  readBio({ bio: 'Just a bio' }, T + 1);
+  readBio({ bio: 'Just a bio' }, T + 1, '2027-06-01');
   assert.deepEqual(S.upcoming.bio.races, []);
   assert.deepEqual(saved(KEY).bio.races, []);
 });
 
 test('readBio marks a missing bio field', () => {
-  readBio({}, T);
+  readBio({}, T, '2027-06-01');
   assert.deepEqual(S.upcoming.bio, { at: T, races: [], bad: 0, none: true });
   S.upcoming.bio = null;
-  readBio(null, T);
+  readBio(null, T, '2027-06-01');
   assert.deepEqual(S.upcoming.bio, { at: T, races: [], bad: 0, none: true });
 });
 
 test('readBio sets the storage-full warning when the save fails', () => {
   failSet = true;
-  readBio({ bio: '06/14/2027 Riverbend 5k' }, T);
+  readBio({ bio: '06/14/2027 Riverbend 5k' }, T, '2027-06-01');
   assert.match(S.warn, /storage is full/);
   assert.equal(S.upcoming.bio.races.length, 1);
 });
@@ -107,7 +107,7 @@ test('syncBio keeps the stored bio races when the request fails, and lets a rate
 });
 
 test('addHand stores the race with an id and the time it was added', () => {
-  const r = addHand(HAND, T);
+  const r = addHand(HAND, T, '2027-06-01');
   assert.match(r.id, /^h[0-9a-z]+$/);
   assert.ok(r.id.startsWith('h' + T.toString(36)) && r.id.length === 1 + T.toString(36).length + 4);
   assert.equal(r.at, T);
@@ -117,18 +117,18 @@ test('addHand stores the race with an id and the time it was added', () => {
 });
 
 test('removeHand takes it out and saves', () => {
-  const r = addHand(HAND, T);
-  assert.equal(removeHand(r.id), true);
+  const r = addHand(HAND, T, '2027-06-01');
+  assert.equal(removeHand(r.id, '2027-06-01'), true);
   assert.deepEqual(S.upcoming.hand, []);
   assert.deepEqual(saved(KEY).hand, []);
 });
 
 test('a failed save undoes addHand and removeHand', () => {
-  const r = addHand(HAND, T);
+  const r = addHand(HAND, T, '2027-06-01');
   failSet = true;
-  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T + 5), null);
+  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T + 5, '2027-06-01'), null);
   assert.deepEqual(S.upcoming.hand, [r]);
-  assert.equal(removeHand(r.id), false);
+  assert.equal(removeHand(r.id, '2027-06-01'), false);
   assert.deepEqual(S.upcoming.hand, [r]);
   assert.equal(S.warn, null);
   assert.match(NOT_SAVED, /couldn't save the race/);
@@ -136,10 +136,10 @@ test('a failed save undoes addHand and removeHand', () => {
 
 test('in the demo, adding and removing change memory only', () => {
   S.demo = true;
-  const r = addHand(HAND, T);
+  const r = addHand(HAND, T, '2027-06-01');
   assert.ok(r);
   assert.deepEqual(S.upcoming.hand, [r]);
-  assert.equal(removeHand(r.id), true);
+  assert.equal(removeHand(r.id, '2027-06-01'), true);
   assert.deepEqual(S.upcoming.hand, []);
   assert.equal(Object.keys(mem).filter((k) => k.startsWith('lw.upcoming')).length, 0);
 });
@@ -163,11 +163,11 @@ test('importHand adds nothing when the save fails', () => {
 
 test('importHand adds the races, then counts them as already here', () => {
   const text = FILE([{ n: 'Orchard 10K', date: '2027-07-04', time: '08:00', cls: '10K', place: 'Orchard' }, { n: 'Creekside 5K', date: '2027-07-10' }]);
-  assert.deepEqual(importHand(text, '2027-06-01'), { added: 2, dup: 0, past: 0, bad: 0 });
+  assert.deepEqual(importHand(text, '2027-06-01', T), { added: 2, dup: 0, past: 0, bad: 0 });
   assert.equal(saved(KEY).hand.length, 2);
   assert.ok(S.upcoming.hand.every((r) => r.id && r.at));
-  assert.deepEqual(importHand(text, '2027-06-01'), { added: 0, dup: 2, past: 0, bad: 0 });
-  assert.deepEqual(importHand('{}', '2027-06-01'), { error: "This isn't a Run Hub races export." });
+  assert.deepEqual(importHand(text, '2027-06-01', T), { added: 0, dup: 2, past: 0, bad: 0 });
+  assert.deepEqual(importHand('{}', '2027-06-01', T), { error: "This isn't a Run Hub races export." });
 });
 
 test('importHand accepts a race that is only in the bio', () => {
@@ -194,19 +194,19 @@ const otherTab = (hand = [OTHER], bio = null) => { mem[KEY] = JSON.stringify({ v
 
 test('a race another tab stored survives addHand, removeHand, readBio and importHand from a stale copy', () => {
   otherTab();
-  const r = addHand(HAND, T);
+  const r = addHand(HAND, T, '2027-06-01');
   assert.deepEqual(saved(KEY).hand.map((x) => x.id), ['hother', r.id]);
   assert.deepEqual(S.upcoming.hand.map((x) => x.id), ['hother', r.id]);
 
   const mine = { id: 'hmine', ...HAND, at: T };
   S.upcoming = { v: 1, hand: [mine], bio: null };
   otherTab([OTHER, mine]);
-  assert.equal(removeHand('hmine'), true);
+  assert.equal(removeHand('hmine', '2027-06-01'), true);
   assert.deepEqual(saved(KEY).hand.map((x) => x.id), ['hother']);
   assert.deepEqual(S.upcoming.hand.map((x) => x.id), ['hother']);
 
   S.upcoming = emptyUp(); otherTab();
-  readBio({ bio: '06/14/2027 Riverbend 5k' }, T);
+  readBio({ bio: '06/14/2027 Riverbend 5k' }, T, '2027-06-01');
   assert.deepEqual(saved(KEY).hand.map((x) => x.id), ['hother']);
   assert.equal(saved(KEY).bio.races.length, 1);
 
@@ -219,7 +219,7 @@ test('a failed save after reading the stored list leaves memory exactly as it wa
   otherTab();
   const before = S.upcoming;
   failSet = true;
-  assert.equal(addHand(HAND, T), null);
+  assert.equal(addHand(HAND, T, '2027-06-01'), null);
   assert.deepEqual(importHand(FILE([{ n: 'Orchard 10K', date: '2027-07-04' }]), '2027-06-01'), { error: NOT_SAVED });
   assert.equal(S.upcoming, before);
   assert.deepEqual(before, emptyUp());
@@ -230,22 +230,22 @@ test('after another tab wiped this browser, nothing is written back', () => {
   const mine = { id: 'hmine', ...HAND, at: T };
   S.upcoming = { v: 1, hand: [mine], bio: null };
   delete mem['lw.token']; delete mem[KEY];
-  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T), null);
-  assert.equal(removeHand('hmine'), false);
+  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T, '2027-06-01'), null);
+  assert.equal(removeHand('hmine', '2027-06-01'), false);
   assert.deepEqual(importHand(FILE([{ n: 'Canyon 10K', date: '2027-07-04' }]), '2027-06-01'), { error: NOT_SAVED });
-  readBio({ bio: '06/14/2027 Riverbend 5k' }, T);
+  readBio({ bio: '06/14/2027 Riverbend 5k' }, T, '2027-06-01');
   assert.equal(mem[KEY], undefined);
   assert.equal(S.warn, null);
   mem['lw.token'] = JSON.stringify({ athleteId: 7 });   // another athlete connected there
-  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T), null);
+  assert.equal(addHand({ ...HAND, n: 'Canyon 10K' }, T, '2027-06-01'), null);
   assert.equal(mem[KEY], undefined);
 });
 
 test('ids stay unique within one import and against the stored races', () => {
   const rnd = Math.random; Math.random = () => 0;
   try {
-    const first = addHand(HAND, T);
-    const again = addHand({ ...HAND, n: 'Canyon 10K' }, T);
+    const first = addHand(HAND, T, '2027-06-01');
+    const again = addHand({ ...HAND, n: 'Canyon 10K' }, T, '2027-06-01');
     assert.notEqual(again.id, first.id);
     importHand(FILE([{ n: 'Creekside 5K', date: '2027-07-10' }, { n: 'Old Mill 5K', date: '2027-07-11' }, { n: 'Water Tower 5K', date: '2027-07-12' }]), '2027-06-01', T);
     const ids = saved(KEY).hand.map((x) => x.id);
@@ -260,4 +260,19 @@ test('resultLine says what an import did', () => {
   assert.equal(resultLine({ added: 2, dup: 1, past: 0, bad: 3 }), 'Added 2, 1 already here, 3 could not be read');
   assert.equal(resultLine({ added: 0, dup: 0, past: 1, bad: 0 }), '1 already finished');
   assert.equal(resultLine({ added: 0, dup: 0, past: 0, bad: 0 }), 'Nothing new to add');
+});
+
+test('changes prune the stored list by the given day, not the clock', () => {
+  const early = { ...OTHER, id: 'hearly', date: '2026-01-15' };   // after the given day, before any real run of this suite
+  const today = '2026-01-01', T0 = Date.parse('2026-01-01T12:00:00Z');
+  otherTab([early]);
+  addHand({ ...HAND, date: '2026-01-20' }, T0, today);
+  assert.ok(saved(KEY).hand.some((x) => x.id === 'hearly'));
+  readBio({ bio: '' }, T0, today);
+  assert.ok(saved(KEY).hand.some((x) => x.id === 'hearly'));
+  const mine = S.upcoming.hand.find((x) => x.id !== 'hearly');
+  assert.equal(removeHand(mine.id, today), true);
+  assert.deepEqual(saved(KEY).hand.map((x) => x.id), ['hearly']);
+  importHand(FILE([{ n: 'Canyon 10K', date: '2026-01-21' }]), today, T0);
+  assert.deepEqual(saved(KEY).hand.map((x) => x.n), ['Creekside 5K', 'Canyon 10K']);
 });

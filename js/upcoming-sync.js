@@ -32,22 +32,22 @@ export function saveUp(up = S.upcoming) {
 // What a change starts from. Another tab may have changed the stored list since this one loaded it, so outside
 // the demo it is read again. null when this athlete is no longer connected here (another tab wiped this
 // browser or connected someone else): nothing is then written, so a wipe is not undone.
-function current() {
+function current(today) {
   if (!S.upcoming) return null;
   if (S.demo || !S.athleteId) return S.upcoming;
   const t = token();
   if (!t || String(t.athleteId) !== String(S.athleteId)) return null;
-  return loadUp(S.athleteId);
+  return loadUp(S.athleteId, today);
 }
 
 // Keeps the parsed lines and the count of unreadable ones, never the bio text itself.
-export function readBio(athlete, nowMs = Date.now()) {
+export function readBio(athlete, nowMs = Date.now(), today = isoDay(new Date())) {
   if (!S.upcoming) return;
   const text = athlete && typeof athlete.bio === 'string' ? athlete.bio : null;
   let bio;
   if (text === null) bio = { at: nowMs, races: [], bad: 0, none: true };
   else { const { races, bad } = parseBio(text); bio = { at: nowMs, races, bad }; }
-  const cur = current();
+  const cur = current(today);
   if (!cur) { S.upcoming = { ...S.upcoming, bio }; return; }
   S.upcoming = { ...cur, bio };
   if (!saveUp()) S.warn = FULL;   // the bio is fetched again, like the other caches
@@ -65,7 +65,7 @@ export async function syncBio(manual, call = api, nowMs = Date.now()) {
     console.warn('Bio request failed', e);
     return;
   }
-  readBio(a, nowMs);
+  readBio(a, nowMs, isoDay(new Date(nowMs)));
 }
 
 // Unique among `taken` (the ids already used, which it adds to): races added in one go share nowMs.
@@ -80,8 +80,8 @@ const ids = (hand) => new Set(hand.map((r) => r.id));
 
 // Hand-added races cannot be fetched again: memory takes the change only once it is saved, so a failed save
 // leaves it as it was and the caller reports it.
-export function addHand(race, nowMs = Date.now()) {
-  const cur = current();
+export function addHand(race, nowMs = Date.now(), today = isoDay(new Date())) {
+  const cur = current(today);
   if (!cur) return null;
   const r = { id: newId(nowMs, ids(cur.hand)), n: race.n, date: race.date, time: race.time || null, cls: race.cls, place: race.place || null, at: nowMs };
   const next = { ...cur, hand: [...cur.hand, r] };
@@ -90,9 +90,9 @@ export function addHand(race, nowMs = Date.now()) {
   return r;
 }
 
-export function removeHand(id) {
+export function removeHand(id, today = isoDay(new Date())) {
   if (!S.upcoming) return true;
-  const cur = current();
+  const cur = current(today);
   if (!cur) return false;
   if (!cur.hand.some((r) => r.id === id)) { S.upcoming = cur; return true; }
   const next = { ...cur, hand: cur.hand.filter((r) => r.id !== id) };
@@ -107,7 +107,7 @@ export function upcomingRows(today = isoDay(new Date())) {
 
 // All or nothing: a failed save adds none. Checked against hand-added races only, so a race that is in the bio can be added.
 export function importHand(text, today = isoDay(new Date()), nowMs = Date.now()) {
-  const cur = current();
+  const cur = current(today);
   if (!cur) return { error: NOT_SAVED };
   const res = importUpcoming(text, cur.hand, today);
   if (res.error) return res;

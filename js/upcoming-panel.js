@@ -12,7 +12,12 @@ let exportOpen = false, pasted = '', result = null;
 // a sync), and a new box would lose focus, the paste menu and a selection.
 let exportTa = null, importTa = null;
 
-export function hideExport() { exportOpen = false; pasted = ''; result = null; }
+// Also empties the kept boxes, so no race text stays in the page after leaving Data or wiping.
+export function hideExport() {
+  exportOpen = false; pasted = ''; result = null;
+  if (exportTa) exportTa.value = '';
+  if (importTa) importTa.value = '';
+}
 
 const handRows = () => upcomingRows().filter((r) => r.src === 'hand');
 const plural = (n) => `${n} race${n === 1 ? '' : 's'}`;
@@ -100,11 +105,13 @@ export function renderUpcomingPanel() {
     h('p', { class: 'note' }, `${plural(rows.length)} added in this browser. They are kept only here. Export them to move them to another browser or the home-screen app.`),
     h('div', { class: 'row' },
       h('button', { type: 'button', class: 'btn small', id: 'upExportBtn', disabled: !rows.length, onclick: () => { exportOpen = true; bus.emit('data'); } }, 'Export')),
-    ...(exportOpen && rows.length ? exportBox(rows) : []),
+    ...(exportOpen && rows.length ? exportBox(rows) : clearExport()),
     h('h3', { class: 'sub-title' }, 'Import'),
     ...importBox()]);
   if (had && document.activeElement.id !== had) { const f = document.getElementById(had); if (f) f.focus(); }
 }
+
+function clearExport() { if (exportTa) exportTa.value = ''; return []; }
 
 // Like replaceChildren, but a node that is already in place is never taken out, so a kept text box keeps focus.
 function place(el, nodes) {
