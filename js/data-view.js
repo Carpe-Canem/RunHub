@@ -127,7 +127,7 @@ function mapRow() {
   const pick = (p, label) => h('label', { class: 'radio' },
     h('input', { type: 'radio', name: 'map', value: p, checked: now === p, 'data-focus': `map-${p}`, onchange: () => choose(p) }), ` ${label}`);
   return [h('div', { class: 'units', role: 'radiogroup', 'aria-label': 'Map' }, h('strong', null, 'Map '), pick('carto', 'CARTO'), ' ', pick('osm', 'OpenStreetMap')),
-    h('p', { class: 'note' }, "CARTO's map works only on this site's own address. Switch to OpenStreetMap if the map shows 'API key required'.")];
+    h('p', { class: 'note' }, "CARTO's map works only on this site's own address. Switch to OpenStreetMap if the map shows 'API key required' or stays blank.")];
 }
 
 // The setup link is built when asked for and kept nowhere: not in storage, not in state, not in the log.
