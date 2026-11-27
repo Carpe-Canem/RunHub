@@ -39,3 +39,14 @@ test("setUnits('yards') returns false and leaves 'mi'", () => {
     assert.equal(setUnits('yards'), false); assert.equal(units(), 'mi'); assert.equal(mem['lw.units'], undefined);
   } finally { delete globalThis.localStorage; }
 });
+test('bus.emit keeps going when a listener throws, and never throws itself', () => {
+  const was = console.error; const logged = []; console.error = (...a) => logged.push(a);
+  try {
+    let after = 0;
+    bus.on('boom', () => { throw new Error('view broke'); });
+    bus.on('boom', () => after++);
+    assert.doesNotThrow(() => bus.emit('boom'));
+    assert.equal(after, 1);
+    assert.equal(logged.length, 1);
+  } finally { console.error = was; }
+});

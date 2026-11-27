@@ -8,8 +8,11 @@ const COLOURS = { '1 mi': '#FF7EB6', '5K': '#5CB8FF', '5 mi': '#4FD1C5', '10K': 
 export const classColour = (cls) => COLOURS[cls] || '#B3A6FF';
 
 const NUM = String.raw`(\d+(?:\.\d+)?)`;
-const KM_SRC = String.raw`(?<![\w.])${NUM}\s?(?:kilometers?|kilometres?|km|k)\b`;
-const MI_SRC = String.raw`(?<![\w.])${NUM}[\s-]?(?:miler|miles?|mi)\b`;
+// The number must not follow a letter, digit or dot ("2025", "12.5"). Written as a consumed prefix, not a
+// lookbehind, which Safari before 16.4 cannot parse. The number stays capture group 1.
+const BEFORE = String.raw`(?:^|[^\w.])`;
+const KM_SRC = String.raw`${BEFORE}${NUM}\s?(?:kilometers?|kilometres?|km|k)\b`;
+const MI_SRC = String.raw`${BEFORE}${NUM}[\s-]?(?:miler|miles?|mi)\b`;
 const HALF_SRC = String.raw`half[\s-]*marathon`;
 
 const fmt = (n) => String(+n.toFixed(2));

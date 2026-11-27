@@ -90,7 +90,8 @@ const fmtLen = (m, unit) => `${(m / (UNIT_M[unit] || UNIT_M.mi)).toFixed(1)} ${u
 // The viewBox is close to the drawn width (CSS caps it), so 11-unit labels stay near the page's text size.
 export function elevationChart(profile, unit) {
   const W = 340, H = 136, L = 6, R = 6, T = 22, PB = 100, AX = 120;   // plot from T to PB, axis at AX
-  const pts = profile.filter((p) => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
+  const pts = (profile || []).filter((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]));
+  if (pts.length < 2) return null;   // nothing to draw a line through
   const d0 = pts[0][0], d1 = pts[pts.length - 1][0];
   const alts = pts.map((p) => p[1]), lo = Math.min(...alts), hi = Math.max(...alts);
   const x = (d) => (d1 > d0 ? L + ((d - d0) / (d1 - d0)) * (W - L - R) : W / 2);

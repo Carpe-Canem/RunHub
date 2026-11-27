@@ -87,5 +87,6 @@ export const ghost = (text) => String(text).replace(/[0-9]/g, '8');
 const listeners = {};
 export const bus = {
   on(name, fn) { (listeners[name] || (listeners[name] = [])).push(fn); },
-  emit(name) { for (const fn of listeners[name] || []) fn(); },
+  // Each listener on its own: a view that throws must never abort the sync that asked for the redraw.
+  emit(name) { for (const fn of listeners[name] || []) { try { fn(); } catch (e) { console.error(e); } } },
 };

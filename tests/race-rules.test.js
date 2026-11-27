@@ -59,3 +59,9 @@ test('seriesKey is never empty for a non-empty name', () => {
   assert.ok(seriesKey('5K & 10K').length > 0);
   assert.equal(seriesKey(''), '');
 });
+
+test('the rules use no regex lookbehind, which older Safari cannot parse', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const src = await readFile(new URL('../js/race-rules.js', import.meta.url), 'utf8');
+  assert.equal(/\(\?<[!=]/.test(src), false);
+});

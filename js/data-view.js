@@ -6,9 +6,11 @@ import { encodeSetup } from './setup-link.js';
 import { probeFields } from './probe.js';
 import { buildRaces } from './races-model.js';
 import { rescan, saveRaces } from './races-sync.js';
+import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
 
-export function renderData(model, c) {
+// races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
+export function renderData(model, c, races) {
   const box = $('dataStatus'); box.replaceChildren();
   const r = rateState();
   const fetched = model.rows.length - model.pending;
@@ -26,7 +28,7 @@ export function renderData(model, c) {
     ['Local Legend field returned', fetched ? `${withLL} of ${fetched} segments${withLL === 0 && fetched > 3 ? '. Strava may have removed this field' : ''}` : '–'],
     ['Your count vs Strava\'s, on titles you hold', checked.length ? `${matches} of ${checked.length} match` : '–'],
   ];
-  items.push(...raceItems());
+  try { items.push(...raceItems(races)); } catch (e) { console.error(e); items.push(['Race history', RACES_DOWN]); }
   if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(rescanRow());
@@ -38,10 +40,11 @@ export function renderData(model, c) {
 }
 
 // Race history status: counts only, never names, so the owner can check the class rules against their own history.
-function raceItems() {
+function raceItems(races) {
   const rc = S.races;
   if (!rc) return [['Race history', 'Not loaded yet'], ['Race details', '–'], ['Races by class', '–']];
-  const m = buildRaces(rc.races, S.raceDet || {}, units());
+  if (races && races.failed) return [['Race history', RACES_DOWN]];
+  const m = races || buildRaces(rc.races, S.raceDet || {}, units());
   const when = (ms, o) => new Date(ms).toLocaleDateString(undefined, o);
   const sc = rc.scan || {};
   const history = sc.done

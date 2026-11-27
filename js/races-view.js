@@ -15,9 +15,13 @@ function readUi() {
 }
 function saveUi(patch) { store.set(K.ui, { ...readUi(), ...patch }); }
 
+// Shown in place of any race area whose code threw, so the rest of the page still works.
+export const RACES_DOWN = 'Races are not available right now.';
+export const racesDown = () => h('p', { class: 'empty races-down' }, RACES_DOWN);
+
 // Redraw, then put focus back on the control that was used (the redraw replaces it).
 function redraw(model, focusKey) {
-  renderRaces(model);
+  try { renderRaces(model); } catch (e) { console.error(e); $('view-races').replaceChildren(racesDown()); return; }
   const el = focusKey && document.querySelector(`#view-races [data-focus="${focusKey}"]`);
   if (el) el.focus();
 }

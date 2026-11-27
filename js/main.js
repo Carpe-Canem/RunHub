@@ -15,7 +15,7 @@ import { loadRaces, loadRaceDet } from './races-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
-import { renderRaces } from './races-view.js';
+import { renderRaces, racesDown } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
@@ -80,8 +80,9 @@ function render() {
   sw.hidden = S.demo || !scope || /activity:read_all/.test(scope);
   sw.textContent = 'You didn\'t allow access to private activities, so private runs are missing from your mileage. Use “Forget this browser” on the Data page, then connect again to fix this.';
   const ready = !!(c && c.athlete);   // false until the first sync has loaded the athlete
-  // Races do not depend on the Legends cache. null until the race cache is loaded.
-  const races = S.races ? Object.assign(buildRaces(S.races.races, S.raceDet, units()), { scanning: !(S.races.scan && S.races.scan.done) }) : null;
+  // Races do not depend on the Legends cache, and only these views show them. null until the race cache is
+  // loaded; {failed: true} when building it threw, so each race area shows a note and the rest still draws.
+  const races = S.races && RACE_VIEWS.includes(view) ? raceModel() : null;
   if (view === 'hub') { renderHub(ready ? compute(c) : null, races); return; }
   if (section === 'races') { renderRacePanes(races, view === 'race' ? current().id : null); return; }
   if (!ready) return;
@@ -91,16 +92,29 @@ function render() {
     renderLegends(model, miles(c));
     if ($('dMap').open) renderMap(model);
   } else if (view === 'data') {
-    renderData(model, c);
+    renderData(model, c, races);
   }
 }
 
+const RACE_VIEWS = ['hub', 'races', 'race', 'data'];
+
+function raceModel() {
+  try {
+    return Object.assign(buildRaces(S.races.races, S.raceDet, units()), { scanning: !(S.races.scan && S.races.scan.done) });
+  } catch (e) { console.error(e); return { failed: true }; }
+}
+
 // The list and the race. The list is redrawn in place, so focus goes back to the control that had it.
+// Either pane whose code throws shows a note instead; the other pane and the rest of the page are unaffected.
 function renderRacePanes(races, id) {
   const a = document.activeElement;
   const key = a && a.closest && a.closest('#view-races') ? a.dataset.focus : null;
-  renderRaces(races);
-  renderRace(races, id, raceFrom);
+  const pane = (box, draw) => {
+    try { if (races && races.failed) throw new Error('race model not available'); draw(); }
+    catch (e) { if (!(races && races.failed)) console.error(e); $(box).replaceChildren(racesDown()); }
+  };
+  pane('view-races', () => renderRaces(races));
+  pane('view-race', () => renderRace(races, id, raceFrom));
   const el = key && document.querySelector(`#view-races [data-focus="${key}"]`);
   if (el) el.focus({ preventScroll: true });
 }

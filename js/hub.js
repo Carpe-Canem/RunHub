@@ -1,8 +1,16 @@
 // Hub: the first view, leading to every other page.
 import { $, h, led } from './dom.js';
 import { riskSummary } from './legends-model.js';
+import { racesDown } from './races-view.js';
 
+// rm.failed: building the race model threw. Any throw here shows the note, and the Legends row still draws.
 function racesRow(rm) {
+  try { if (!(rm && rm.failed)) return racesRowFor(rm); } catch (e) { console.error(e); }
+  return h('a', { class: 'rowlink', href: '#races' },
+    h('span', { class: 'rowlink-text' }, h('strong', null, 'Races'), racesDown()));
+}
+
+function racesRowFor(rm) {
   const loading = !rm || (rm.scanning && !rm.rows.length);
   const n = loading ? 0 : rm.rows.length;
   const sub = loading ? 'Loading your race history' : n ? `Latest: ${rm.rows[0].n || 'Race'}` : 'No races yet';
