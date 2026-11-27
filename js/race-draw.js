@@ -1,6 +1,8 @@
-// Race drawings: route tiles and the pace trend chart. fitPoints is pure; the rest builds SVG with svg().
-import { svg } from './dom.js';
-import { fmtPace } from './races-model.js';
+// Race drawings: route tiles, the pace trend and elevation charts, the splits table.
+// fitPoints and markSplits are pure; the rest builds DOM with h() and svg().
+import { UNIT_M } from './core.js';
+import { h, svg, table } from './dom.js';
+import { fmtPace, fmtTime } from './races-model.js';
 
 // Equirectangular projection, longitude scaled by cos(mean latitude), north up, aspect kept, centred in the box.
 export function fitPoints(pts, w, h, pad) {
@@ -63,4 +65,77 @@ export function paceChart(points, unit, opts) {
   }
   const desc = `${label}: ${points.length} races from ${y0} to ${y1}, pace ${fmtPace(points[0].pace, unit)} to ${fmtPace(points[points.length - 1].pace, unit)}${rec ? `, record ${fmtPace(rec.pace, unit)} on ${rec.date}` : ''}. Faster is higher.`;
   return svg('svg', { class: 'pchart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': desc }, svg('title', { text: desc }), kids);
+}
+
+// Splits are [metres, seconds, elevation change]. Only full splits (at least half a unit) can be marked,
+// and only when there are two or more of them with different paces. Pace is t / m.
+export function markSplits(splits, unitM) {
+  const full = (Array.isArray(splits) ? splits : []).map((s, i) => ({ i, m: s[0], t: s[1] }))
+    .filter((s) => s.m > 0 && s.t > 0 && s.m >= unitM / 2);
+  if (full.length < 2) return { fastest: null, slowest: null };
+  let fast = full[0], slow = full[0];
+  for (const s of full) {
+    if (s.t / s.m < fast.t / fast.m) fast = s;
+    if (s.t / s.m > slow.t / slow.m) slow = s;
+  }
+  return fast.t / fast.m === slow.t / slow.m ? { fastest: null, slowest: null } : { fastest: fast.i, slowest: slow.i };
+}
+
+const FT = 3.28084;
+// Heights follow the distance unit: feet with miles, metres with kilometres.
+export const fmtHeight = (m, unit) => (unit === 'km' ? `${Math.round(m).toLocaleString()} m` : `${Math.round(m * FT).toLocaleString()} ft`);
+const fmtLen = (m, unit) => `${(m / (UNIT_M[unit] || UNIT_M.mi)).toFixed(1)} ${unit}`;
+
+// Altitude over distance from [metres, altitude][] with text labels at the low and high points.
+// The viewBox is close to the drawn width (CSS caps it), so 11-unit labels stay near the page's text size.
+export function elevationChart(profile, unit) {
+  const W = 340, H = 136, L = 6, R = 6, T = 22, PB = 100, AX = 120;   // plot from T to PB, axis at AX
+  const pts = profile.filter((p) => Array.isArray(p) && isFinite(p[0]) && isFinite(p[1]));
+  const d0 = pts[0][0], d1 = pts[pts.length - 1][0];
+  const alts = pts.map((p) => p[1]), lo = Math.min(...alts), hi = Math.max(...alts);
+  const x = (d) => (d1 > d0 ? L + ((d - d0) / (d1 - d0)) * (W - L - R) : W / 2);
+  // at least 20 m of height range, so a flat course is drawn flat rather than as noise
+  const span = Math.max(hi - lo, 20), base = lo - (span - (hi - lo)) / 2;
+  const y = (a) => T + (1 - (a - base) / span) * (PB - T);
+  const line = pts.map((p) => `${r1(x(p[0]))},${r1(y(p[1]))}`).join(' ');
+  const iLo = alts.indexOf(lo), iHi = alts.indexOf(hi);
+  const mark = (i, text, below) => {
+    const px = x(pts[i][0]), py = y(pts[i][1]);
+    const anchor = px < W * 0.2 ? 'start' : px > W * 0.8 ? 'end' : 'middle';
+    return [
+      svg('circle', { class: 'ec-dot', cx: r1(px), cy: r1(py), r: 3 }),
+      svg('text', { class: 'ec-t', x: r1(px), y: r1(below ? py + 15 : Math.max(py - 7, 11)), 'text-anchor': anchor, text }),
+    ];
+  };
+  const kids = [
+    svg('polygon', { class: 'ec-area', points: `${r1(x(d0))},${AX} ${line} ${r1(x(d1))},${AX}` }),
+    svg('polyline', { class: 'ec-line', points: line, fill: 'none' }),
+    svg('line', { class: 'pc-axis', x1: L, x2: W - R, y1: AX, y2: AX }),
+    svg('text', { class: 'pc-year', x: L, y: H - 4, 'text-anchor': 'start', text: `0 ${unit}` }),
+    svg('text', { class: 'pc-year', x: W - R, y: H - 4, 'text-anchor': 'end', text: fmtLen(d1, unit) }),
+  ];
+  if (hi > lo) kids.push(...mark(iHi, `High ${fmtHeight(hi, unit)}`, false), ...mark(iLo, `Low ${fmtHeight(lo, unit)}`, true));
+  const desc = hi > lo
+    ? `Elevation over ${fmtLen(d1, unit)}: low ${fmtHeight(lo, unit)} at ${fmtLen(pts[iLo][0], unit)}, high ${fmtHeight(hi, unit)} at ${fmtLen(pts[iHi][0], unit)}.`
+    : `Elevation over ${fmtLen(d1, unit)}: flat at ${fmtHeight(lo, unit)}.`;
+  return svg('svg', { class: 'echart', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': desc }, svg('title', { text: desc }), kids);
+}
+
+// One row per split. A last split shorter than a unit is labelled with its length ("0.2").
+export function splitsTable(splits, unit) {
+  const per = UNIT_M[unit] || UNIT_M.mi;
+  const { fastest, slowest } = markSplits(splits, per);
+  const head = [unit === 'km' ? 'Km' : 'Mile', 'Time', 'Pace', 'Climb'];
+  const rows = splits.map(([m, t, el], i) => {
+    const part = m > 0 && m < per * 0.95;
+    const tag = i === fastest ? h('span', { class: 'tag go' }, 'Fastest') : i === slowest ? h('span', { class: 'tag slow' }, 'Slowest') : null;
+    const shown = Math.round(unit === 'km' ? el : el * FT);   // the sign of what is shown, so never "−0"
+    const elText = `${shown > 0 ? '+' : shown < 0 ? '−' : ''}${fmtHeight(Math.abs(el), unit)}`;
+    return h('tr', { class: i === fastest ? 'fast' : i === slowest ? 'slow' : null },
+      h('td', null, part ? (m / per).toFixed(2) : String(i + 1), tag ? ' ' : null, tag),
+      h('td', { class: 'n' }, t > 0 ? fmtTime(t) : '–'),
+      h('td', { class: 'n' }, fmtPace(m > 0 && t > 0 ? t / (m / per) : null, unit)),
+      h('td', { class: 'n' }, elText));
+  });
+  return h('div', { class: 'splits' }, table(head, rows));
 }

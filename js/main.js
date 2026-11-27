@@ -15,14 +15,17 @@ import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
 import { renderRaces } from './races-view.js';
+import { renderRace, raceOpened } from './race-view.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 
-// Views that exist so far. 'race' (one race) is drawn in the Races section; until its page exists it shows the list.
+// Views that exist so far. 'race' (one race) belongs to the Races section: on wide screens the list and
+// the race sit side by side (#dash.split); on narrow ones CSS shows one of them, by #dash's data-view.
 const ENABLED = ['hub', 'races', 'race', 'legends', 'data'];
 const SECTIONS = ['hub', 'races', 'legends', 'data'];
 const sectionOf = (view) => (view === 'race' ? 'races' : view);
 const scrolls = {};
+let raceFrom = null;   // 'hub' or 'races' when this session opened the current race from there; Back then goes back
 
 function renderStatus() {
   const text = $('statusText'); const prog = $('progress'); const btn = $('refreshBtn');
@@ -57,6 +60,10 @@ function render() {
   const view = current().view;
   const section = sectionOf(view);
   for (const v of SECTIONS) $(`view-${v}`).hidden = v !== section;
+  $('view-race').hidden = section !== 'races';
+  const dash = $('dash');
+  dash.classList.toggle('split', section === 'races');
+  dash.dataset.view = view;
   for (const a of document.querySelectorAll('#nav a')) {
     if (a.dataset.view === section) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
@@ -75,7 +82,7 @@ function render() {
   // Races do not depend on the Legends cache. null until the race cache is loaded.
   const races = S.races ? Object.assign(buildRaces(S.races.races, S.raceDet, units()), { scanning: !(S.races.scan && S.races.scan.done) }) : null;
   if (view === 'hub') { renderHub(ready ? compute(c) : null, races); return; }
-  if (section === 'races') { renderRaces(races); return; }
+  if (section === 'races') { renderRacePanes(races, view === 'race' ? current().id : null); return; }
   if (!ready) return;
 
   const model = compute(c);
@@ -87,13 +94,29 @@ function render() {
   }
 }
 
+// The list and the race. The list is redrawn in place, so focus goes back to the control that had it.
+function renderRacePanes(races, id) {
+  const a = document.activeElement;
+  const key = a && a.closest && a.closest('#view-races') ? a.dataset.focus : null;
+  renderRaces(races);
+  renderRace(races, id, raceFrom);
+  const el = key && document.querySelector(`#view-races [data-focus="${key}"]`);
+  if (el) el.focus({ preventScroll: true });
+}
+
 // Called by the router at start and on every hash change.
 function onRoute(route, prev) {
   if (prev) scrolls[prev.view] = window.scrollY;
   if (prev && prev.view === 'data') hideSetupLink();   // a setup link is not left on screen
+  const newRace = route.view === 'race' && !(prev && prev.view === 'race' && prev.id === route.id);
+  if (newRace) {
+    raceFrom = prev && (prev.view === 'hub' || prev.view === 'races') ? prev.view : null;
+    raceOpened(route.id);
+  }
   render();
   if (route.view === 'legends' && S.map) S.map.invalidateSize();
-  if (prev) window.scrollTo(0, scrolls[route.view] || 0);
+  // A race always opens at its top; any other view goes back to where it was left.
+  if (prev) window.scrollTo(0, route.view === 'race' ? 0 : scrolls[route.view] || 0);
 }
 
 function setDemoRaces() { const d = demoRaces(); S.races = d.races; S.raceDet = d.det; }
@@ -236,6 +259,8 @@ async function linkFromAddress() {
 }
 
 async function init() {
+  // Scroll positions are put back by onRoute; the browser's own restoring on Back would fight it.
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   wireSetup();
   await linkFromAddress();   // before anything else
   // The same link arriving in a page that is already open (no reload happens for a change after the #).

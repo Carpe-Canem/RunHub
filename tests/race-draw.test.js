@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitPoints } from '../js/race-draw.js';
+import { fitPoints, markSplits } from '../js/race-draw.js';
 
 test('fitPoints keeps every point inside the box with its padding', () => {
   const pts = [[40.0, -75.0], [40.01, -74.98], [39.995, -75.02], [40.02, -75.01]];
@@ -35,4 +35,19 @@ test('fitPoints of a single point puts it in the centre', () => {
 test('fitPoints of nothing is empty', () => {
   assert.deepEqual(fitPoints([], 40, 40, 4), []);
   assert.deepEqual(fitPoints(null, 40, 40, 4), []);
+});
+
+test('markSplits marks fastest and slowest full splits and never the short last one', () => {
+  assert.deepEqual(markSplits([[1609, 400, 0], [1609, 380, 0], [1609, 420, 0], [300, 60, 0]], 1609.344), { fastest: 1, slowest: 2 });
+});
+
+test('markSplits of one full split marks nothing', () => {
+  assert.deepEqual(markSplits([[1609, 400, 0]], 1609.344), { fastest: null, slowest: null });
+  assert.deepEqual(markSplits([[1000, 300, 0], [400, 100, 0]], 1000), { fastest: null, slowest: null });
+});
+
+test('markSplits skips empty splits and marks nothing when every pace is equal', () => {
+  assert.deepEqual(markSplits([[0, 0, 0], [1000, 300, 0], [1000, 290, 0]], 1000), { fastest: 2, slowest: 1 });
+  assert.deepEqual(markSplits([[1000, 300, 0], [1000, 300, 0]], 1000), { fastest: null, slowest: null });
+  assert.deepEqual(markSplits(null, 1000), { fastest: null, slowest: null });
 });

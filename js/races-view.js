@@ -4,6 +4,7 @@ import { $, h, led } from './dom.js';
 import { chips, paceTrend, fmtTime, fmtPace } from './races-model.js';
 import { classColour } from './race-rules.js';
 import { routeTile, paceChart } from './race-draw.js';
+import { current } from './router.js';
 
 const FIRST = 10;
 let expanded = false;   // "Show all" pressed; reset when the filter changes
@@ -24,20 +25,24 @@ function redraw(model, focusKey) {
 const dateText = (r) => dayLabel(Date.parse(`${r.date}T00:00:00Z`) / DAY);
 const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.cls);
 
+// The race open beside the list on wide screens is marked as the current one.
+const open = (r) => { const c = current(); return c.view === 'race' && c.id === r.id ? 'page' : null; };
+const shortTag = (r) => (r.short ? h('span', { class: 'tag' }, 'Short') : null);
+
 function row(r, unit) {
-  return h('li', null, h('a', { class: 'race-row', href: `#race/${r.id}`, 'data-focus': `race-${r.id}` },
+  return h('li', null, h('a', { class: 'race-row', href: `#race/${r.id}`, 'data-focus': `race-${r.id}`, 'aria-current': open(r) },
     routeTile(r.pts, r.colour, 44),
     h('span', { class: 'rr-main' },
       h('strong', { class: 'rr-name' }, r.n || 'Race'),
-      h('span', { class: 'rr-meta' }, badge(r), ' ', dateText(r), r.record ? h('span', { class: 'rr-pr' }, ' · Record') : null)),
+      h('span', { class: 'rr-meta' }, badge(r), ' ', dateText(r), r.record ? h('span', { class: 'rr-pr' }, ' · Record') : null, r.short ? ' ' : null, shortTag(r))),
     h('span', { class: 'rr-time' }, led(fmtTime(r.t)), h('span', { class: 'rr-pace' }, fmtPace(r.pace, unit)))));
 }
 
 function routeCard(r) {
-  return h('li', null, h('a', { class: 'route-card', href: `#race/${r.id}`, 'data-focus': `race-${r.id}` },
+  return h('li', null, h('a', { class: 'route-card', href: `#race/${r.id}`, 'data-focus': `race-${r.id}`, 'aria-current': open(r) },
     routeTile(r.pts, r.colour, 120),
     h('strong', { class: 'rc-name' }, r.n || 'Race'),
-    h('span', { class: 'rc-meta' }, badge(r), ' ', dateText(r)),
+    h('span', { class: 'rc-meta' }, badge(r), ' ', dateText(r), r.short ? ' ' : null, shortTag(r)),
     h('span', { class: 'rc-time' }, led(fmtTime(r.t)))));
 }
 
