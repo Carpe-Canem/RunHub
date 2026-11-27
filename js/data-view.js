@@ -4,6 +4,9 @@ import { $, h, table } from './dom.js';
 import { api, token, creds, redirectUri, rateState } from './strava.js';
 import { encodeSetup } from './setup-link.js';
 import { probeFields } from './probe.js';
+import { buildRaces } from './races-model.js';
+import { rescan, saveRaces } from './races-sync.js';
+import { sync } from './legends-sync.js';
 
 export function renderData(model, c) {
   const box = $('dataStatus'); box.replaceChildren();
@@ -23,13 +26,44 @@ export function renderData(model, c) {
     ['Local Legend field returned', fetched ? `${withLL} of ${fetched} segments${withLL === 0 && fetched > 3 ? '. Strava may have removed this field' : ''}` : '–'],
     ['Your count vs Strava\'s, on titles you hold', checked.length ? `${matches} of ${checked.length} match` : '–'],
   ];
+  items.push(...raceItems());
   if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
+  if (!S.demo && token()) box.append(rescanRow());
   if (!S.demo && token()) box.append(...probePanel());
   box.append(unitsRow());
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
+}
+
+// Race history status: counts only, never names, so the owner can check the class rules against their own history.
+function raceItems() {
+  const rc = S.races;
+  if (!rc) return [['Race history', 'Not loaded yet'], ['Race details', '–'], ['Races by class', '–']];
+  const m = buildRaces(rc.races, S.raceDet || {}, units());
+  const when = (ms, o) => new Date(ms).toLocaleDateString(undefined, o);
+  const sc = rc.scan || {};
+  const history = sc.done
+    ? `Complete: ${m.rows.length} races, last full scan ${when(rc.lastScan, {})}`
+    : (sc.cursor ? `Scanning: back to ${when(sc.cursor * 1000, { month: 'long', year: 'numeric' })}` : 'Scanning: starting');
+  const read = m.rows.filter((r) => S.raceDet && S.raceDet[r.id]).length;
+  const gps = m.rows.filter((r) => r.from === 'gps').length;
+  const byClass = m.classes.length
+    ? `${m.classes.map((x) => `${x.cls} ${x.count}`).join(' · ')} · ${gps} classed by GPS distance`
+    : 'None yet';
+  return [['Race history', history], ['Race details', `${read} of ${m.rows.length} read`], ['Races by class', byClass]];
+}
+
+function rescanRow() {
+  const go = async () => {
+    if (S.syncing || !S.races) return;
+    rescan(S.races); saveRaces();
+    bus.emit('data');
+    await sync(true);
+  };
+  return h('div', { class: 'row' },
+    h('button', { type: 'button', class: 'btn small', disabled: !!S.syncing || !S.races, onclick: go }, 'Rescan all history'));
 }
 
 function unitsRow() {
