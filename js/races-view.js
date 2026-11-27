@@ -51,10 +51,11 @@ function row(r, unit) {
 
 function routeCard(r) {
   return h('li', null, h('a', { class: 'route-card', href: `#race/${r.id}`, 'data-focus': `race-${r.id}`, 'aria-current': open(r) },
-    routeTile(r.pts, r.colour, 120),
-    h('strong', { class: 'rc-name' }, r.n || 'Race'),
-    h('span', { class: 'rc-meta' }, badge(r), ' ', dateText(r), r.short ? ' ' : null, shortTag(r)),
-    h('span', { class: 'rc-time' }, led(fmtTime(r.t)))));
+    routeTile(r.pts, r.colour, 240, { bleed: true }),
+    h('span', { class: 'rc-text' },
+      h('strong', { class: 'rc-name' }, r.n || 'Race'),
+      h('span', { class: 'rc-meta' }, badge(r), ' ', dateText(r), r.short ? ' ' : null, shortTag(r)),
+      h('span', { class: 'rc-time' }, led(fmtTime(r.t))))));
 }
 
 function trend(model, filter, unit) {

@@ -19,19 +19,29 @@ export function fitPoints(pts, w, h, pad) {
 }
 
 const MAX_PTS = 160;
-const thin = (pts) => (pts.length <= MAX_PTS ? pts : Array.from({ length: MAX_PTS }, (_, i) => pts[Math.round((i * (pts.length - 1)) / (MAX_PTS - 1))]));
+const thin = (pts, max = MAX_PTS) => (pts.length <= max ? pts : Array.from({ length: max }, (_, i) => pts[Math.round((i * (pts.length - 1)) / (max - 1))]));
 const r1 = (n) => Math.round(n * 10) / 10;
+let glowId = 0;
 
 // The course in the class colour on a board tile: a start ring and a finish dot. No GPS: a dashed circle.
-export function routeTile(pts, colour, size) {
-  const s = size, kids = [svg('rect', { class: 'rt-bg', width: s, height: s, rx: Math.max(4, s * 0.14) })];
-  const xy = pts && pts.length ? fitPoints(thin(pts), s, s, s * 0.16) : null;
+// opts.bleed: the Routes grid card. Square corners (the card clips them), the course fills more of the tile,
+// a fine line over a soft glow of itself, and more points for detail.
+export function routeTile(pts, colour, size, opts) {
+  const s = size, bleed = !!(opts && opts.bleed);
+  const kids = [svg('rect', { class: 'rt-bg', width: s, height: s, rx: bleed ? 0 : Math.max(4, s * 0.14) })];
+  const xy = pts && pts.length ? fitPoints(thin(pts, bleed ? 400 : MAX_PTS), s, s, s * (bleed ? 0.11 : 0.16)) : null;
   if (xy) {
-    const w = Math.max(1.5, s / 22);
-    kids.push(svg('polyline', { points: xy.map(([x, y]) => `${r1(x)},${r1(y)}`).join(' '), fill: 'none', stroke: colour, 'stroke-width': w, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+    const w = bleed ? s / 96 : Math.max(1.5, s / 22);
+    const line = (attrs) => svg('polyline', { points: xy.map(([x, y]) => `${r1(x)},${r1(y)}`).join(' '), fill: 'none', stroke: colour, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', ...attrs });
+    if (bleed) {
+      const id = `rt-glow-${++glowId}`;
+      kids.push(svg('defs', null, svg('filter', { id, x: '-20%', y: '-20%', width: '140%', height: '140%' }, svg('feGaussianBlur', { stdDeviation: r1(s / 80) }))));
+      kids.push(line({ class: 'rt-glow', 'stroke-width': r1(w * 1.6), filter: `url(#${id})`, opacity: 0.6 }));
+    }
+    kids.push(line({ 'stroke-width': r1(w) }));
     const [sx, sy] = xy[0], [fx, fy] = xy[xy.length - 1];
-    kids.push(svg('circle', { class: 'rt-start', cx: r1(sx), cy: r1(sy), r: r1(w * 1.7), 'stroke-width': w }));
-    kids.push(svg('circle', { class: 'rt-finish', cx: r1(fx), cy: r1(fy), r: r1(w * 1.4) }));
+    kids.push(svg('circle', { class: 'rt-start', cx: r1(sx), cy: r1(sy), r: r1(bleed ? s / 48 : w * 1.7), 'stroke-width': r1(bleed ? s / 120 : w) }));
+    kids.push(svg('circle', { class: 'rt-finish', cx: r1(fx), cy: r1(fy), r: r1(bleed ? s * 0.019 : w * 1.4) }));
   } else {
     kids.push(svg('circle', { class: 'rt-none', cx: s / 2, cy: s / 2, r: r1(s * 0.28), 'stroke-width': Math.max(1.5, s / 28), 'stroke-dasharray': `${r1(s / 14)} ${r1(s / 14)}` }));
   }

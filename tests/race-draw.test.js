@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fitPoints, markSplits, elevationChart } from '../js/race-draw.js';
+import { fitPoints, markSplits, elevationChart, routeTile } from '../js/race-draw.js';
 
 test('fitPoints keeps every point inside the box with its padding', () => {
   const pts = [[40.0, -75.0], [40.01, -74.98], [39.995, -75.02], [40.02, -75.01]];
@@ -57,3 +57,37 @@ test('elevationChart draws nothing with fewer than two usable points', () => {
   assert.equal(elevationChart([[0, 100]], 'mi'), null);
   assert.equal(elevationChart([[0, NaN], [10, 100], [null, 5], 'x'], 'km'), null);
 });
+
+// A bare SVG DOM: enough for svg() to build a route tile.
+function withFakeSvg(fn) {
+  class El {
+    constructor(tag) { this.tag = tag; this.attrs = {}; this.kids = []; }
+    setAttribute(k, v) { this.attrs[k] = String(v); }
+    append(...k) { this.kids.push(...k); }
+    appendChild(k) { this.kids.push(k); return k; }
+    all(tag) { return [this, ...this.kids.flatMap((k) => (k.all ? k.all(tag) : []))].filter((e) => e.tag === tag); }
+  }
+  globalThis.Node = El;
+  globalThis.document = { createElementNS: (_, t) => new El(t), createTextNode: (d) => ({ d }) };
+  try { return fn(); } finally { delete globalThis.document; delete globalThis.Node; }
+}
+const COURSE = Array.from({ length: 900 }, (_, i) => [40 + Math.sin(i / 90) * 0.02, -80 + i * 0.00004]);
+
+test('routeTile bleed: square corners, a fine line over its glow, more points, small marks', () => withFakeSvg(() => {
+  const t = routeTile(COURSE, '#f00', 240, { bleed: true });
+  assert.equal(t.all('rect')[0].attrs.rx, '0');
+  const [glow, line] = t.all('polyline');
+  assert.match(glow.attrs.filter, /^url\(#rt-glow-\d+\)$/);
+  assert.equal(t.all('filter')[0].attrs.id, glow.attrs.filter.slice(5, -1));
+  assert.equal(line.attrs['stroke-width'], '2.5');
+  assert.equal(line.attrs.points.split(' ').length, 400);
+  assert.equal(t.all('circle').find((c) => c.attrs.class === 'rt-start').attrs.r, '5');
+}));
+
+test('routeTile default: rounded board, one line, no glow', () => withFakeSvg(() => {
+  const t = routeTile(COURSE, '#f00', 44);
+  assert.notEqual(t.all('rect')[0].attrs.rx, '0');
+  assert.equal(t.all('polyline').length, 1);
+  assert.equal(t.all('filter').length, 0);
+  assert.equal(t.all('polyline')[0].attrs.points.split(' ').length, 160);
+}));
