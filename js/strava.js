@@ -71,7 +71,11 @@ export async function ensureToken(force) {
     nt = await tokenRequest({ client_id: c.clientId, client_secret: c.clientSecret, grant_type: 'refresh_token', refresh_token: t.refresh_token });
   } catch (e) {
     if (!e.refused) throw e;   // offline or a Strava fault: say that, the connection may be fine
-    if (!t.fromLink) throw new UserError('Strava access expired or was revoked. Use “Forget this browser” on the Data page, then connect again.');
+    if (!t.fromLink) {
+      const gone = new UserError('Strava access expired or was revoked. Use “Forget this browser” on the Data page, then connect again.');
+      gone.refused = true;
+      throw gone;
+    }
     const dead = new UserError(LINK_DEAD); dead.linkDead = true;
     throw dead;
   }
@@ -124,14 +128,18 @@ export async function api(path, retried) {
   return res.json();
 }
 
-// Revoke this app's access at Strava. True only when Strava accepted it.
+// Revoke this app's access at Strava: 'revoked', 'gone' (Strava says the token is not authorized) or 'failed'.
 export async function revoke(accessToken) {
-  try { return (await fetch(DEAUTH_URL, { method: 'POST', body: new URLSearchParams({ access_token: accessToken }) })).ok; } catch { return false; }
+  try {
+    const r = await fetch(DEAUTH_URL, { method: 'POST', body: new URLSearchParams({ access_token: accessToken }) });
+    return r.ok ? 'revoked' : r.status === 401 ? 'gone' : 'failed';
+  } catch { return 'failed'; }
 }
 
 // "Disconnect everywhere": Strava only accepts a current access token, so refresh a stale one first.
+// A refused refresh means the grant is already gone (revoked elsewhere), which is not a failure to report as one.
 export async function revokeEverywhere() {
   let t;
-  try { t = await ensureToken(false); } catch { return false; }
+  try { t = await ensureToken(false); } catch (e) { return e.refused || e.linkDead ? 'gone' : 'failed'; }
   return revoke(t.access_token);
 }

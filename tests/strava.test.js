@@ -58,17 +58,27 @@ const strava = (answers) => {
 test('revokeEverywhere refreshes a stale token first, then revokes with the fresh one', async () => {
   applySetup(FIELDS);   // no usable access token yet
   const seen = strava({ '/oauth/token': answer(200, { access_token: 'access-new', refresh_token: 'refresh-new', expires_at: 2000000000 }), '/oauth/deauthorize': answer(200, {}) });
-  assert.equal(await revokeEverywhere(), true);
+  assert.equal(await revokeEverywhere(), 'revoked');
   assert.deepEqual(seen.map((s) => s[0]), ['/oauth/token', '/oauth/deauthorize']);
   assert.deepEqual(seen[1][1], { access_token: 'access-new' });
 });
-test('revokeEverywhere reports false when Strava does not accept the revoke', async () => {
+test('revokeEverywhere reports gone when Strava says the fresh token is not authorized', async () => {
   applySetup(FIELDS);
   strava({ '/oauth/token': answer(200, { access_token: 'access-new', refresh_token: 'refresh-new', expires_at: 2000000000 }), '/oauth/deauthorize': answer(401, {}) });
-  assert.equal(await revokeEverywhere(), false);
+  assert.equal(await revokeEverywhere(), 'gone');
 });
-test('revokeEverywhere reports false when Strava cannot be reached', async () => {
+test('revokeEverywhere reports gone when Strava refuses the refresh (access already revoked)', async () => {
+  applySetup(FIELDS);
+  strava({ '/oauth/token': answer(400, {}) });
+  assert.equal(await revokeEverywhere(), 'gone');
+});
+test('revokeEverywhere reports failed when Strava answers the revoke with a server error', async () => {
+  applySetup(FIELDS);
+  strava({ '/oauth/token': answer(200, { access_token: 'access-new', refresh_token: 'refresh-new', expires_at: 2000000000 }), '/oauth/deauthorize': answer(500, {}) });
+  assert.equal(await revokeEverywhere(), 'failed');
+});
+test('revokeEverywhere reports failed when Strava cannot be reached', async () => {
   applySetup(FIELDS);
   globalThis.fetch = async () => { throw new TypeError('offline'); };
-  assert.equal(await revokeEverywhere(), false);
+  assert.equal(await revokeEverywhere(), 'failed');
 });

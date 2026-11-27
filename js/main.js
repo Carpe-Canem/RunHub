@@ -117,11 +117,13 @@ async function leave(everywhere) {
   if (!window.confirm(everywhere
     ? 'Revoke access at Strava and wipe this browser? Every device you connected is signed out and every setup link stops working.'
     : 'Remove your Strava keys and all cached data from this browser? Your other devices stay connected.')) return;
-  if (everywhere && token() && !(await revokeEverywhere())) {
+  const result = everywhere && token() ? await revokeEverywhere() : null;
+  if (result === 'failed') {
     // Nothing is wiped, so the button can be pressed again. Saying "done" here would leave a stray link working.
-    window.alert('Strava did not confirm the disconnect, so your other devices and any setup links still work. Nothing was removed from this browser. Try again, or remove the app at strava.com/settings/apps. To wipe only this browser, use “Forget this browser”.');
+    window.alert('Strava did not confirm the disconnect, so your other devices and any setup links may still work. Nothing was removed from this browser. Try again, or remove the app at strava.com/settings/apps. To wipe only this browser, use “Forget this browser”.');
     return;
   }
+  if (result === 'gone') window.alert('Access was already revoked at Strava, so your other devices and setup links had already stopped working. This browser is now wiped.');
   wipe();
   render();
   window.scrollTo(0, 0);
@@ -224,7 +226,11 @@ async function init() {
   wireSetup();
   await linkFromAddress();   // before anything else
   // The same link arriving in a page that is already open (no reload happens for a change after the #).
-  window.addEventListener('hashchange', async () => { if (await linkFromAddress()) enter(); });
+  // On a failed link, redraw: the router may already have drawn the hub for a token that is now wiped.
+  window.addEventListener('hashchange', async () => {
+    if (!location.hash.startsWith('#setup=')) return;
+    if (await linkFromAddress()) enter(); else render();
+  });
   try {
     await handleCallback();
   } catch (e) {

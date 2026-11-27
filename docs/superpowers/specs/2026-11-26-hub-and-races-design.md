@@ -255,7 +255,9 @@ Every access stays guarded as today. If storage is full, details are dropped bef
 
 **Not for friends.** Giving someone the link gives them the owner's Strava access. A friend connects with their own Strava app, as now, and can then make links for their own devices.
 
-**Checked on the live site (owner, 2026-11-26).** On https://carpe-canem.github.io/RunHub/ a setup link opened on a second device connected and synced, and the first device was still signed in afterwards: a second device refreshing does not sign the first one out. The same check found the hub opening, the tab bar clearing the iPhone home indicator, and the Legends numbers matching. The "no longer works" message stays for a link whose token Strava does refuse (revoked, or "Disconnect everywhere").
+**Checked on the live site (owner, 2026-11-26).** On https://carpe-canem.github.io/RunHub/ a setup link opened on a second device connected and synced, and the first device was still signed in afterwards. The same check found the hub opening, the tab bar clearing the iPhone home indicator, and the Legends numbers matching.
+
+**Still unverified.** The first device refreshes only when its access token has less than an hour left (tokens last about 6 hours), so it was most likely still on its old access token. Strava's documentation says a refresh token can change whenever a new access token is issued. The case that can break is the first device's own next refresh, after the second device has refreshed. To test: on the first device, wait 6 hours or more after the second one connected (or set `expires_at` in `lw.token` to 0), then sync. If the first device then shows "Strava access expired or was revoked", refresh tokens rotate and the link design needs rethinking, for example a link that carries only the keys and has each device sign in itself.
 
 **Tests.** Two pure functions, `encodeSetup(fields)` and `decodeSetup(text)`. The second accepts a whole link or a bare code and returns nothing for garbage, a wrong version or a missing field.
 
