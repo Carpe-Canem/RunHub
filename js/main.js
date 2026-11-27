@@ -25,6 +25,7 @@ import { renderHub } from './hub.js';
 import { renderRaces, racesDown } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
 import { dropCourseMap, closeCourseDialog } from './race-map.js';
+import { openAddSheet, closeAddSheet } from './add-race.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 
@@ -66,6 +67,7 @@ function render() {
   $('dash').hidden = !connected;
   $('nav').hidden = !connected;
   $('dataLink').hidden = !connected;
+  $('addRaceBtn').hidden = !connected;
   const view = current().view;
   const section = sectionOf(view);
   for (const v of SECTIONS) $(`view-${v}`).hidden = v !== section;
@@ -131,6 +133,7 @@ function renderRacePanes(races, id) {
 function onRoute(route, prev) {
   if (prev) scrolls[prev.view] = window.scrollY;
   if (prev && prev.view === 'data') hideSetupLink();   // a setup link is not left on screen
+  if (prev && prev.view !== route.view) closeAddSheet();
   if (prev && !(route.view === 'race' && route.id === prev.id)) closeCourseDialog();
   const newRace = route.view === 'race' && !(prev && prev.view === 'race' && prev.id === route.id);
   if (newRace) {
@@ -169,6 +172,7 @@ function wipe() {
   Object.assign(S, { cache: null, races: null, raceDet: null, raceEnv: null, upcoming: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }
   dropCourseMap();
+  closeAddSheet();
   hideSetupLink();
 }
 
@@ -261,6 +265,7 @@ function wireSetup() {
   $('demoBtn').addEventListener('click', startDemo);
   $('exitDemoBtn').addEventListener('click', exitDemo);
   $('refreshBtn').addEventListener('click', () => sync(true));
+  $('addRaceBtn').addEventListener('click', (e) => openAddSheet(e.currentTarget));
   $('disconnectBtn').addEventListener('click', () => (S.demo ? exitDemo() : leave(true)));
   $('forgetBtn').addEventListener('click', () => leave(false));
   const linkErr = $('linkError');
