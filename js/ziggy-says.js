@@ -4,6 +4,7 @@ import { DAY, dayOf, fmt0, fmt1, plural } from './core.js';
 import { fmtTime } from './races-model.js';
 import { isoDay } from './upcoming.js';
 import { overBy, yearDiff, timeText } from './hub-model.js';
+import { graphemes } from './ziggy-moves.js';
 
 const NAME_MAX = 28;
 
@@ -11,9 +12,9 @@ const t = (text, tone) => (tone ? { text, tone } : { text });
 const line = (key, mood, ...parts) => ({ key, mood, parts: parts.map((p) => (typeof p === 'string' ? t(p) : p)) });
 // One decimal, without a trailing ".0": "5 miles", "22.4 miles".
 const dist = (x) => fmt1(x).replace(/\.0$/, '');
-// Cut by character, so the cut never splits one in two.
+// Cut by whole character, so the cut never splits one in two.
 const shortName = (n) => {
-  const chars = [...n];
+  const chars = graphemes(n);
   return chars.length > NAME_MAX ? `${chars.slice(0, NAME_MAX).join('').trimEnd()}…` : n;
 };
 // A name that ends its own sentence, or is cut with an ellipsis, gets no second stop.
@@ -37,6 +38,8 @@ export function ziggyLines({ mi, stats, up, sync, now, locale }) {
   const away = next ? daysFrom(today, next.date) : NaN;
   const last = stats && stats.latest ? stats.latest[0] : null;
   const age = last ? daysFrom(last.date, today) : NaN;
+  // A race with no name is called what the hub calls it.
+  const nextName = next ? shortName(next.n || 'Your next race') : '';
   const lastName = last ? shortName(last.n || 'A race') : '';
   const isRecord = !!(last && last.record && last.t > 0 && age >= 0 && age <= 14);
   const over = mi ? overBy(mi) : 0;
@@ -46,14 +49,13 @@ export function ziggyLines({ mi, stats, up, sync, now, locale }) {
 
   if (sync.running && !sync.runsLoaded && mi !== false) add('fetching', 'eager', 'Fetching your runs from Strava.');
   if (away === 0) {
-    const name = shortName(next.n);
     const time = timeText(next, locale);
-    add('raceday', 'thrilled', `Race day. ${sentence(time ? `${name} at ${time}` : name)}`);
+    add('raceday', 'thrilled', `Race day. ${sentence(time ? `${nextName} at ${time}` : nextName)}`);
   }
   if (isRecord) add('record', 'thrilled', t(`${fmtTime(last.t)}!`, 'go'), ` A new ${last.cls} record.`);
   if (away >= 1 && away <= 7) {
     const weekday = new Date(dayOf(next.date) * DAY).toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' });
-    add('soon', 'eager', `${shortName(next.n)} is on ${weekday}.`);
+    add('soon', 'eager', `${nextName} is on ${weekday}.`);
   }
   if (over > 0) add('weekover', 'happy', `${dist(mi.week)} ${unit} this week, `, t(`${dist(over)} over`, 'go'), ' your usual.');
   if (!isRecord && age >= 0 && age <= 30) add('latest', 'happy', sentence(last.t > 0 ? `${lastName} in ${fmtTime(last.t)}` : lastName));
@@ -63,7 +65,7 @@ export function ziggyLines({ mi, stats, up, sync, now, locale }) {
   if (mi && !weekLow && mi.runsToday === 0 && +fmt1(mi.week - mi.weekAvg) < 0) add('norun', 'eager', 'No run yet today. Shall we?');
   if (second) {
     const day = new Date(dayOf(second.date) * DAY).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-    add('after', 'curious', `After that: ${shortName(second.n)}, ${day}.`);
+    add('after', 'curious', `After that: ${shortName(second.n || 'A race')}, ${day}.`);
   }
   if (stats && stats.count > 0) {
     const podiums = stats.podiums > 0 ? `, ${stats.podiums} on an age-group podium` : '';

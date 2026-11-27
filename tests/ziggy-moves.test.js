@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SHEETS } from '../js/ziggy-frames.js';
 import {
   TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, WANDER, pickFidget, fidgetWait, steps, typedCount, carryTyped,
-  splitParts, keepLine, canFidget, wanderTo, wanderMs,
+  splitParts, lengthOf, keepLine, canFidget, wanderTo, wanderMs,
 } from '../js/ziggy-moves.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
@@ -104,6 +104,22 @@ test("the wander's frames exist in its sheet and its scale is a whole number", (
 test('typing', () => {
   assert.deepEqual([[0, 30], [750, 30], [1500, 30], [9999, 30], [100, 0], [-5, 30]].map(([ms, len]) => typedCount(ms, len)),
     [0, 15, 30, 30, 0, 0]);
+});
+
+test('a line is cut between whole characters, never inside one', () => {
+  // A joined family, a flag, an accent made of two code points, and an emoji with a skin tone.
+  const chars = ['A', '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}', '\u{1F1FA}\u{1F1F8}', 'e\u0301', ' ', '\u{1F3C3}\u{1F3FD}', '!'];
+  const parts = [{ text: chars.slice(0, 4).join(''), tone: 'go' }, { text: chars.slice(4).join('') }];
+  const text = (list) => list.map((p) => p.text).join('');
+  const len = lengthOf({ parts });
+  assert.equal(len, chars.length);
+  for (let n = 0; n <= len; n++) {
+    const { on, off } = splitParts(parts, n);
+    assert.equal(text(on), chars.slice(0, n).join(''), `${n} shown`);
+    assert.equal(text(off), chars.slice(n).join(''), `${n} hidden`);
+    for (const p of [...on, ...off]) assert.notEqual(p.text, '');
+  }
+  assert.deepEqual(splitParts(parts, len).off, []);
 });
 
 test('the same line with new words keeps its place', () => {

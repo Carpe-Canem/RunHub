@@ -85,15 +85,24 @@ export const typedCount = (ms, len) => Math.floor(len * Math.min(1, Math.max(0, 
 // The typed count after the same line's words changed: a finished line stays whole, a part-typed one carries on.
 export const carryTyped = (typed, wasDone, newLen) => (wasDone ? newLen : Math.min(typed, newLen));
 
+// Whole characters as a reader sees them, so an emoji made of several code points is never cut in two. A browser
+// without the segmenter cuts by code point.
+const segmenter = globalThis.Intl?.Segmenter ? new Intl.Segmenter() : null;
+export const graphemes = (text) => (segmenter ? Array.from(segmenter.segment(text), (g) => g.segment) : [...text]);
+
+// The characters in a whole line: what typedCount() and splitParts() count in.
+export const lengthOf = (line) => line.parts.reduce((n, p) => n + graphemes(p.text).length, 0);
+
 // The parts cut after n characters. Each piece keeps its part's tone; no piece is empty.
 export function splitParts(parts, n) {
   const on = []; const off = [];
   let left = Math.max(0, n);
   for (const p of parts) {
-    if (left >= p.text.length) on.push(p);
+    const chars = graphemes(p.text);
+    if (left >= chars.length) on.push(p);
     else if (left <= 0) off.push(p);
-    else { on.push({ ...p, text: p.text.slice(0, left) }); off.push({ ...p, text: p.text.slice(left) }); }
-    left -= p.text.length;
+    else { on.push({ ...p, text: chars.slice(0, left).join('') }); off.push({ ...p, text: chars.slice(left).join('') }); }
+    left -= chars.length;
   }
   return { on, off };
 }

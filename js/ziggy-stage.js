@@ -5,16 +5,14 @@ import { h, motionOK } from './dom.js';
 import { SHEETS, HEAD } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
-  TYPE_MS, FIDGETS, WANDER, pickFidget, fidgetWait, steps, typedCount, carryTyped, splitParts, keepLine, canFidget,
-  wanderTo, wanderMs,
+  TYPE_MS, FIDGETS, WANDER, pickFidget, fidgetWait, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine,
+  canFidget, wanderTo, wanderMs,
 } from './ziggy-moves.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const TICK = 40;                   // ms between looks at the clock while a line types
 const TROT_MS = 150;               // each of the wander's two frames
 const GRACE = 34;                  // ms a trip is given past its slide
-
-const lengthOf = (line) => line.parts.reduce((n, p) => n + p.text.length, 0);
 
 // key: the line showing. i: its place in the list. typed, len: characters shown, and in the whole line.
 // phase: 'typing', 'moving' (the mood's own movement), 'still', 'fidget' or 'wander'. x: his left edge on the
@@ -97,7 +95,7 @@ function draw() {
 // The strip's width is known, or has changed: he starts in the middle, and is never left off its end.
 function fit() {
   const wide = strip.clientWidth;
-  if (!wide) return;   // the hub is not the view on screen
+  if (!wide || !lines.length) return;   // the hub is not the view on screen, or he has just been reset
   const room = Math.max(0, wide - CELL);
   s = { ...s, x: s.x === null ? Math.round(room / 2) : Math.min(s.x, room), to: s.to === null ? null : Math.min(s.to, room) };
   draw();
@@ -227,6 +225,15 @@ function seen() {
   else settle();
 }
 
+// The demo was left, or this browser connected or disconnected: he starts again from the first line, in the middle.
+export function resetZiggy() {
+  if (!el) return;
+  stop();
+  land();
+  s = START;
+  lines = [];
+}
+
 // lines: from ziggyLines(), never empty. opts.only: a fidget of the mood's set to play every time.
 export function ziggyStage(newLines, opts) {
   if (!el) build();
@@ -242,9 +249,15 @@ export function ziggyStage(newLines, opts) {
     const next = bubble(pressable);
     say.replaceWith(next);
     say = next;
-    if (focused && pressable) say.focus({ preventScroll: true });
+    if (focused) {
+      // A plain box takes focus only when told it may; -1 adds no Tab stop.
+      if (!pressable) say.setAttribute('tabindex', '-1');
+      say.focus({ preventScroll: true });
+    }
   }
   el.classList.toggle('zs-more', pressable);
+  // After a reset the strip may not change width, so nothing else would place him.
+  if (s.x === null) fit();
   if (s.key !== was.key) begin();
   else if (!motion) { stop(); land(); hold(); draw(); }
   else {

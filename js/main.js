@@ -15,6 +15,7 @@ import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEv
 import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, demoCache, runsLoaded } from './runs-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
+import { resetZiggy } from './ziggy-stage.js';
 import { sync } from './sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
 import { loadUp, nextRows, handCount } from './upcoming-sync.js';
@@ -208,6 +209,7 @@ function startDemo() {
 function exitDemo() {
   S.demo = false; S.cache = null; S.races = null; S.raceDet = null; S.raceEnv = null; S.upcoming = null;
   dropCourseMap();
+  resetZiggy();
   if (location.search) history.replaceState(null, '', location.pathname);
   render();
   window.scrollTo(0, 0);
@@ -223,6 +225,7 @@ function wipe() {
   clearTimeout(S.resumeTimer);
   Object.assign(S, { cache: null, races: null, raceDet: null, raceEnv: null, upcoming: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   dropCourseMap();
+  resetZiggy();
   closeAddSheet();
   hideSetupLink();
   hideExport();
@@ -256,6 +259,7 @@ async function leave(everywhere) {
 function enter() {
   const t = token();
   S.demo = false; S.error = null;
+  resetZiggy();
   S.athleteId = t.athleteId;
   S.cache = loadCache(t.athleteId);
   S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId); S.raceEnv = loadEnv(t.athleteId); S.upcoming = loadUp(t.athleteId);

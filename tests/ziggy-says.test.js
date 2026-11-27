@@ -12,13 +12,7 @@ const stats = (over) => ({ count: 20, podiums: 2, latest: [race()], ...over });
 const UP = [{ id: 'u1', n: 'Orchard 10K', date: '2026-12-06', time: '08:00' }, { id: 'u2', n: 'Harbor Half', date: '2027-01-17' }];
 const SYNC = { running: false, runsLoaded: true };
 
-// Every set of lines any test asks for is kept, for the rule that holds across all of them.
-const seen = [];
-const lines = (over = {}) => {
-  const out = ziggyLines({ mi: MI, stats: stats(), up: UP, sync: SYNC, now: NOW, locale: 'en-US', ...over });
-  seen.push(...out);
-  return out;
-};
+const lines = (over = {}) => ziggyLines({ mi: MI, stats: stats(), up: UP, sync: SYNC, now: NOW, locale: 'en-US', ...over });
 const mi = (over) => ({ ...MI, ...over });
 const soon = (date, over) => [{ ...UP[0], date, ...over }, UP[1]];
 const say = (line) => line.parts.map((p) => p.text).join('').replace(/\s/g, ' ');
@@ -204,11 +198,39 @@ test('the check hook', () => {
   assert.equal(moodCheck('toString'), null);
 });
 
-// Last, so it sees every line the tests above asked for.
-test('only the year is ever "behind", and he never scolds', () => {
-  assert.ok(seen.length > 40);
-  for (const l of seen) {
-    if (l.key !== 'yearbehind') assert.doesNotMatch(say(l), /behind/);
-    for (const p of l.parts) assert.notEqual(p.tone, 'slow');
+test('a race with no name still gets its lines', () => {
+  for (const n of [undefined, '']) {
+    const bare = (date) => [{ ...UP[0], date, time: undefined, n }, { ...UP[1], n }];
+    assert.equal(say(get('raceday', { up: bare('2026-11-27') })), 'Race day. Your next race.');
+    assert.equal(say(get('soon', { up: bare('2026-11-29') })), 'Your next race is on Sunday.');
+    assert.equal(say(get('after', { up: bare('2026-11-29') })), 'After that: A race, Jan 17.');
+    assert.equal(say(get('latest', { stats: stats({ latest: [race({ n, t: 0 })] }) })), 'A race.');
   }
+});
+
+test('a long name is cut between whole characters, emoji included', () => {
+  const family = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}';
+  const n = `${'a'.repeat(27)}${family}tail`;
+  assert.equal(say(get('latest', { stats: stats({ latest: [race({ n, t: 0 })] }) })), `${'a'.repeat(27)}${family}\u2026`);
+  // 28 whole characters are not cut, however many code points they take.
+  const whole = family.repeat(28);
+  assert.equal(say(get('latest', { stats: stats({ latest: [race({ n: whole, t: 0 })] }) })), `${whole}.`);
+});
+
+test('only the year is ever "behind", and he never scolds', () => {
+  // Its own sweep of the cases, so it holds when run alone.
+  const miles = [MI, mi({ week: 22.4, lytd: 1075, runsToday: 0 }), mi({ dow: 5, runsToday: 0 }), mi({ runsToday: 0 }),
+    mi({ unit: 'km', dow: 6 }), null, false];
+  const races = [stats(), stats({ latest: [race({ record: true })] }), stats({ count: 0, podiums: 0, latest: [] }), null, false];
+  const ups = [UP, soon('2026-11-27'), soon('2026-11-29'), [], null];
+  const keysSeen = new Set();
+  for (const m of miles) for (const st of races) for (const up of ups) for (const running of [true, false]) {
+    for (const l of lines({ mi: m, stats: st, up, sync: { running, runsLoaded: false } })) {
+      keysSeen.add(l.key);
+      if (l.key !== 'yearbehind') assert.doesNotMatch(say(l), /behind/);
+      for (const p of l.parts) assert.notEqual(p.tone, 'slow');
+    }
+  }
+  assert.deepEqual([...keysSeen].sort(), ['after', 'fetching', 'latest', 'norun', 'quiet', 'raceday', 'record', 'soon',
+    'totals', 'weeklow', 'weekover', 'yearahead', 'yearbehind']);
 });

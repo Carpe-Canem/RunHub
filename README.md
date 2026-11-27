@@ -80,6 +80,14 @@ python -m http.server 8080
 
 Open <http://localhost:8080/>. Strava always allows `localhost` as a callback, so the same Strava app works both locally and on GitHub Pages.
 
+Ziggy's sprite sheets in `sprites/` are built from the text grids in `sprites/src/`. After changing a grid, rebuild them:
+
+```bash
+node scripts/build-sprites.mjs
+```
+
+The PNG writer it uses, `scripts/sprite-png.mjs`, needs Node 22.2 or later.
+
 ## Publishing
 
 In the GitHub repo, open **Settings → Pages**, set **Source** to "Deploy from a branch", choose `main` and `/ (root)`, and save.

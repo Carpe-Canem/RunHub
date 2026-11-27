@@ -208,7 +208,7 @@ main { padding-top: 18px; padding-bottom: 28px; }
 /* Ziggy's stage ends the hub: a bubble the hub's width, a pointer, and the strip he walks on. On a narrow screen
    it takes the spare room above it, so he stands on the tab bar's edge. */
 .zs { position: relative; margin-top: auto; padding-top: 12px; }
-.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 16px; font: 500 14px/1.4 var(--f); text-align: left; color: var(--tx); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 16px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: var(--tx); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 button.zs-say { cursor: pointer; }
 .zs-say b { font-weight: 800; }
 .zs-say .go { color: var(--go); }
