@@ -217,6 +217,11 @@ test('fetchRaceDetails skips a race whose request fails, keeps going, and leaves
   assert.deepEqual(Object.keys(rd).sort(), ['5000', '5030', '5045']);
   assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
   assert.deepEqual(Object.keys(saved('lw.raceDet.42').det).sort(), ['5000', '5030', '5045']);
+  // the next pass asks again for that race only, and the note goes once it is read
+  calls.length = 0;
+  await fetchRaceDetails(rc, rd, async (path) => { calls.push(path); return { id: 5015, sport_type: 'Run' }; });
+  assert.deepEqual(calls, ['/activities/5015']);
+  assert.equal(S.warn, null);
 });
 
 test('fetchRaceDetails still stops on a rate-limit pause', async () => {

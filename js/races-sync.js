@@ -92,6 +92,7 @@ export async function fetchRaceDetails(rc, rd, call = api, onStep = () => {}) {
   if (!rc || !rd) return;
   const todo = Object.values(rc.races).filter((r) => !rd[r.id]).sort((a, b) => b.s - a.s);
   let done = 0, read = 0, skipped = 0;
+  if (S.warn === SKIPPED) S.warn = null;   // this pass asks for those races again
   try {
     for (const r of todo) {
       let a;
