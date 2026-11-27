@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, framePos, sheetSize } from '../js/ziggy-frames.js';
+import { readFileSync } from 'node:fs';
+import { SHEETS, HEAD, framePos, sheetSize } from '../js/ziggy-frames.js';
 import { readPalette, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
 import { decodePng } from '../scripts/sprite-png.mjs';
 
 const HUB = SHEETS.hub.frames;
+const SIDE = SHEETS.side.frames;
+const AWAKE = ['happy', 'thrilled', 'eager', 'curious', 'worried'];
 const opaque = (rows) => rows.join('').replaceAll('.', '').length;
 const count = (rows, letters) => [...rows.join('')].filter((ch) => letters.includes(ch)).length;
 
@@ -77,22 +80,69 @@ test('tan is a small accent', () => {
   }
 });
 
-test('happy talks by shutting his mouth: the talking frame shows no tongue', () => {
-  assert.ok(count(readFrame('hub', 'happy'), 'p') > 0, 'the still has his tongue out');
-  assert.equal(count(readFrame('hub', 'happy-talk'), 'p'), 0);
+test('he talks with the opposite mouth: tongue out in the still means none in the talking frame, and the other way round', () => {
+  for (const mood of AWAKE) {
+    const still = count(readFrame('hub', mood), 'p') > 0;
+    const talk = count(readFrame('hub', `${mood}-talk`), 'p') > 0;
+    assert.notEqual(still, talk, `${mood}: the still's mouth is ${still ? 'open' : 'shut'}, and so is the talking frame's`);
+  }
+  assert.ok(count(readFrame('hub', 'happy'), 'p') > 0, 'the happy still has his tongue out');
 });
 
 test('the collar is in every frame', () => {
   for (const name of HUB) assert.ok(count(readFrame('hub', name), 'b') > 0, name);
 });
 
-test('a talking or ear frame differs from its still only near the mouth or ear', () => {
+test('the collar is in every side frame', () => {
+  for (const name of SIDE) assert.ok(count(readFrame('side', name), 'b') > 0, name);
+});
+
+test('every talking, blink and ear frame differs from its still only in a small box', () => {
+  // Measured from the frames as drawn: the widest mouth is happy's (12 × 9), the widest pair of eyes 17 × 7,
+  // the longest ear curious's (14 × 19, and happy's is 16 wide). Curious has his head cocked, so one eye sits
+  // well above the other and his blink spans 16 × 14.
+  const LIMIT = { talk: [12, 9], blink: [17, 7], ear: [16, 19], 'curious-blink': [16, 14] };
+  for (const name of HUB) {
+    const [mood, move] = name.split('-');
+    if (!LIMIT[move]) continue;
+    const box = diffBox(readFrame('hub', mood), readFrame('hub', name));
+    const [w, h] = LIMIT[name] ?? LIMIT[move];
+    assert.ok(box.w > 0 && box.w <= w && box.h <= h, `${name} differs in a ${box.w} × ${box.h} box, and the limit is ${w} × ${h}`);
+  }
+});
+
+test('the approved happy frames keep their boxes', () => {
   const still = readFrame('hub', 'happy');
   const talk = diffBox(still, readFrame('hub', 'happy-talk'));
   const ear = diffBox(still, readFrame('hub', 'happy-ear'));
-  // The boxes are the approved frames' own: the mouth shut is 12 × 9, the ear swung out is 16 × 18.
+  // The owner approved these on 2026-11-27: the mouth shut is 12 × 9, the ear swung out is 16 × 18.
   assert.ok(talk.w > 0 && talk.w <= 12 && talk.h <= 9, `talk differs in a ${talk.w} × ${talk.h} box`);
   assert.ok(ear.w > 0 && ear.w <= 16 && ear.h <= 18, `ear differs in a ${ear.w} × ${ear.h} box`);
+});
+
+test('every frame but the still differs from its still', () => {
+  for (const name of HUB) {
+    const mood = name.split('-')[0];
+    if (name !== mood) assert.ok(diffBox(readFrame('hub', mood), readFrame('hub', name)).w > 0, name);
+  }
+});
+
+test("every mood's head point has him under it", () => {
+  for (const [mood, x] of Object.entries(HEAD)) {
+    assert.ok(readFrame('hub', mood).some((row) => row[x] !== '.'), `${mood}: column ${x} is empty`);
+  }
+});
+
+test('the side frames stand on the bottom row, and the sit fills the cell top to bottom', () => {
+  for (const name of SIDE) assert.match(readFrame('side', name).at(-1), /[^.]/, name);
+  assert.match(readFrame('side', 'sit')[0], /[^.]/, 'sit reaches the top row');
+});
+
+test('the second trot frame is the first with the legs moved: the head and back are the same', () => {
+  const a = readFrame('side', 'trot1'), b = readFrame('side', 'trot2');
+  assert.ok(diffBox(a, b).w > 0, 'the legs moved');
+  const top = a.findIndex((row) => /[^.]/.test(row));
+  for (let y = top; y < top + 12; y++) assert.equal(b[y], a[y], `row ${y}`);
 });
 
 test('a built sheet holds each frame at its place', () => {
@@ -115,4 +165,12 @@ test('the PNG a sheet builds into decodes back to the grids, in the palette\'s c
   assert.deepEqual([...png.indices], [...sheetIndices('hub')]);
   const first = readPalette()[0];
   assert.equal(`#${png.palette[1].map((n) => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`, first.hex);
+});
+
+test('the committed sheets are what the grids build', () => {
+  for (const sheet of Object.keys(SHEETS)) {
+    const png = decodePng(readFileSync(new URL(`../sprites/ziggy-${sheet}.png`, import.meta.url)));
+    assert.deepEqual({ w: png.width, h: png.height }, sheetSize(sheet), sheet);
+    assert.deepEqual([...png.indices], [...sheetIndices(sheet)], `${sheet}: run node scripts/build-sprites.mjs`);
+  }
 });

@@ -90,6 +90,7 @@ None blocks Phase 1. Put them to the owner at the Phase 2 review.
   tall for the finish line. Beside an 80 px Ziggy it has to be shown at 2×, so his pixels double in size
   while he walks. That is what gets built unless the owner prefers the alternative: the eager pose's two
   trot frames, the same side-on trot at his real size and pixel size. Phase 2's review page shows both.
+  **Decided at the Phase 2 gate (2026-11-27): the owner chose the hub-size trot at 1×.**
 - **Asleep has no talking frame.** The spec lists a mouth-open frame for each of the six moods. While
   "All quiet." types he breathes instead; a sleeping dog that talks reads wrong.
 - **Today with no run yet shows nothing in the week's strip,** not a dash. The spec gives a dash to a
@@ -463,11 +464,31 @@ export function wanderMs(dx)                           // ms for that distance, 
   the rest map as: `tail` uses the mood's `-wag` or `-tail` frame, `sigh` uses `worried-low`, `tilt`
   uses `happy-tilt` or `curious-tilt`, `shake` alternates `happy-shake1` and `happy-shake2`.
 - Wander is not a frame sequence: the stage moves him and swaps the two frames named in
-  `export const WANDER = { sheet: 'side', frames: ['trot1', 'trot2'], scale: 2 }` every 150 ms. That is
-  the spec's side trot, at twice its drawn size so he stays 80 px tall. If the owner picks the hub-size
-  trot at the Phase 2 review, it becomes `{ sheet: 'hub', frames: ['eager', 'eager-trot'], scale: 1 }`
-  and nothing else changes. Test: "the wander's frames exist in its sheet and its scale is a whole
-  number".
+  `export const WANDER = { sheet: 'hub', frames: ['eager', 'eager-trot'], scale: 1 }` every 150 ms. The
+  owner chose this at the Phase 2 gate (2026-11-27) over the spec's side trot at 2×: the same dog at
+  the same pixel size. Test: "the wander's frames exist in its sheet and its scale is a whole number".
+- Timings the owner saw and approved on the Phase 2 review page; `steps()` carries these (`T` is
+  `TALK_MS`, `m` the mood's still, "× n" repeats the pair):
+
+  | Move | Sequence, `[frame, ms]` |
+  |---|---|
+  | talk (every awake mood) | `m` T, `m-talk` T |
+  | mood, happy | (`happy-wag` 250, `happy` 250) × 8 |
+  | mood, thrilled | (`thrilled-wag` 120, `thrilled` 120) × 16 |
+  | mood, eager | (`eager-trot` 150, `eager` 150) × 13 |
+  | mood, curious | `curious-tilt` 900, `curious` 500, `curious-tilt` 900, `curious` 500, `curious-tilt` 900, `curious` 300 |
+  | mood, worried | `worried-low` 1600, `worried` 500, `worried-low` 1600, `worried` 300 |
+  | mood, asleep (and its talk) | (`asleep-breathe` 1000, `asleep` 1000) × 2 |
+  | blink | `m` 400, `m-blink` 120, `m` 220, `m-blink` 120, `m` 400 |
+  | ear (awake) | `m` 300, `m-ear` 200, `m` 150, `m-ear` 200, `m` 350 |
+  | tail | (`m-wag` or `eager-tail` 150, `m` 150) × 4 |
+  | yawn | `happy` 200, `happy-yawn` 1000, `happy` 300 |
+  | shake | (`happy-shake1` 90, `happy-shake2` 90) × 6, `happy` 200 |
+  | tilt | `m-tilt` 1100, `m` 300 |
+  | sigh | `worried-low` 1300, `worried` 300 |
+  | glance | `worried-glance` 1100, `worried` 300 |
+  | ear (asleep) | `asleep-ear` 150, `asleep` 150, `asleep-ear` 150, `asleep` 600 |
+  | paw | `asleep-paw` 180, `asleep` 180, `asleep-paw` 180, `asleep` 500 |
 
 Tests:
 - "a fidget is always from the mood's set and never the same twice running": for each mood, 300 draws

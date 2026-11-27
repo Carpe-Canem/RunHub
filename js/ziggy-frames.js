@@ -2,8 +2,17 @@
 // A frame's index is its place in `frames`: column i % cols, row floor(i / cols).
 
 export const SHEETS = {
-  hub:  { cell: [96, 88], cols: 8, frames: ['happy', 'happy-talk', 'happy-ear'] },
-  side: { cell: [48, 40], cols: 4, frames: [] },
+  hub: {
+    cell: [96, 88], cols: 8,
+    frames: [
+      'happy', 'happy-talk', 'happy-wag', 'happy-blink', 'happy-ear', 'happy-yawn', 'happy-shake1', 'happy-shake2',
+      'happy-tilt', 'thrilled', 'thrilled-talk', 'thrilled-wag', 'thrilled-blink', 'thrilled-ear', 'eager', 'eager-talk',
+      'eager-trot', 'eager-blink', 'eager-ear', 'eager-tail', 'curious', 'curious-talk', 'curious-tilt', 'curious-blink',
+      'curious-ear', 'worried', 'worried-talk', 'worried-low', 'worried-glance', 'asleep', 'asleep-breathe', 'asleep-ear',
+      'asleep-paw',
+    ],
+  },
+  side: { cell: [48, 40], cols: 4, frames: ['sit', 'trot1', 'trot2', 'nap'] },
 };
 
 function sheetOf(sheet) {
@@ -32,3 +41,7 @@ export function sheetUrl(sheet, base = import.meta.url) {
   url.search = new URL(base).search;
   return url.href;
 }
+
+// For each mood's still, the x in the cell (px from its left) of the top of his head, read off the grid.
+// The bubble's pointer aims there. Asleep is curled up, so its point is the blaze, not the top of his back.
+export const HEAD = { happy: 62, thrilled: 63, eager: 73, curious: 55, worried: 31, asleep: 25 };
