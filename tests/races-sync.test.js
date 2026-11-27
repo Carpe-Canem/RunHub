@@ -239,17 +239,24 @@ test('fetchRaceDetails ends the pass after three skipped races in a row and leav
   assert.deepEqual(calls, ['/activities/5000', '/activities/5015', '/activities/5030']);
   assert.equal(rd['5045'], undefined);
   assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
-  // a race read between failures resets the count
-  S.warn = null;
-  calls.length = 0;
-  const call2 = async (path) => {
+});
+
+test('fetchRaceDetails counts skips in a row: a read, even a missing one, resets the count', async (t) => {
+  t.mock.method(console, 'warn', () => {});
+  const rc = S.races; const rd = S.raceDet;
+  noteListed(rc, ACTS.slice(0, 76), 0);   // races 5000, 5015, 5030, 5045, 5060, 5075
+  const calls = [];
+  const call = async (path) => {
     calls.push(path);
-    if (path === '/activities/5015') return { id: 5015, sport_type: 'Run' };
-    throw new UserError('Strava returned an error (500). Try again later.');
+    const n = calls.length;
+    if (n === 3) return null;   // a missing activity: a read that resets the count
+    if (n <= 5) throw new UserError('Strava returned an error (500). Try again later.');
+    return { id: +path.split('/')[2], sport_type: 'Run' };
   };
-  Object.keys(rd).forEach((k) => delete rd[k]);
-  await fetchRaceDetails(rc, rd, call2);
-  assert.deepEqual(calls, ['/activities/5000', '/activities/5015', '/activities/5030', '/activities/5045']);
+  await fetchRaceDetails(rc, rd, call);
+  assert.equal(calls.length, 6);   // without the reset the pass would stop after the 5th
+  assert.ok(rd['5030'].missing);
+  assert.ok(rd['5075']);
   assert.equal(S.warn, 'Some race details could not be read; they will be retried.');
 });
 
