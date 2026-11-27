@@ -5,7 +5,8 @@ import { contextLine, fmtTime, fmtPace, fmtDist } from './races-model.js';
 import { fetchProfile, saveRaceDet } from './races-sync.js';
 import { routeTile, elevationChart, splitsTable, fmtHeight } from './race-draw.js';
 
-// Elevation fetches, by race id: 'loading' while in flight, 'failed' until the page is opened again.
+// Elevation fetches, by race id: 'loading' while in flight, 'failed' until the page is opened again, or the
+// fetched profile itself, kept until the page is reloaded so a save lost to full storage never asks again.
 const prof = {};
 let shownId = null;
 
@@ -27,6 +28,18 @@ function when(r) {
   return `${date} · ${time}`;
 }
 
+// What the course section shows: a profile to draw, or 'none' / 'loading' / 'unavailable'; fetch: ask Strava.
+// det: the race's detail (or null), gps: the race has a route, state: prof[id] above.
+export function elevationPlan(det, gps, demo, state) {
+  const has = det && !det.missing;
+  const p = has && Array.isArray(det.prof) ? det.prof : has && Array.isArray(state) ? state : null;
+  if (p) return p.length >= 2 ? { draw: p } : { show: 'none' };   // [] = Strava has no altitude for this run
+  if (!gps) return { show: 'none' };
+  if (!has || demo || state === 'failed') return { show: 'unavailable' };
+  if (state === 'loading') return { show: 'loading' };
+  return { show: 'loading', fetch: true };
+}
+
 async function loadProfile(id) {
   prof[id] = 'loading';
   try {
@@ -34,8 +47,8 @@ async function loadProfile(id) {
     const d = S.raceDet && S.raceDet[id];   // the details may have been wiped while the request ran
     if (d) {
       d.prof = p || [];   // [] = Strava has no altitude for this run: not asked again, nothing drawn
+      prof[id] = d.prof;   // full storage makes saveRaceDet drop every prof; this copy keeps it drawn
       saveRaceDet();
-      delete prof[id];
     } else prof[id] = 'failed';
   } catch (e) {
     prof[id] = 'failed';   // a rate-limit pause or any other error: "not available yet" until opened again
@@ -45,16 +58,11 @@ async function loadProfile(id) {
 }
 
 function course(r) {
-  const det = S.raceDet && S.raceDet[r.id];
-  const p = det && !det.missing ? det.prof : null;
-  let elev = null;
-  if (Array.isArray(p) && p.length >= 2) elev = elevationChart(p, units());
-  else if (Array.isArray(p) || !r.pts) elev = null;   // no altitude, or no GPS: nothing to show
-  else if (!det || det.missing || S.demo || prof[r.id] === 'failed') elev = h('p', { class: 'empty' }, 'Elevation not available yet');
-  else {
-    if (!prof[r.id]) loadProfile(r.id);
-    elev = h('p', { class: 'empty' }, 'Loading elevation…');
-  }
+  const plan = elevationPlan(S.raceDet && S.raceDet[r.id], !!r.pts, S.demo, prof[r.id]);
+  if (plan.fetch) loadProfile(r.id);
+  const elev = plan.draw ? elevationChart(plan.draw, units())
+    : plan.show === 'loading' ? h('p', { class: 'empty' }, 'Loading elevation…')
+      : plan.show === 'unavailable' ? h('p', { class: 'empty' }, 'Elevation not available yet') : null;
   return h('section', { class: 'race-sec race-course', 'aria-label': 'Course' },
     h('h3', { class: 'sub-title' }, 'Course'),
     h('div', { class: 'course-tile' }, routeTile(r.pts, r.colour, 240)),
