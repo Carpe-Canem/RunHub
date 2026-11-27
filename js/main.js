@@ -9,6 +9,7 @@ import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEv
 import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { sync } from './legends-sync.js';
+import { loadRaces, loadRaceDet } from './races-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
@@ -103,10 +104,10 @@ function wipe() {
   const t = token();
   const id = (t && t.athleteId) || S.athleteId;
   store.del(rateKey());
-  if (id) store.del(`lw.cache.${id}`);
+  if (id) { store.del(`lw.cache.${id}`); store.del(`lw.races.${id}`); store.del(`lw.raceDet.${id}`); }
   store.del(K.token); store.del(K.creds); store.del(K.state); store.del(K.probe); store.del(K.units); store.del(K.ui);
   clearTimeout(S.resumeTimer);
-  Object.assign(S, { cache: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
+  Object.assign(S, { cache: null, races: null, raceDet: null, athleteId: null, error: null, warn: null, pausedUntil: 0, probe: null, probeError: null });
   if (S.map) { S.map.remove(); S.map = null; }
   hideSetupLink();
 }
@@ -135,6 +136,7 @@ function enter() {
   S.demo = false; S.error = null;
   S.athleteId = t.athleteId;
   S.cache = loadCache(t.athleteId);
+  S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId);
   if (location.hash) history.replaceState(null, '', location.pathname);   // a new connection opens on the hub
   render();
   window.scrollTo(0, 0);
@@ -241,6 +243,7 @@ async function init() {
   if (t) {
     S.athleteId = t.athleteId;
     S.cache = loadCache(t.athleteId);
+    S.races = loadRaces(t.athleteId); S.raceDet = loadRaceDet(t.athleteId);
   } else if (new URLSearchParams(location.search).has('demo')) {
     S.demo = true; S.cache = demoCache(); S.error = null;
   }

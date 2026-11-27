@@ -2,6 +2,7 @@
 import { S, bus, RUN_TYPES, WINDOW, DAY, HOT_MAX_AGE, COLD_MAX_AGE, MANUAL_MAX_AGE, UserError, RateLimited, dayOf, todayIdx } from './core.js';
 import { api, token } from './strava.js';
 import { saveCache, compute, legendCount } from './legends-model.js';
+import { noteListed, saveRaces, scanHistory, fetchRaceDetails } from './races-sync.js';
 
 export async function sync(manual) {
   if (S.demo || S.syncing || !token()) return;
@@ -24,6 +25,7 @@ export async function sync(manual) {
     c.lastSync = Date.now();
     S.pausedUntil = 0;
     saveCache();
+    await syncRaces();
   } catch (e) {
     if (e instanceof RateLimited) {
       S.pausedUntil = e.until;
@@ -50,8 +52,10 @@ async function syncActivities(c, manual) {
   S.progress = { label: 'Loading your runs', done: 0, total: 0 };
   bus.emit('status');
   const seen = new Set();
+  const listed = [];
   for (let page = 1; ; page++) {
     const list = (await api(`/athlete/activities?after=${after}&per_page=200&page=${page}`)) || [];
+    listed.push(...list);
     for (const a of list) {
       if (!RUN_TYPES.includes(a.sport_type || a.type)) continue;
       const s = Math.floor(Date.parse(a.start_date) / 1000);
@@ -66,6 +70,23 @@ async function syncActivities(c, manual) {
   }
   if (after <= nowSec - 94 * 86400) c.lastFull = Date.now();
   saveCache();
+  // Every item listed, before the run filter, so only runs can become races. Once, after the last page.
+  if (S.races) { noteListed(S.races, listed, after); saveRaces(); }
+}
+
+// After the Legends work: the whole-history race scan, then one detail request per race.
+async function syncRaces() {
+  if (!S.races || !S.raceDet) return;
+  S.progress = { label: 'Scanning your race history', done: 0, total: 0 };
+  bus.emit('status');
+  await scanHistory(S.races);
+  bus.emit('data');
+  S.progress = { label: 'Reading race details', done: 0, total: 0 };
+  bus.emit('status');
+  await fetchRaceDetails(S.races, S.raceDet, api, (done, total) => {
+    S.progress.done = done; S.progress.total = total;
+    bus.emit('data');
+  });
 }
 
 async function syncDetails(c) {

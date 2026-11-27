@@ -48,7 +48,7 @@ export class UserError extends Error {}
 export class RateLimited extends Error { constructor(until) { super('rate limited'); this.until = until; } }
 
 export const S = {
-  demo: false, cache: null, athleteId: null, syncing: false, progress: null,
+  demo: false, cache: null, races: null, raceDet: null, athleteId: null, syncing: false, progress: null,
   error: null, warn: null, pausedUntil: 0, resumeTimer: null, map: null, layers: {},
   probe: null, probeBusy: false, probeError: null,
 };
