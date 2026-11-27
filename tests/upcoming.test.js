@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, classColour } from '../js/race-rules.js';
-import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, mergeUpcoming, daysText, countdown } from '../js/upcoming.js';
+import { CLASS_OPTIONS, isoDay, parseBio, sameRace, PAST, DUP, checkHand, mergeUpcoming, daysText, countdown, countdownLabel } from '../js/upcoming.js';
 
 const today = '2027-06-01';
 
@@ -107,4 +107,16 @@ test('mergeUpcoming drops a bio race that repeats an earlier bio race, so ids st
   const rows = mergeUpcoming({ hand: [], bio: { races: [{ date: '2027-06-14', n: 'Riverbend 5k' }, { date: '2027-06-14', n: 'Riverbend  5K' }, { date: '2027-06-15', n: 'Riverbend 5k' }] } }, '2027-06-01');
   assert.equal(rows.length, 2);
   assert.equal(new Set(rows.map((r) => r.id)).size, 2);
+});
+
+test('countdownLabel: singular for 1, no days on race day, nothing for today', () => {
+  assert.equal(countdownLabel({ kind: 'clock', days: 9, hours: 2, mins: 59 }), '9 days, 2 hours and 59 minutes to the start');
+  assert.equal(countdownLabel({ kind: 'clock', days: 1, hours: 1, mins: 1 }), '1 day, 1 hour and 1 minute to the start');
+  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 2, mins: 59 }), '2 hours and 59 minutes to the start');
+  assert.equal(countdownLabel({ kind: 'clock', days: 0, hours: 0, mins: 5 }), '0 hours and 5 minutes to the start');
+  assert.equal(countdownLabel({ kind: 'days', days: 1 }), '1 day to the start');
+  assert.equal(countdownLabel({ kind: 'days', days: 40 }), '40 days to the start');
+  assert.equal(countdownLabel({ kind: 'today' }), null);
+  // a race later today with a start time: the countdown itself has days 0
+  assert.equal(countdownLabel(countdown({ date: '2027-06-15', time: '11:00' }, new Date(2027, 5, 15, 8, 1))), '2 hours and 59 minutes to the start');
 });

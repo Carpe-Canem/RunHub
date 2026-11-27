@@ -1,12 +1,12 @@
 // Hub: the first view. Next start, races and Legends cards, the latest results and the records.
-import { bus, units, fmt0, UNIT_M } from './core.js';
+import { bus, units, fmt0, plural, UNIT_M } from './core.js';
 import { $, h, led } from './dom.js';
 import { riskSummary } from './legends-model.js';
 import { racesDown } from './races-view.js';
 import { hubStats, fmtTime } from './races-model.js';
 import { routeTile } from './race-draw.js';
 import { when } from './race-view.js';
-import { countdown } from './upcoming.js';
+import { countdown, countdownLabel } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
 
 // What Next start last drew: {id, kind}, id null for "Nothing coming up.", or null when it could not draw.
@@ -20,16 +20,15 @@ const badge = (r) => h('span', { class: 'badge', style: `--c: ${r.colour}` }, r.
 // The countdown digits. Only these are replaced by the 30-second tick.
 function clockParts(cd) {
   const grp = (n, unit) => h('span', { class: 'cd-grp' }, led(p2(n), { ghost: true }), h('span', { class: 'cd-unit' }, unit));
-  if (cd.kind === 'clock') return [grp(cd.days, 'days'), grp(cd.hours, 'hrs'), grp(cd.mins, 'min')];
+  // On race day (days 0) the days group is left out, never "00 days"; the tick rebuilds the whole clock.
+  if (cd.kind === 'clock') return [cd.days ? grp(cd.days, 'days') : null, grp(cd.hours, 'hrs'), grp(cd.mins, 'min')].filter(Boolean);
   if (cd.kind === 'days') return [grp(cd.days, 'days')];
   return [h('span', { class: 'cd-today' }, 'Race day')];
 }
-const clockLabel = (cd) => (cd.kind === 'clock' ? `${cd.days} days, ${cd.hours} hours and ${cd.mins} minutes to the start`
-  : cd.kind === 'days' ? `${cd.days} days to the start` : null);
 
 function setClock(el, cd) {
   el.replaceChildren(...clockParts(cd));
-  const label = clockLabel(cd);
+  const label = countdownLabel(cd);
   if (label) { el.setAttribute('role', 'img'); el.setAttribute('aria-label', label); }
   else { el.removeAttribute('role'); el.removeAttribute('aria-label'); }
 }
@@ -78,7 +77,7 @@ function racesCardFor(rm) {
   const st = loading ? null : hubStats(rm);
   const unit = units();
   const sub = loading ? 'Loading your race history'
-    : st.count ? `${st.podiums} age-group podiums · ${fmt0(st.metres / UNIT_M[unit])} ${unit} raced` : 'No races yet';
+    : st.count ? `${plural(st.podiums, 'age-group podium')} · ${fmt0(st.metres / UNIT_M[unit])} ${unit} raced` : 'No races yet';
   return h('a', { class: 'rowlink', href: '#races', 'data-focus': 'hub-races' },
     h('span', { class: 'rowlink-text' },
       h('strong', null, 'Races'),

@@ -91,3 +91,13 @@ export function countdown(row, now) {
   if (mins <= 0) return { kind: 'today' };
   return { kind: 'clock', days: Math.floor(mins / 1440), hours: Math.floor((mins % 1440) / 60), mins: mins % 60 };
 }
+
+const count = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+// What a screen reader hears for the countdown. No days part on race day; null for "Race day".
+export function countdownLabel(cd) {
+  if (cd.kind === 'days') return `${count(cd.days, 'day')} to the start`;
+  if (cd.kind !== 'clock') return null;
+  const hm = `${count(cd.hours, 'hour')} and ${count(cd.mins, 'minute')}`;
+  return `${cd.days ? `${count(cd.days, 'day')}, ` : ''}${hm} to the start`;
+}
