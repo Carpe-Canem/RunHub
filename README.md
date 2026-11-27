@@ -60,6 +60,7 @@ The link is for your own devices. A friend connects with their own Strava app, a
 - **Data refreshes when you open the page.** It also refreshes when you come back to the tab after 15 minutes.
 - **Leader counts are re-checked on a schedule.** At-risk and within-reach segments are re-checked every 6 hours, and all others once a day.
 - **The page counts its own API calls.** It stays under 90 per 15 minutes and 900 per day, which is below Strava's read limits of 100 and 1,000. If it hits the limit, it pauses and picks up again when the window resets.
+- **The bio is read once a day, and on Refresh now.** It is one request, to find your upcoming races. Only the races found in the bio are kept, never the text.
 - **The first sync can take a few minutes** if you've run a lot of segments.
 
 ## Local development

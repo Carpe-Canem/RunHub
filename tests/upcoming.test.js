@@ -102,3 +102,9 @@ test('countdown with a start time counts days, hours and minutes to it', () => {
 });
 
 test('isoDay uses the local date', () => assert.equal(isoDay(new Date(2027, 5, 1, 23, 30)), '2027-06-01'));
+
+test('mergeUpcoming drops a bio race that repeats an earlier bio race, so ids stay unique', () => {
+  const rows = mergeUpcoming({ hand: [], bio: { races: [{ date: '2027-06-14', n: 'Riverbend 5k' }, { date: '2027-06-14', n: 'Riverbend  5K' }, { date: '2027-06-15', n: 'Riverbend 5k' }] } }, '2027-06-01');
+  assert.equal(rows.length, 2);
+  assert.equal(new Set(rows.map((r) => r.id)).size, 2);
+});

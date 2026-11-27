@@ -3,6 +3,7 @@ import { S, bus, RUN_TYPES, WINDOW, DAY, HOT_MAX_AGE, COLD_MAX_AGE, MANUAL_MAX_A
 import { api, token } from './strava.js';
 import { saveCache, compute, legendCount } from './legends-model.js';
 import { enrich } from './enrich-sync.js';
+import { readBio, syncBio } from './upcoming-sync.js';
 import { noteListed, saveRaces, scanHistory, fetchRaceDetails, detailStepEvent } from './races-sync.js';
 
 export async function sync(manual) {
@@ -17,6 +18,7 @@ export async function sync(manual) {
       const a = await api('/athlete');
       c.athlete = { id: a.id, units: a.measurement_preference === 'meters' ? 'km' : 'mi' };
       saveCache();
+      readBio(a);   // the same answer carries the bio
     }
     await syncActivities(c, manual);
     bus.emit('data');
@@ -26,6 +28,7 @@ export async function sync(manual) {
     c.lastSync = Date.now();
     S.pausedUntil = 0;
     saveCache();
+    await syncBio(manual);
     await syncRaces();
   } catch (e) {
     if (e instanceof RateLimited) {

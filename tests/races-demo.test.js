@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demoRaces } from '../js/races-demo.js';
+import { demoRaces, demoUpcoming } from '../js/races-demo.js';
 import { buildRaces } from '../js/races-model.js';
 import { STANDARDS } from '../js/race-rules.js';
 import { todayIdx, DAY } from '../js/core.js';
@@ -53,4 +53,19 @@ test('demo weather and places', async () => {
   const names = Object.values(d.env.pl);
   assert.ok(names.length > 0);
   for (const p of names) { assert.match(p.n, /^.+, CO$/); assert.ok(words.includes(p.n.slice(0, -4)), p.n); }
+});
+
+test('demoUpcoming has one bio race and one hand race with a time and place, both ahead of today, named from the demo words', () => {
+  const u = demoUpcoming();
+  assert.equal(u.v, 1);
+  const today = new Date(todayIdx() * DAY).toISOString().slice(0, 10);
+  assert.equal(u.bio.races.length, 1);
+  assert.equal(u.hand.length, 1);
+  const [b] = u.bio.races, [h] = u.hand;
+  assert.ok(b.date > today && h.date > today);
+  assert.ok(h.time && h.place);
+  assert.equal(b.n, 'Riverbend Half Marathon');
+  assert.equal(h.n, 'Orchard 10K');
+  assert.equal(b.date, new Date((todayIdx() + 40) * DAY).toISOString().slice(0, 10));
+  assert.equal(h.date, new Date((todayIdx() + 9) * DAY).toISOString().slice(0, 10));
 });

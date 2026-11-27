@@ -67,7 +67,7 @@ const bioId = (r) => 'bio-' + r.date + '-' + cleanName(r.n).toLowerCase().replac
 export function mergeUpcoming(up, today) {
   const hand = ((up && up.hand) || []).filter((r) => r.date >= today)
     .map((r) => ({ id: r.id, n: r.n, date: r.date, time: r.time || null, cls: r.cls, colour: classColour(r.cls), place: r.place || null, src: 'hand' }));
-  const bio = ((up && up.bio && up.bio.races) || []).filter((r) => r.date >= today && !hand.some((h) => sameRace(h, r)))
+  const bio = ((up && up.bio && up.bio.races) || []).filter((r, i, all) => r.date >= today && !hand.some((h) => sameRace(h, r)) && !all.slice(0, i).some((e) => sameRace(e, r)))
     .map((r) => {
       const cls = classify(r.n, 0).cls;
       return { id: bioId(r), n: r.n, date: r.date, time: null, cls, colour: classColour(cls), place: null, src: 'bio' };

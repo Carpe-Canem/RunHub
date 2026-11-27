@@ -5,6 +5,7 @@ import { api, token, creds, redirectUri, rateState } from './strava.js';
 import { encodeSetup } from './setup-link.js';
 import { probeFields } from './probe.js';
 import { buildRaces } from './races-model.js';
+import { upcomingRows } from './upcoming-sync.js';
 import { rescan, saveRaces } from './races-sync.js';
 import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
@@ -33,6 +34,7 @@ export function renderData(model, c, races) {
     ['Your count vs Strava\'s, on titles you hold', checked.length ? `${matches} of ${checked.length} match` : '–'],
   ];
   try { items.push(...raceItems(races)); } catch (e) { console.error(e); items.push(['Race history', RACES_DOWN]); }
+  try { items.push(...upcomingItems()); } catch (e) { console.error(e); items.push(['Upcoming races', 'Not available']); }
   if (!S.demo) items.push(['Strava API calls used', `${r.wn} of ${LIMIT_15} this 15 minutes · ${r.dn} of ${LIMIT_DAY} today`]);
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(rescanRow());
@@ -41,6 +43,18 @@ export function renderData(model, c, races) {
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
+}
+
+// Upcoming races: counts only, never names or bio text.
+function upcomingItems() {
+  const up = S.upcoming;
+  if (!up) return [['Upcoming races', 'Not loaded yet'], ['Bio last read', '–']];
+  const rows = upcomingRows();
+  const bio = rows.filter((r) => r.src === 'bio').length, hand = rows.filter((r) => r.src === 'hand').length;
+  const b = up.bio;
+  const bad = b && b.bad > 0 ? `, ${b.bad} bio ${b.bad === 1 ? 'line' : 'lines'} not read` : '';
+  return [['Upcoming races', `${bio} from your Strava bio · ${hand} added here${bad}`],
+    ['Bio last read', !b ? 'Not yet' : b.none ? 'Strava did not return a bio' : ago(b.at)]];
 }
 
 // Race history status: counts only, never names, so the owner can check the class rules against their own history.

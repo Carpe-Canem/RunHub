@@ -81,3 +81,13 @@ export function demoRaces() {
   out.lastScan = Date.now();
   return { races: out, det, env };
 }
+
+// Invented upcoming races for the demo: one from the "bio", one added by hand.
+export function demoUpcoming() {
+  const day = (n) => new Date((todayIdx() + n) * DAY).toISOString().slice(0, 10);
+  return {
+    v: 1,
+    hand: [{ id: 'hdemo', n: 'Orchard 10K', date: day(9), time: '08:00', cls: '10K', place: 'Orchard, CO', at: Date.now() }],
+    bio: { at: Date.now(), races: [{ date: day(40), n: 'Riverbend Half Marathon' }], bad: 0 },
+  };
+}
