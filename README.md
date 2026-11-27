@@ -3,7 +3,7 @@
 A Strava dashboard for runners that you can open before a run or after one. It opens on a hub, a short board that links to its pages. Local Legends and Races are the pages so far.
 
 - **Before a run:** see which Local Legend titles are about to slip and which ones are within reach.
-- **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
+- **Your races:** every run you flagged as a race on Strava is listed with its time, pace and class (5K, 10K, Half and so on), taken from the race's name or, failing that, its GPS distance. Open one to see its course, how it compares with your other races of that class, and the same race in other years. Upcoming races are read from your Strava bio (one line per race, `MM/DD/YYYY Name`) or added by hand with "Add race", and show under "Up next" until their date has passed. The first scan reads your whole history in the background and can take a few minutes. The Data page shows how it is going, with counts only, and can rescan.
 - **After a run:** see your daily, weekly, monthly and year-to-date mileage next to your own normal.
 - **Miles or kilometres:** the Units setting on the Data page switches mileage and race distances, paces, splits and heights between the two. It is kept in this browser only.
 

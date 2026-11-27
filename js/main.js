@@ -10,19 +10,19 @@
  * Map tiles are requested for the Legends map and the race page's course map.
  */
 import { S, K, bus, store, UserError, timeLabel, ago, units } from './core.js';
-import { $ } from './dom.js';
+import { $, h } from './dom.js';
 import { creds, token, redirectUri, startAuth, handleCallback, rateKey, revokeEverywhere, ensureToken, applySetup, LINK_DEAD } from './strava.js';
 import { decodeSetup, sameAthlete } from './setup-link.js';
 import { loadCache, compute, miles, demoCache } from './legends-model.js';
 import { demoRaces, demoUpcoming } from './races-demo.js';
 import { sync } from './legends-sync.js';
 import { loadRaces, loadRaceDet } from './races-sync.js';
-import { loadUp } from './upcoming-sync.js';
+import { loadUp, upcomingRows } from './upcoming-sync.js';
 import { loadEnv, enrich, placesOn } from './enrich-sync.js';
 import { renderLegends, renderMap } from './legends-view.js';
 import { renderData, hideSetupLink } from './data-view.js';
 import { renderHub } from './hub.js';
-import { renderRaces, racesDown } from './races-view.js';
+import { renderRaces, racesDown, upNext } from './races-view.js';
 import { renderRace, raceOpened } from './race-view.js';
 import { dropCourseMap, closeCourseDialog } from './race-map.js';
 import { openAddSheet, closeAddSheet } from './add-race.js';
@@ -123,7 +123,14 @@ function renderRacePanes(races, id) {
     try { if (races && races.failed) throw new Error('race model not available'); draw(); }
     catch (e) { if (!(races && races.failed)) console.error(e); $(box).replaceChildren(racesDown()); }
   };
-  pane('view-races', () => renderRaces(races));
+  // Up next never depends on the race model: when the model failed, it is drawn above the note.
+  if (races && races.failed) {
+    const box = $('view-races');
+    const title = h('h2', { class: 'view-title' }, 'Races');
+    let up = null;
+    try { up = upNext(upcomingRows()); } catch (e) { console.error(e); }
+    box.replaceChildren(...[title, up, racesDown()].filter(Boolean));
+  } else pane('view-races', () => renderRaces(races, upcomingRows()));
   pane('view-race', () => renderRace(races, id, raceFrom));
   const el = key && document.querySelector(`#view-races [data-focus="${key}"]`);
   if (el) el.focus({ preventScroll: true });

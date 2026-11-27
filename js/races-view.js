@@ -1,11 +1,14 @@
 // Races: filter chips, pace trend and the finished list (rows or route tiles).
-import { K, store, units, dayLabel, DAY } from './core.js';
+import { K, store, units, dayLabel, DAY, bus } from './core.js';
 import { $, h, led } from './dom.js';
 import { chips, paceTrend, fmtTime, fmtPace } from './races-model.js';
 import { classColour } from './race-rules.js';
 import { fmtTemp, skyText } from './weather.js';
 import { routeTile, paceChart } from './race-draw.js';
 import { current } from './router.js';
+import { daysText, isoDay } from './upcoming.js';
+import { removeHand, upcomingRows } from './upcoming-sync.js';
+import { openAddSheet } from './add-race.js';
 
 const FIRST = 10;
 let expanded = false;   // "Show all" pressed; reset when the filter changes
@@ -22,7 +25,7 @@ export const racesDown = () => h('p', { class: 'empty races-down' }, RACES_DOWN)
 
 // Redraw, then put focus back on the control that was used (the redraw replaces it).
 function redraw(model, focusKey) {
-  try { renderRaces(model); } catch (e) { console.error(e); $('view-races').replaceChildren(racesDown()); return; }
+  try { renderRaces(model, upcomingRows()); } catch (e) { console.error(e); $('view-races').replaceChildren(racesDown()); return; }
   const el = focusKey && document.querySelector(`#view-races [data-focus="${focusKey}"]`);
   if (el) el.focus();
 }
@@ -65,13 +68,48 @@ function trend(model, filter, list, unit) {
       : paceChart(pts, unit, { colour: classColour(cls), label }));
 }
 
+export const UP_EMPTY = 'Nothing coming up. Add a race here, or list races in your Strava bio, one per line, as MM/DD/YYYY and the name.';
+
+function removeRace(r) {
+  if (!window.confirm(`Remove “${r.n}” from Up next?`)) return;
+  if (!removeHand(r.id)) window.alert("This browser couldn't save the change, so the race is still listed.");
+  bus.emit('data');
+  const add = document.querySelector('#view-races [data-focus="up-add"]');
+  if (add) add.focus();
+}
+
+function upRow(r, today) {
+  const meta = [dateText(r), r.time, r.place].filter(Boolean).join(' · ');
+  return h('li', { class: 'up-row', tabindex: '-1', 'data-focus': `up-${r.id}` },
+    h('span', { class: 'up-main' },
+      h('strong', { class: 'up-name' }, r.n),
+      h('span', { class: 'up-meta' }, badge(r), ' ', meta),
+      r.src === 'bio' ? h('span', { class: 'up-src' }, 'From your Strava bio') : null),
+    h('span', { class: 'up-side' },
+      h('span', { class: 'up-days' }, daysText(r, today)),
+      r.src === 'bio' ? null : h('button', {
+        type: 'button', class: 'btn small', 'aria-label': `Remove ${r.n}`, onclick: () => removeRace(r),
+      }, 'Remove')));
+}
+
+// Upcoming races: from the bio and added by hand. Not affected by the distance filter or the race model.
+export function upNext(up) {
+  const today = isoDay(new Date());
+  return h('section', { class: 'up-next', 'aria-label': 'Up next' },
+    h('div', { class: 'finished-head' },
+      h('h3', { class: 'sub-title' }, 'Up next'),
+      h('button', { type: 'button', class: 'btn small', 'data-focus': 'up-add', onclick: (e) => openAddSheet(e.currentTarget) }, 'Add race')),
+    up.length ? h('ul', { class: 'up-list' }, up.map((r) => upRow(r, today))) : h('p', { class: 'empty' }, UP_EMPTY));
+}
+
 // model: from buildRaces, plus `scanning`; null while the race cache is not loaded yet.
-export function renderRaces(model) {
+export function renderRaces(model, up = []) {
   const box = $('view-races');
   const title = h('h2', { class: 'view-title' }, 'Races');
-  if (!model) return box.replaceChildren(title, h('p', { class: 'empty' }, 'Loading your race history…'));
+  const upEl = upNext(up);
+  if (!model) return box.replaceChildren(title, upEl, h('p', { class: 'empty' }, 'Loading your race history…'));
   if (!model.rows.length) {
-    return box.replaceChildren(title, h('p', { class: 'empty' },
+    return box.replaceChildren(title, upEl, h('p', { class: 'empty' },
       model.scanning ? 'Scanning your race history…' : 'No races yet. Runs you mark as Race in Strava appear here.'));
   }
   const unit = units();
@@ -108,6 +146,7 @@ export function renderRaces(model) {
     title,
     chipBar,
     trend(model, filter, list, unit),
+    upEl,
     h('div', { class: 'finished-head' },
       h('h3', { class: 'sub-title' }, 'Finished'),
       h('div', { class: 'toggle', role: 'group', 'aria-label': 'List style' }, modeBtn('rows', 'Rows'), modeBtn('routes', 'Routes'))),
