@@ -2,11 +2,11 @@ import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { S, bus } from '../js/core.js';
 import { emptyRaces, FULL } from '../js/races-sync.js';
-import { emptyEnv, loadEnv, saveEnv, fetchWeather, enrich } from '../js/enrich-sync.js';
+import { emptyEnv, loadEnv, saveEnv, fetchWeather, fetchPlaces, placesOn, setPlaces, resetPlaces, enrich } from '../js/enrich-sync.js';
 
 let mem;
 beforeEach(() => {
-  mem = {};
+  mem = {}; resetPlaces();
   globalThis.localStorage = { getItem: (k) => mem[k] ?? null, setItem: (k, v) => { mem[k] = v; }, removeItem: (k) => { delete mem[k]; } };
   Object.assign(S, { athleteId: 42, demo: false, warn: null, races: emptyRaces(), raceDet: {}, raceEnv: emptyEnv() });
 });
@@ -170,7 +170,7 @@ test('enrich does nothing in the demo, and a call during a pass runs exactly one
   S.races = racesOf(mkRace(1, 10));
   let release; const gate = new Promise((r) => { release = r; });
   const urls = [];
-  const get = async (url) => { urls.push(url); if (urls.length === 1) await gate; return { ok: true, status: 200, json: async () => block(dateOf(url)) }; };
+  const get = async (url) => { if (/nominatim/.test(url)) return { ok: true, status: 200, json: async () => ({}) }; urls.push(url); if (urls.length === 1) await gate; return { ok: true, status: 200, json: async () => block(dateOf(url)) }; };
   const p1 = enrich(get, async () => {});
   await new Promise((r) => setTimeout(r, 5));
   const p2 = enrich(get, async () => {});
@@ -188,3 +188,125 @@ test('enrich never rejects', quiet(async () => {
   S.raceEnv = null;
   await enrich(async () => { throw new Error('boom'); }, async () => {});
 }));
+
+// ---- place lookups ----
+const PT_A = [40.02, -105.27], PT_B = [40.05, -105.3];
+const town = { address: { town: 'Riverbend', 'ISO3166-2-lvl4': 'US-CO' } };
+// answers: 'ok' | 'empty' | 429 | 403 | 500 | 'throw', consumed in order; 'ok' once exhausted
+function fakePlaces(answers = []) {
+  const urls = []; let i = 0;
+  const get = async (url) => {
+    urls.push(url);
+    const a = i < answers.length ? answers[i] : 'ok'; i++;
+    if (a === 'throw') throw new TypeError('offline');
+    if (typeof a === 'number') return { ok: false, status: a, json: async () => ({}) };
+    return { ok: true, status: 200, json: async () => (a === 'empty' ? { error: 'Unable to geocode' } : town) };
+  };
+  return { get, urls };
+}
+const sleeper = () => { const calls = []; return { calls, sleep: async (ms) => { calls.push(ms); } }; };
+
+test('fetchPlaces asks once per distinct rounded start point, newest race first, 1.5 s apart', async () => {
+  const rc = racesOf(mkRace(1, 400, PT_A), mkRace(2, 3, [40.0501, -105.3002]), mkRace(3, 40, PT_A), mkRace(4, 10, [40.054, -105.299]));
+  const env = S.raceEnv; const { get, urls } = fakePlaces(); const sl = sleeper();
+  await fetchPlaces(rc, env, get, sl.sleep, NOW);
+  assert.equal(urls.length, 2);
+  assert.match(urls[0], /lat=40\.05&lon=-105\.3&/);   // race 2 is newest
+  assert.match(urls[1], /lat=40\.02&lon=-105\.27&/);
+  assert.deepEqual(sl.calls, [1500]);
+  assert.deepEqual(env.pl, { '40.05,-105.3': { n: 'Riverbend, CO', at: NOW }, '40.02,-105.27': { n: 'Riverbend, CO', at: NOW } });
+  assert.deepEqual(Object.keys(JSON.parse(mem['lw.raceEnv.42']).pl).sort(), ['40.02,-105.27', '40.05,-105.3']);
+});
+
+test('fetchPlaces skips points already asked and races without a start point', async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A), mkRace(2, 20, null), mkRace(3, 30, PT_B));
+  const env = S.raceEnv; env.pl['40.02,-105.27'] = { n: 'Riverbend, CO', at: 1 };
+  const { get, urls } = fakePlaces(); const sl = sleeper();
+  await fetchPlaces(rc, env, get, sl.sleep, NOW);
+  assert.equal(urls.length, 1);
+  assert.deepEqual(sl.calls, []);
+});
+
+test('a point Nominatim cannot name is cached as no town and never asked again', async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A));
+  const env = S.raceEnv; const { get, urls } = fakePlaces(['empty']);
+  await fetchPlaces(rc, env, get, async () => {}, NOW);
+  assert.deepEqual(env.pl['40.02,-105.27'], { n: null, at: NOW });
+  await fetchPlaces(rc, env, get, async () => {}, NOW);
+  assert.equal(urls.length, 1);
+});
+
+test('a 429 or 403 stops lookups for the rest of the session; a network error ends only this pass', quiet(async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A), mkRace(2, 20, PT_B));
+  let env = S.raceEnv; let f = fakePlaces([429]);
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 1);
+  assert.deepEqual(env.pl, {});
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 1);   // blocked: nothing sent
+  resetPlaces();
+  f = fakePlaces([403]);
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 1);
+  resetPlaces();
+  f = fakePlaces(['throw']);
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 1);   // the pass ended at the error
+  await fetchPlaces(rc, env, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 3);   // the next pass asks again
+  assert.equal(Object.keys(env.pl).length, 2);
+}));
+
+test('another HTTP error ends the pass and caches nothing for that point', quiet(async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A), mkRace(2, 20, PT_B));
+  const f = fakePlaces([500]);
+  await fetchPlaces(rc, S.raceEnv, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 1);
+  assert.deepEqual(S.raceEnv.pl, {});
+}));
+
+test('fetchPlaces sends nothing when lookups are off, and enrich skips the step', async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A));
+  setPlaces(false);
+  assert.equal(placesOn(), false);
+  const f = fakePlaces();
+  await fetchPlaces(rc, S.raceEnv, f.get, async () => {}, NOW);
+  assert.equal(f.urls.length, 0);
+  S.races = rc;
+  const urls = [];
+  await enrich(async (url) => { urls.push(url); return { ok: true, status: 200, json: async () => (/nominatim/.test(url) ? town : block(dateOf(url))) }; }, async () => {});
+  assert.equal(urls.length, 1);
+  assert.ok(!urls.some((u) => /nominatim/.test(u)));
+  setPlaces(true);
+  assert.equal(placesOn(), true);
+  assert.equal(mem['lw.places'], undefined);
+});
+
+test('a wipe mid-pass stops further place requests', async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A), mkRace(2, 20, PT_B));
+  const urls = [];
+  const get = async (url) => { urls.push(url); S.raceEnv = null; return { ok: true, status: 200, json: async () => town }; };
+  await fetchPlaces(rc, S.raceEnv, get, async () => {}, NOW);
+  assert.equal(urls.length, 1);
+});
+
+test('fetchPlaces emits data only when something was stored', async () => {
+  const rc = racesOf(mkRace(1, 10, PT_A));
+  const before = emits; counting = true;
+  try {
+    await fetchPlaces(rc, S.raceEnv, fakePlaces().get, async () => {}, NOW);
+    assert.equal(emits, before + 1);
+    await fetchPlaces(rc, S.raceEnv, fakePlaces().get, async () => {}, NOW);
+    assert.equal(emits, before + 1);
+  } finally { counting = false; }
+});
+
+test('enrich asks for places after weather', async () => {
+  S.races = racesOf(mkRace(1, 10, PT_A));
+  const urls = [];
+  await enrich(async (url) => { urls.push(url); return { ok: true, status: 200, json: async () => (/nominatim/.test(url) ? town : block(dateOf(url))) }; }, async () => {});
+  assert.equal(urls.length, 2);
+  assert.match(urls[1], /nominatim/);
+  assert.equal(S.raceEnv.pl['40.02,-105.27'].n, 'Riverbend, CO');
+});

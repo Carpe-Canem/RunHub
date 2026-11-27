@@ -8,6 +8,8 @@ import { buildRaces } from './races-model.js';
 import { rescan, saveRaces } from './races-sync.js';
 import { RACES_DOWN } from './races-view.js';
 import { sync } from './legends-sync.js';
+import { enrich, placesOn, setPlaces } from './enrich-sync.js';
+import { PLACE_LOOKUPS } from './places.js';
 
 // races: the race model main.js built ({failed: true} if that threw), or null before the race cache is loaded.
 export function renderData(model, c, races) {
@@ -33,7 +35,7 @@ export function renderData(model, c, races) {
   box.append(h('dl', { class: 'kv' }, items.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
   if (!S.demo && token()) box.append(rescanRow());
   if (!S.demo && token()) box.append(...probePanel());
-  box.append(unitsRow());
+  box.append(unitsRow(), ...placesRow());
   const lp = $('linkPanel');
   lp.hidden = S.demo || !token() || !creds();
   lp.replaceChildren(...(lp.hidden ? [] : linkPanel()));
@@ -80,6 +82,23 @@ function unitsRow() {
   const pick = (u, label) => h('label', { class: 'radio' },
     h('input', { type: 'radio', name: 'units', value: u, checked: now === u, 'data-focus': `units-${u}`, onchange: () => choose(u) }), ` ${label}`);
   return h('div', { class: 'units', role: 'radiogroup', 'aria-label': 'Units' }, h('strong', null, 'Units '), pick('mi', 'Miles'), ' ', pick('km', 'Kilometres'));
+}
+
+// The redraw replaces the checkbox, so focus goes back to it.
+function placesRow() {
+  const toggle = (ev) => {
+    const on = ev.currentTarget.checked;
+    setPlaces(on); bus.emit('data');
+    if (on) enrich();
+    const el = document.querySelector('#dataStatus [data-focus="places"]');
+    if (el) el.focus();
+  };
+  return [h('div', { class: 'units' },
+    h('label', { class: 'radio' },
+      h('input', { type: 'checkbox', checked: placesOn(), disabled: !PLACE_LOOKUPS, 'data-focus': 'places', onchange: toggle }), ' Place lookups')),
+    h('p', { class: 'note' }, PLACE_LOOKUPS
+      ? "Looks up the town for each race start, once per place, through OpenStreetMap's Nominatim. It sends only a point rounded to about 1 km."
+      : 'Place lookups are turned off for this site.')];
 }
 
 // The setup link is built when asked for and kept nowhere: not in storage, not in state, not in the log.

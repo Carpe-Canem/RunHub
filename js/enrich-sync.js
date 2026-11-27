@@ -1,8 +1,9 @@
-// Race enrichment: weather for each race's start point and hour, cached apart from the race details.
+// Race enrichment: weather for each race's start point and hour, and the town of each start point, cached apart from the race details.
 // Runs outside sync(): it uses fetch directly, never api(), so it neither spends nor waits on the Strava budget.
-import { S, bus, store } from './core.js';
+import { S, K, bus, store } from './core.js';
 import { FULL } from './races-sync.js';
 import { weatherUrl, pickHour, needsWeather, isProvisional } from './weather.js';
+import { PLACE_LOOKUPS, pointKey, placeUrl, placeLabel } from './places.js';
 
 const envKey = (id) => `lw.raceEnv.${id}`;
 const MAX_FAILS = 3;
@@ -54,6 +55,51 @@ export async function fetchWeather(rc, env, get = fetch, nowSec = Date.now() / 1
   if (stored || dropped) bus.emit('data');
 }
 
+export const placesOn = () => PLACE_LOOKUPS && store.get(K.places) !== false;
+export function setPlaces(on) { if (on) store.del(K.places); else store.set(K.places, false); }
+
+const GAP_MS = 1500;
+let blocked = false, sentOne = false;
+export function resetPlaces() { blocked = false; sentOne = false; }   // for tests
+
+// One Nominatim request per distinct rounded start point not yet asked, newest race first, 1.5 s apart (also across
+// passes). A 429 or 403 stops lookups for the rest of the page session; any other failure ends only this pass.
+// A point with no town is stored as {n: null, at} and never asked again.
+export async function fetchPlaces(rc, env, get = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), nowSec = Date.now() / 1000) {
+  if (!rc || !env || !placesOn() || blocked) return;
+  const seen = new Set(), todo = [];
+  for (const r of Object.values(rc.races).filter((x) => x.ll).sort((a, b) => b.s - a.s)) {
+    const k = pointKey(r.ll);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    if (!env.pl[k]) todo.push([k, r.ll]);
+  }
+  let stored = 0;
+  try {
+    for (const [k, ll] of todo) {
+      if (S.raceEnv !== env || blocked) break;   // wiped or replaced mid-pass, or blocked: send nothing more
+      if (sentOne) await sleep(GAP_MS);
+      if (S.raceEnv !== env || blocked || !placesOn()) break;
+      let json;
+      try {
+        sentOne = true;
+        const res = await get(placeUrl(ll));
+        if (res.status === 429 || res.status === 403) { blocked = true; break; }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        json = await res.json();
+      } catch (e) {
+        console.warn('Place request failed', e);
+        break;
+      }
+      env.pl[k] = { n: placeLabel(json), at: nowSec };
+      if (++stored % SAVE_EVERY === 0) saveEnv();
+    }
+  } finally {
+    if (stored) saveEnv();
+  }
+  if (stored) bus.emit('data');
+}
+
 let running = false, again = false;
 
 // One pass in flight at a time; a call during a pass queues exactly one more. Never rejects.
@@ -67,6 +113,8 @@ export async function enrich(get = fetch, sleep = (ms) => new Promise((r) => set
       if (S.demo || !S.races || !S.raceEnv) break;
       try { await fetchWeather(S.races, S.raceEnv, get); }
       catch (e) { console.error('Weather pass failed', e); }
+      try { await fetchPlaces(S.races, S.raceEnv, get, sleep); }
+      catch (e) { console.error('Place pass failed', e); }
     } while (again);
   } finally { running = false; }
 }
