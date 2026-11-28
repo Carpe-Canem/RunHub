@@ -8,6 +8,7 @@ export const VERSION = versionOf(import.meta.url);
 // Newest first. A new version adds its entry here when it is stamped; tests/versions.test.js checks the top entry
 // is the stamped version.
 export const CHANGES = [
+  { v: '61', date: '2026-11-28', items: ['Ziggy\'s pointer bounces along with his eager bubble, and there is a little more room between the focus ring and his head.'] },
   { v: '60', date: '2026-11-28', items: ['The focus ring round Ziggy\'s bubble no longer cuts across its pointer.'] },
   { v: '59', date: '2026-11-28', items: ['Ziggy\'s bark stays beside him when the screen changes width, and his eager bubble bounces for every new line.'] },
   { v: '58', date: '2026-11-28', items: ['Ziggy has a bubble of his own for every mood, talks like a puppy, and barks.'] },

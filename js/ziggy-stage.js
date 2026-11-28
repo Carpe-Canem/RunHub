@@ -493,11 +493,13 @@ function travel({ to: planned, ms, frames, frameMs, arc = 0, keep = false }, don
 }
 
 // A look's entrance (eager's bounce) is CSS, which runs again only once its selector has stopped matching; a line that
-// cuts another's typing never stops matching, so the animation is taken off and put back.
+// cuts another's typing never stops matching, so the animation is taken off and put back. The bubble and the pointer
+// are taken off and put back together, so they move as one.
 function replayEntrance() {
-  say.style.animation = 'none';
+  const parts = [say, tail];
+  for (const n of parts) n.style.animation = 'none';
   void say.offsetWidth;
-  say.style.animation = '';
+  for (const n of parts) n.style.animation = '';
 }
 
 // A line has just appeared: it types from its first character, or with reduced motion is simply there.
@@ -559,6 +561,7 @@ export function ziggyStage(newLines, opts) {
     const next = bubble(pressable);
     say.replaceWith(next);
     say = next;
+    replayEntrance();   // a new bubble starts its entrance afresh, so the pointer must too
     if (focused) {
       // A plain box takes focus only when told it may; -1 adds no Tab stop.
       if (!pressable) say.setAttribute('tabindex', '-1');
