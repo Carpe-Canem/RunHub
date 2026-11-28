@@ -28,8 +28,6 @@ export function pickFidget(mood, last, rnd = Math.random) {
   return choices[Math.floor(rnd() * choices.length)];
 }
 
-export const fidgetWait = (rnd = Math.random) => 6000 + Math.floor(rnd() * 8001);
-
 const times = (n, ...pair) => Array.from({ length: n }, () => pair).flat();
 const breathe = (ms) => times(2, ['asleep-breathe', ms], ['asleep', ms]);
 const talk = (m) => [[m, TALK_MS], [`${m}-talk`, TALK_MS]];

@@ -29,7 +29,7 @@ test('new words for the same line: a part-typed line carries on, a finished one 
   assert.deepEqual([grown.typed, grown.len, grown.phase], [4, 18, 'typing']);
   const cut = onLines({ ...typing, typed: 9 }, [line('a', 'First.'), two[1]], true);
   assert.deepEqual([cut.typed, cut.len], [6, 6]);
-  for (const phase of ['moving', 'still', 'fidget', 'wander']) {
+  for (const phase of ['moving', 'still', 'fidget', 'play', 'wander']) {
     const done = onLines({ ...typing, typed: 11, phase, to: 40 }, [line('a', 'First line, grown.'), two[1]], true);
     assert.deepEqual([done.typed, done.len, done.phase], [18, 18, phase], phase);
   }
@@ -66,6 +66,20 @@ test('a new list mid-wander: a kept line leaves the trip alone, a fresh one land
   assert.deepEqual([fresh.phase, fresh.x, fresh.to], ['typing', 210, null]);
 });
 
+test('a new line faces him the way he was drawn', () => {
+  const s = { ...onLines(START, two, true), typed: 11, phase: 'play', x: 120, flip: true, act: 'stroll' };
+  const fresh = onLines(s, [line('c', 'New.')], true);
+  assert.deepEqual([fresh.flip, fresh.phase], [false, 'typing']);
+  const kept = onLines(s, two, true);
+  assert.deepEqual([kept.flip, kept.act, kept.phase], [true, 'stroll', 'play']);
+});
+
+test('a press mid-activity lands him and the next line types', () => {
+  const s = { ...onLines(START, two, true), typed: 11, phase: 'wander', x: 30, to: 210, flip: true, act: 'dash' };
+  const n = onPress(s, two, true);
+  assert.deepEqual({ x: n.x, to: n.to, phase: n.phase, flip: n.flip }, { x: 210, to: null, phase: 'typing', flip: false });
+});
+
 test('reduced motion: every line is whole at once and he is still where he stands', () => {
   const first = onLines(START, two, false);
   assert.deepEqual([first.typed, first.len, first.phase], [11, 11, 'still']);
@@ -76,6 +90,8 @@ test('reduced motion: every line is whole at once and he is still where he stand
   assert.deepEqual([onLines(typing, two, false).typed, onLines(typing, two, false).phase], [11, 'still']);
   const trip = onLines({ ...typing, typed: 11, phase: 'wander', x: 30, to: 210 }, two, false);
   assert.deepEqual([trip.phase, trip.x, trip.to], ['still', 210, null]);
+  const busy = onLines({ ...typing, typed: 11, phase: 'play', x: 30, flip: true, act: 'stroll' }, two, false);
+  assert.deepEqual([busy.phase, busy.flip, busy.act], ['still', false, null]);
 });
 
 test('a line of several parts is as long as all of them', () => {

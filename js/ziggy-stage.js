@@ -2,22 +2,23 @@
 // drives him. The rules (which line, how much is typed, where he stands) are pure functions of a small state; the
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
-import { SHEETS, HEAD } from './ziggy-frames.js';
+import { SHEETS, headAt, facesLeft } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
-  TYPE_MS, FIDGETS, WANDER, pickFidget, fidgetWait, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine,
-  canFidget, wanderTo, wanderMs,
+  TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
+import { ACTIVITIES, pickActivity, planActivity } from './ziggy-play.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const TICK = 40;                   // ms between looks at the clock while a line types
-const TROT_MS = 150;               // each of the wander's two frames
 const GRACE = 34;                  // ms a trip is given past its slide
 
 // key: the line showing. i: its place in the list. typed, len: characters shown, and in the whole line.
-// phase: 'typing', 'moving' (the mood's own movement), 'still', 'fidget' or 'wander'. x: his left edge on the
-// strip in px, null until the strip has been measured. to: where a wander is taking him. last: the last fidget.
-export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, last: null };
+// phase: 'typing', 'moving' (the mood's own movement), 'play' (a pose of an activity), 'wander' (a trip of one)
+// or 'still' (Reduce Motion). x: his left edge on the strip in px, null until the strip has been measured.
+// to: where a trip is taking him. last: the last fidget (data-fidget; activities leave it alone). flip: drawn mirrored, after a trip against the way his
+// frames face, until the next line. act: the activity he is playing.
+export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, last: null, flip: false, act: null };
 
 // Where he stands once a trip is cut short: at its end.
 const landed = (s) => (s.phase === 'wander' ? s.to : s.x);
@@ -25,7 +26,10 @@ const landed = (s) => (s.phase === 'wander' ? s.to : s.x);
 // Line i from its first character. motion false (reduced motion): the whole line at once, and no movement.
 function show(s, lines, i, motion) {
   const len = lengthOf(lines[i]);
-  return { ...s, key: lines[i].key, i, len, typed: motion ? 0 : len, phase: motion ? 'typing' : 'still', x: landed(s), to: null };
+  return {
+    ...s, key: lines[i].key, i, len, typed: motion ? 0 : len, phase: motion ? 'typing' : 'still', x: landed(s), to: null,
+    flip: false, act: null,
+  };
 }
 
 // The hub redrew with these lines. The line he is on is kept wherever it now is in the list, and new words for
@@ -34,7 +38,7 @@ export function onLines(s, lines, motion) {
   const { i, fresh } = keepLine(lines, s.key);
   if (fresh) return show(s, lines, i, motion);
   const len = lengthOf(lines[i]);
-  if (!motion) return { ...s, i, len, typed: len, phase: 'still', x: landed(s), to: null };
+  if (!motion) return { ...s, i, len, typed: len, phase: 'still', x: landed(s), to: null, flip: false, act: null };
   return { ...s, i, len, typed: carryTyped(s.typed, s.phase !== 'typing', len) };
 }
 
@@ -46,7 +50,10 @@ export function onPress(s, lines, motion) {
 let el = null;      // the stage: made on the first call, the same node ever after
 let say; let on; let off; let tail; let strip; let dog; let pic;
 let lines = [];
-let only = null;    // a fidget to play every time (the checks' hook)
+let only = null;    // a fidget to make every beat (the checks' hook)
+let activity = null; // an activity to play every time (the checks' hook)
+let played = null;  // the last activity, so the next is another
+let aim = null;     // the pointer's offset from his left edge: the head of the frame showing, fixed for a trip
 let s = START;
 let timer = null;   // the one timer
 let t0 = 0;         // when the line would have started typing, to have got as far as it has
@@ -55,6 +62,7 @@ const mood = () => lines[s.i].mood;
 const after = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
 const stop = () => { clearTimeout(timer); timer = null; };
 const part = (p) => (p.tone ? h('b', { class: p.tone }, p.text) : p.text);
+const room = () => Math.max(0, strip.clientWidth - CELL);
 
 // The bubble: a button while there is another line to ask for, a plain box when there is one.
 function bubble(pressable) {
@@ -81,7 +89,7 @@ function build() {
 // Everything the state decides, written to the page. The frame is not: whatever is moving him sets that.
 function draw() {
   const line = lines[s.i];
-  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, fidget: s.last || '' });
+  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, fidget: s.last || '', activity: s.act || '' });
   const { on: shown, off: hid } = splitParts(line.parts, s.typed);
   on.replaceChildren(...shown.map(part));
   off.replaceChildren(...hid.map(part));
@@ -89,19 +97,37 @@ function draw() {
   // The pointer is placed by the same number as the dog, in the same frame, so it is over him the whole way.
   const x = s.phase === 'wander' ? s.to : s.x;
   dog.style.left = `${x}px`;
-  tail.style.left = `${x + HEAD[line.mood]}px`;
+  tail.style.left = `${x + (aim ?? headAt(line.mood, s.flip))}px`;
 }
 
-// The strip's width is known, or has changed: he starts in the middle, and is never left off its end.
+// Every frame he shows goes through here. Outside a trip the pointer follows his head at once; on a trip its
+// offset was fixed when the trip began, so its slide is never started again.
+function frame(name) {
+  setFrame(pic, 'hub', name);
+  if (s.phase === 'wander') return;
+  aim = headAt(name, s.flip);
+  if (s.x !== null) tail.style.left = `${s.x + aim}px`;
+}
+
+const hold = () => frame(mood());
+
+// May he play now? Not while the tab or the hub is out of sight, a line is typing, or motion is reduced.
+const may = () => s.x !== null
+  && canFidget({ hidden: document.hidden, onScreen: strip.clientWidth > 0, typing: s.phase === 'typing', motion: motionOK() });
+
+// The strip's width is known, or has changed: he starts in the middle, and is never left off its end. When it
+// has width again after being out of sight, and nothing is running, he picks up with a fresh activity.
 function fit() {
   const wide = strip.clientWidth;
   if (!wide || !lines.length) return;   // the hub is not the view on screen, or he has just been reset
-  const room = Math.max(0, wide - CELL);
-  s = { ...s, x: s.x === null ? Math.round(room / 2) : Math.min(s.x, room), to: s.to === null ? null : Math.min(s.to, room) };
+  const r = room();
+  s = { ...s, x: s.x === null ? Math.round(r / 2) : Math.min(s.x, r), to: s.to === null ? null : Math.min(s.to, r) };
   draw();
+  if (timer === null && motionOK() && !document.hidden && s.phase !== 'typing') { land(); next(); }
 }
 
-// A trip is over, or cut short: nothing slides and he faces the way he was drawn.
+// He is interrupted (a new line, a press, a reset, Reduce Motion, the tab shown again): nothing slides, he stands
+// where a trip would have taken him, and he faces the way he was drawn.
 function land() {
   for (const moved of [dog, tail]) {
     moved.style.transition = '';
@@ -109,21 +135,16 @@ function land() {
     for (const a of moved.getAnimations()) a.cancel();
   }
   pic.style.transform = '';
+  s = { ...s, flip: false, x: landed(s), to: null, phase: s.phase === 'wander' ? 'play' : s.phase };
 }
 
-const hold = () => setFrame(pic, 'hub', mood());
-
-function settle() {
-  s = { ...s, phase: 'still', x: landed(s), to: null };
+// Reduce Motion: the mood's still, and nothing runs.
+function still() {
+  stop();
   land();
+  s = { ...s, phase: 'still', act: null };
   hold();
   draw();
-  wait();
-}
-
-function wait() {
-  if (motionOK()) after(fidgetWait(), due);
-  else stop();
 }
 
 // The frame of a repeating sequence, ms into it.
@@ -140,10 +161,10 @@ function type() {
   if (s.typed >= s.len) {
     s = { ...s, phase: 'moving' };
     draw();
-    play('mood');
+    pose(steps(mood(), 'mood'), next);
     return;
   }
-  setFrame(pic, 'hub', frameAt(steps(mood(), 'talk'), ms));
+  frame(frameAt(steps(mood(), 'talk'), ms));
   draw();
   after(TICK, type);
 }
@@ -151,50 +172,78 @@ function type() {
 // The typing carries on from s.typed characters.
 const typeOn = () => { t0 = performance.now() - ((s.typed + 0.5) / Math.max(1, s.len)) * TYPE_MS; };
 
-// One run through a sequence of the mood's frames, then the still.
-function play(move) {
-  const seq = steps(mood(), move);
-  const step = (k) => {
-    if (k >= seq.length) { settle(); return; }
-    setFrame(pic, 'hub', seq[k][0]);
-    after(seq[k][1], () => step(k + 1));
+// One run through a list of [frame, ms], then done.
+function pose(seq, done) {
+  const at = (k) => {
+    if (k >= seq.length) { done(); return; }
+    frame(seq[k][0]);
+    after(seq[k][1], () => at(k + 1));
   };
-  step(0);
+  at(0);
 }
 
-// A fidget has fallen due. When it may not play (the tab or the hub is out of sight, a line is typing), he
-// waits again.
-function due() {
-  const ok = canFidget({ hidden: document.hidden, onScreen: strip.clientWidth > 0, typing: s.phase === 'typing', motion: motionOK() });
-  if (!ok || s.x === null) { wait(); return; }
-  const name = FIDGETS[mood()].includes(only) ? only : pickFidget(mood(), s.last);
-  s = { ...s, last: name };
-  if (name === 'wander') { wander(); return; }
-  s = { ...s, phase: 'fidget' };
+// The next activity, straight after the last. When he may not play (the tab or the hub is out of sight), the
+// timer stops and nothing waits: seen(), fit() or the next ziggyStage() starts him again.
+function next() {
+  if (!may()) {
+    if (motionOK()) stop();
+    else still();
+    return;
+  }
+  const m = mood();
+  const set = ACTIVITIES[m];
+  const asked = activity ?? (only === 'wander' ? 'stroll' : null);
+  const name = asked !== null && Object.hasOwn(set, asked) ? asked : pickActivity(m, played);
+  const beat = FIDGETS[m].includes(only) ? only : null;
+  const plan = planActivity(m, name, { x: s.x, room: room(), beat });
+  played = name;
+  s = { ...s, phase: 'play', act: name };
   draw();
-  play(name);
+  run(plan, 0);
+}
+
+// Step k of an activity's plan, then the rest of it, then the next activity.
+function run(plan, k) {
+  // At its end, or when he may no longer play, next() starts another or stops.
+  if (k >= plan.length || !may()) { next(); return; }
+  const step = plan[k];
+  if (step.pose) pose(step.pose, () => run(plan, k + 1));
+  else travel(step.travel, () => run(plan, k + 1));
 }
 
 // He trots to another spot. The dog and the pointer slide by one transition; the timer swaps his legs and ends
 // the trip by the clock (a transition's own end is never heard if the view is hidden part-way).
-function wander() {
-  const to = Math.round(wanderTo(s.x, strip.clientWidth - CELL));
+function travel({ to: planned, ms, frames, frameMs }, done) {
+  const to = Math.round(Math.min(planned, room()));
   const dx = to - s.x;
-  if (!dx) { settle(); return; }
-  const ms = wanderMs(dx);
+  if (!dx) { done(); return; }
+  const flip = (dx < 0) !== facesLeft(frames[0]);
+  s = { ...s, flip, phase: 'wander', to };
+  pic.style.transform = flip ? 'scaleX(-1)' : '';
+  frame(frames[0]);
+  // The pointer jumps to his head as it now faces, and only then slides with him.
+  aim = headAt(frames[0], flip);
+  tail.style.left = `${s.x + aim}px`;
+  void tail.offsetWidth;
   const slide = `left ${ms}ms linear`;
   dog.style.transition = slide;
   tail.style.transition = slide;
-  pic.style.transform = dx < 0 ? 'scaleX(-1)' : '';
-  s = { ...s, phase: 'wander', to };
   draw();
   const from = performance.now();
   const trot = () => {
     const t = performance.now() - from;
     // Two frames' grace, so the slide has drawn its last step before it is switched off.
-    if (t >= ms + GRACE) { settle(); return; }
-    setFrame(pic, WANDER.sheet, WANDER.frames[Math.floor(t / TROT_MS) % WANDER.frames.length]);
-    after(Math.min(TROT_MS - (t % TROT_MS), ms + GRACE - t), trot);
+    if (t >= ms + GRACE) {
+      // Between steps only the slide goes: he keeps facing the way he went.
+      dog.style.transition = '';
+      tail.style.transition = '';
+      s = { ...s, phase: 'play', x: s.to, to: null };
+      draw();
+      done();
+      return;
+    }
+    frame(frames[Math.floor(t / frameMs) % frames.length]);
+    after(Math.min(frameMs - (t % frameMs), ms + GRACE - t), trot);
   };
   trot();
 }
@@ -203,8 +252,9 @@ function wander() {
 function begin() {
   stop();
   land();
+  hold();
   draw();
-  if (s.phase !== 'typing') { hold(); return; }
+  if (s.phase !== 'typing') return;
   t0 = performance.now();
   type();
 }
@@ -216,13 +266,14 @@ function press() {
   begin();
 }
 
-// The tab was hidden or shown. Hidden: nothing runs. Shown again: a line still typing catches up, anything else
-// goes back to the still, and the wait for a fidget starts afresh.
+// The tab was hidden or shown. Hidden: nothing runs. Shown again: a line still typing catches up; anything else
+// lands where it was going and picks up with a fresh activity.
 function seen() {
   if (document.hidden) { stop(); return; }
-  if (!motionOK() || !lines.length) return;
+  if (!lines.length) return;
+  if (!motionOK()) { still(); return; }
   if (s.phase === 'typing') type();
-  else settle();
+  else { land(); next(); }
 }
 
 // The demo was left, or this browser connected or disconnected: he starts again from the first line, in the middle.
@@ -232,9 +283,12 @@ export function resetZiggy() {
   land();
   s = START;
   lines = [];
+  played = null;
+  aim = null;
 }
 
-// lines: from ziggyLines(), never empty. opts.only: a fidget of the mood's set to play every time.
+// lines: from ziggyLines(), never empty. opts.only: a fidget of the mood's set for every beat. opts.activity: an
+// activity of the mood's set to play every time.
 export function ziggyStage(newLines, opts) {
   if (!el) build();
   if (!newLines.length) return el;
@@ -242,6 +296,7 @@ export function ziggyStage(newLines, opts) {
   const was = s;
   lines = newLines;
   only = (opts && opts.only) || null;
+  activity = (opts && opts.activity) || null;
   s = onLines(s, lines, motion);
   const pressable = lines.length > 1;
   if (pressable !== (say.tagName === 'BUTTON')) {
@@ -259,12 +314,12 @@ export function ziggyStage(newLines, opts) {
   // After a reset the strip may not change width, so nothing else would place him.
   if (s.x === null) fit();
   if (s.key !== was.key) begin();
-  else if (!motion) { stop(); land(); hold(); draw(); }
+  else if (!motion) still();
   else {
     if (s.phase === 'typing' && (s.len !== was.len || s.typed !== was.typed)) typeOn();
     draw();
-    // Motion came back, or the tab was hidden when he last settled: the wait for a fidget starts.
-    if (timer === null && !document.hidden) { if (s.phase === 'typing') type(); else settle(); }
+    // Motion came back, or the tab was hidden when he last stopped: activities start again.
+    if (timer === null && !document.hidden) { if (s.phase === 'typing') type(); else { land(); next(); } }
   }
   return el;
 }
