@@ -15,10 +15,10 @@ const SYNC = { running: false, runsLoaded: true };
 const lines = (over = {}) => ziggyLines({ mi: MI, stats: stats(), up: UP, sync: SYNC, now: NOW, locale: 'en-US', ...over });
 const mi = (over) => ({ ...MI, ...over });
 const soon = (date, over) => [{ ...UP[0], date, ...over }, UP[1]];
-const say = (line) => line.parts.map((p) => p.text).join('').replace(/\s/g, ' ');
+const say = (line) => line.ways[0].map((p) => p.text).join('').replace(/\s/g, ' ');
 const keys = (out) => out.map((l) => l.key);
 const get = (key, over) => lines(over).find((l) => l.key === key);
-const toned = (line) => line.parts.filter((p) => p.tone).map((p) => [p.text, p.tone]);
+const toned = (line) => line.ways[0].filter((p) => p.tone).map((p) => [p.text, p.tone]);
 const check = (line, mood, text) => {
   assert.ok(line, `no line, expected "${text}"`);
   assert.equal(line.mood, mood);
@@ -126,7 +126,7 @@ test('rule 12: the totals', () => {
 
 test('rule 13: nothing else to say', () => {
   const out = lines({ mi: mi({ week: 20.7, lytd: 1098 }), stats: stats({ count: 0, podiums: 0, latest: [] }), up: [] });
-  assert.deepEqual(out, [{ key: 'quiet', mood: 'asleep', parts: [{ text: 'All quiet.' }] }]);
+  assert.deepEqual(out, [{ key: 'quiet', mood: 'asleep', ways: [[{ text: 'All quiet.' }]] }]);
 });
 
 test('everything that can hold together comes out in the order of the table', () => {
@@ -190,8 +190,8 @@ test('upcoming unreadable: the rest as usual', () => {
 
 test('the check hook', () => {
   assert.deepEqual(moodCheck('thrilled'), [
-    { key: 'check-1', mood: 'thrilled', parts: [{ text: 'Mood check: thrilled.' }] },
-    { key: 'check-2', mood: 'thrilled', parts: [{ text: 'And a second line.' }] },
+    { key: 'check-1', mood: 'thrilled', ways: [[{ text: 'Mood check: thrilled.' }]] },
+    { key: 'check-2', mood: 'thrilled', ways: [[{ text: 'And a second line.' }]] },
   ]);
   assert.deepEqual(moodCheck('asleep').map((l) => l.mood), ['asleep', 'asleep']);
   assert.equal(moodCheck('cat'), null);
@@ -228,9 +228,24 @@ test('only the year is ever "behind", and he never scolds', () => {
     for (const l of lines({ mi: m, stats: st, up, sync: { running, runsLoaded: false } })) {
       keysSeen.add(l.key);
       if (l.key !== 'yearbehind') assert.doesNotMatch(say(l), /behind/);
-      for (const p of l.parts) assert.notEqual(p.tone, 'slow');
+      for (const p of l.ways[0]) assert.notEqual(p.tone, 'slow');
     }
   }
   assert.deepEqual([...keysSeen].sort(), ['after', 'fetching', 'latest', 'norun', 'quiet', 'raceday', 'record', 'soon',
     'totals', 'weeklow', 'weekover', 'yearahead', 'yearbehind']);
+});
+
+test('every line has one to three wordings, each a list of parts', () => {
+  const miles = [MI, mi({ week: 22.4, lytd: 1075, runsToday: 0 }), mi({ dow: 5, runsToday: 0 }), mi({ unit: 'km' }), null, false];
+  const races = [stats(), stats({ latest: [race({ record: true })] }), null, false];
+  const ups = [UP, soon('2026-11-27'), soon('2026-11-29'), null];
+  for (const m of miles) for (const st of races) for (const up of ups) {
+    for (const l of lines({ mi: m, stats: st, up, sync: { running: true, runsLoaded: false } })) {
+      assert.ok(Array.isArray(l.ways) && l.ways.length >= 1 && l.ways.length <= 3, l.key);
+      for (const way of l.ways) {
+        assert.ok(Array.isArray(way) && way.length > 0, l.key);
+        for (const p of way) assert.equal(typeof p.text, 'string');
+      }
+    }
+  }
 });

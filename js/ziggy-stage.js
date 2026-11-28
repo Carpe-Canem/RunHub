@@ -6,6 +6,7 @@ import {
   SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, SLEEP_TOP, ZEES, anchorOf, shortFrom, shortFrame, framePos, sheetUrl, headAt, facesLeft, liftOf,
 } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
+import { wordsFor } from './ziggy-says.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
@@ -24,17 +25,24 @@ const LINE_W = SHEETS.rope.cell[0];
 // phase: 'typing', 'moving' (the mood's own movement), 'play' (a pose of an activity), 'wander' (a trip of one)
 // or 'still' (Reduce Motion). x: his left edge on the strip in px, null until the strip has been measured.
 // to: where a trip is taking him. flip: drawn mirrored, after a trip against the way his frames face, until the
-// next line. act: the activity he is playing.
-export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, flip: false, act: null };
+// next line. act: the activity he is playing. turns: how many times each line key has been shown afresh; seed: a
+// number per page load that starts them apart, so the first wording is not always the first one. Together they
+// pick the wording (wordsFor(line, seed + turns[key])); a redraw that keeps the line keeps its wording.
+export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, flip: false, act: null, turns: {}, seed: 0 };
+
+// The wording of raw line i that state s says.
+const voice = (s, lines, i) => wordsFor(lines[i], s.seed + (s.turns[lines[i].key] ?? 0));
 
 // Where he stands once a trip is cut short: at its end.
 const landed = (s) => (s.phase === 'wander' ? s.to : s.x);
 
 // Line i from its first character. motion false (reduced motion): the whole line at once, and no movement.
 function show(s, lines, i, motion) {
-  const len = lengthOf(lines[i]);
+  const key = lines[i].key;
+  const turned = { ...s, turns: { ...s.turns, [key]: (s.turns[key] ?? 0) + 1 } };
+  const len = lengthOf(voice(turned, lines, i));
   return {
-    ...s, key: lines[i].key, i, len, typed: motion ? 0 : len, phase: motion ? 'typing' : 'still', x: landed(s), to: null,
+    ...turned, key, i, len, typed: motion ? 0 : len, phase: motion ? 'typing' : 'still', x: landed(s), to: null,
     flip: false, act: null,
   };
 }
@@ -44,7 +52,7 @@ function show(s, lines, i, motion) {
 export function onLines(s, lines, motion) {
   const { i, fresh } = keepLine(lines, s.key);
   if (fresh) return show(s, lines, i, motion);
-  const len = lengthOf(lines[i]);
+  const len = lengthOf(voice(s, lines, i));
   if (!motion) return { ...s, i, len, typed: len, phase: 'still', x: landed(s), to: null, flip: false, act: null };
   return { ...s, i, len, typed: carryTyped(s.typed, s.phase !== 'typing', len) };
 }
@@ -62,7 +70,7 @@ let only = null;    // a fidget to make every beat (the checks' hook)
 let activity = null; // an activity to play every time (the checks' hook)
 let played = null;  // the last activity, so the next is another
 let aim = null;     // the pointer's offset from his left edge: the head of the frame showing, fixed for a trip
-let s = START;
+let s = { ...START, seed: Math.floor(Math.random() * 6) };   // 6 covers both 2 and 3 wordings; once per load
 let timer = null;   // the one timer
 let t0 = 0;         // when the line would have started typing, to have got as far as it has
 let shown = null;   // the frame he is showing
@@ -71,7 +79,7 @@ let holding = null; // the same while it is in his mouth (inside his sprite, so 
 let heldFrame = 'ball-air';
 let wide = null;    // the strip's width when last measured
 
-const mood = () => lines[s.i].mood;
+const mood = () => lines[s.i].mood;   // a mood belongs to the line, not to a wording
 const after = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
 const stop = () => { clearTimeout(timer); timer = null; };
 const part = (p) => (p.tone ? h('b', { class: p.tone }, p.text) : p.text);
@@ -120,7 +128,7 @@ function build() {
 
 // Everything the state decides, written to the page. The frame is not: whatever is moving him sets that.
 function draw() {
-  const line = lines[s.i];
+  const line = voice(s, lines, s.i);
   Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '', prop: holding ? 'held' : playing || '' });
   const { on: shown, off: hid } = splitParts(line.parts, s.typed);
   on.replaceChildren(...shown.map(part));
@@ -472,7 +480,7 @@ export function resetZiggy() {
   if (!el) return;
   stop();
   land();
-  s = START;
+  s = { ...START, seed: s.seed };
   lines = [];
   played = null;
   aim = null;

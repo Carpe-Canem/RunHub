@@ -1,8 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { START, onLines, onPress } from '../js/ziggy-stage.js';
+import { wordsFor } from '../js/ziggy-says.js';
+import { lengthOf } from '../js/ziggy-moves.js';
 
-const line = (key, text, mood = 'happy') => ({ key, mood, parts: [{ text }] });
+const line = (key, text, mood = 'happy') => ({ key, mood, ways: [[{ text }]] });
 const two = [line('a', 'First line.'), line('b', 'A second, longer line.')];
 
 test('the first list starts at its first line and types from nothing', () => {
@@ -96,5 +98,39 @@ test('reduced motion: every line is whole at once and he is still where he stand
 
 test('a line of several parts is as long as all of them', () => {
   const parts = [{ text: '20:36!', tone: 'go' }, { text: ' A new 5K record.' }];
-  assert.equal(onLines(START, [{ key: 'record', mood: 'thrilled', parts }], true).len, 23);
+  assert.equal(onLines(START, [{ key: 'record', mood: 'thrilled', ways: [parts] }], true).len, 23);
+});
+
+const wide = (key, a, b) => ({ key, mood: 'happy', ways: [[{ text: a }], [{ text: b }]] });
+const turning = [wide('a', 'Short.', 'A rather longer wording.'), wide('b', 'Two.', 'Another, much longer, wording.')];
+
+test('a line shown again takes its next wording', () => {
+  const words = (s, raw) => wordsFor(raw[s.i], s.seed + (s.turns[s.key] ?? 0)).parts[0].text;
+  const seen = [];
+  let s = onLines(START, turning, true);
+  seen.push(words(s, turning));
+  assert.equal(s.len, lengthOf(wordsFor(turning[0], s.seed + s.turns.a)));
+  s = onPress(s, turning, true);
+  assert.equal(s.len, lengthOf(wordsFor(turning[1], s.seed + s.turns.b)));
+  s = onPress(s, turning, true);
+  seen.push(words(s, turning));
+  assert.equal(s.len, lengthOf(wordsFor(turning[0], s.seed + s.turns.a)));
+  assert.notEqual(seen[0], seen[1]);
+  assert.deepEqual(s.turns, { a: 2, b: 1 });
+});
+
+test('a redraw keeps the wording', () => {
+  const s = { ...onLines(START, turning, true), typed: 3 };
+  const n = onLines(s, turning, true);
+  assert.deepEqual(n, s);
+  const grown = onLines(s, [wide('a', 'Short.', 'A rather longer wording, grown.'), turning[1]], true);
+  assert.deepEqual(grown.turns, s.turns);
+  assert.equal(grown.len, lengthOf(wordsFor(turning[0], s.seed + s.turns.a)) + (grown.len - s.len));
+});
+
+test('one line: a press keeps its words', () => {
+  const one = [turning[0]];
+  const s = onLines(START, one, true);
+  assert.equal(onPress(s, one, true), s);
+  assert.deepEqual(onPress(s, one, true).turns, s.turns);
 });

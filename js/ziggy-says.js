@@ -1,4 +1,5 @@
-// What Ziggy says: every rule that holds gives one line {key, mood, parts}, in the order he says them.
+// What Ziggy says: every rule that holds gives one line {key, mood, ways}, in the order he says them. ways: one to
+// three wordings of the line, each a list of parts; the stage picks which one is said (see wordsFor).
 // Pure: no DOM. A part is {text} or {text, tone: 'go'}.
 import { DAY, dayOf, fmt0, fmt1, plural } from './core.js';
 import { fmtTime } from './races-model.js';
@@ -9,7 +10,11 @@ import { graphemes } from './ziggy-moves.js';
 const NAME_MAX = 28;
 
 const t = (text, tone) => (tone ? { text, tone } : { text });
-const line = (key, mood, ...parts) => ({ key, mood, parts: parts.map((p) => (typeof p === 'string' ? t(p) : p)) });
+// Each way is a list of parts (strings or t(text, tone)).
+const line = (key, mood, ...ways) => ({ key, mood, ways: ways.map((way) => way.map((p) => (typeof p === 'string' ? t(p) : p))) });
+
+// The wording turn n says: the line in the shape lengthOf and splitParts take.
+export const wordsFor = (l, n) => ({ key: l.key, mood: l.mood, parts: l.ways[n % l.ways.length] });
 // One decimal, without a trailing ".0": "5 miles", "22.4 miles".
 const dist = (x) => fmt1(x).replace(/\.0$/, '');
 // Cut by whole character, so the cut never splits one in two.
@@ -28,7 +33,7 @@ const daysFrom = (from, to) => dayOf(to) - dayOf(from);
 // while the race history loads, false when it failed. up: the upcoming rows, or null when reading them threw.
 // sync: {running, runsLoaded}.
 export function ziggyLines({ mi, stats, up, sync, now, locale }) {
-  const quiet = [line('quiet', 'asleep', 'All quiet.')];
+  const quiet = [line('quiet', 'asleep', ['All quiet.'])];
   if (mi === false && stats === false) return quiet;
   const out = [];
   const add = (...args) => out.push(line(...args));
@@ -47,29 +52,29 @@ export function ziggyLines({ mi, stats, up, sync, now, locale }) {
   // The last two days of the week with under 60% of the usual run.
   const weekLow = !!mi && mi.dow >= 5 && mi.weekAvg > 0 && mi.week < 0.6 * mi.weekAvg;
 
-  if (sync.running && !sync.runsLoaded && mi !== false) add('fetching', 'eager', 'Fetching your runs from Strava.');
+  if (sync.running && !sync.runsLoaded && mi !== false) add('fetching', 'eager', ['Fetching your runs from Strava.']);
   if (away === 0) {
     const time = timeText(next, locale);
-    add('raceday', 'thrilled', `Race day. ${sentence(time ? `${nextName} at ${time}` : nextName)}`);
+    add('raceday', 'thrilled', [`Race day. ${sentence(time ? `${nextName} at ${time}` : nextName)}`]);
   }
-  if (isRecord) add('record', 'thrilled', t(`${fmtTime(last.t)}!`, 'go'), ` A new ${last.cls} record.`);
+  if (isRecord) add('record', 'thrilled', [t(`${fmtTime(last.t)}!`, 'go'), ` A new ${last.cls} record.`]);
   if (away >= 1 && away <= 7) {
     const weekday = new Date(dayOf(next.date) * DAY).toLocaleDateString(locale, { weekday: 'long', timeZone: 'UTC' });
-    add('soon', 'eager', `${nextName} is on ${weekday}.`);
+    add('soon', 'eager', [`${nextName} is on ${weekday}.`]);
   }
-  if (over > 0) add('weekover', 'happy', `${dist(mi.week)} ${unit} this week, `, t(`${dist(over)} over`, 'go'), ' your usual.');
-  if (!isRecord && age >= 0 && age <= 30) add('latest', 'happy', sentence(last.t > 0 ? `${lastName} in ${fmtTime(last.t)}` : lastName));
-  if (diff > 0) add('yearahead', 'happy', `${fmt0(mi.ytd)} ${unit} this year, `, t(`${fmt0(diff)} ahead`, 'go'), ' of last year.');
-  if (weekLow) add('weeklow', 'worried', `${dist(mi.week)} ${unit} so far this week. Your usual is ${dist(mi.weekAvg)}.`);
-  if (diff < 0) add('yearbehind', 'worried', `${fmt0(-diff)} ${unit} behind this date last year.`);
-  if (mi && !weekLow && mi.runsToday === 0 && +fmt1(mi.week - mi.weekAvg) < 0) add('norun', 'eager', 'No run yet today. Shall we?');
+  if (over > 0) add('weekover', 'happy', [`${dist(mi.week)} ${unit} this week, `, t(`${dist(over)} over`, 'go'), ' your usual.']);
+  if (!isRecord && age >= 0 && age <= 30) add('latest', 'happy', [sentence(last.t > 0 ? `${lastName} in ${fmtTime(last.t)}` : lastName)]);
+  if (diff > 0) add('yearahead', 'happy', [`${fmt0(mi.ytd)} ${unit} this year, `, t(`${fmt0(diff)} ahead`, 'go'), ' of last year.']);
+  if (weekLow) add('weeklow', 'worried', [`${dist(mi.week)} ${unit} so far this week. Your usual is ${dist(mi.weekAvg)}.`]);
+  if (diff < 0) add('yearbehind', 'worried', [`${fmt0(-diff)} ${unit} behind this date last year.`]);
+  if (mi && !weekLow && mi.runsToday === 0 && +fmt1(mi.week - mi.weekAvg) < 0) add('norun', 'eager', ['No run yet today. Shall we?']);
   if (second) {
     const day = new Date(dayOf(second.date) * DAY).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' });
-    add('after', 'curious', `After that: ${shortName(second.n || 'A race')}, ${day}.`);
+    add('after', 'curious', [`After that: ${shortName(second.n || 'A race')}, ${day}.`]);
   }
   if (stats && stats.count > 0) {
     const podiums = stats.podiums > 0 ? `, ${stats.podiums} on an age-group podium` : '';
-    add('totals', 'curious', `${plural(stats.count, 'race')} finished${podiums}.`);
+    add('totals', 'curious', [`${plural(stats.count, 'race')} finished${podiums}.`]);
   }
   return out.length ? out : quiet;
 }
@@ -79,5 +84,5 @@ const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 // The two lines of the check hook, for looking at one mood; null for a mood he does not have.
 export function moodCheck(mood) {
   if (!MOODS.includes(mood)) return null;
-  return [line('check-1', mood, `Mood check: ${mood}.`), line('check-2', mood, 'And a second line.')];
+  return [line('check-1', mood, [`Mood check: ${mood}.`]), line('check-2', mood, ['And a second line.'])];
 }
