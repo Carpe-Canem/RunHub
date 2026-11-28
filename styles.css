@@ -231,9 +231,11 @@ main { padding-top: 18px; padding-bottom: 28px; }
    green. Trims are on ::before behind the words, so the focus ring is never cut off. */
 .zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 9px 17px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: #1A1A1C; background: #FCF6EC; border: 2px solid #1A1A1C; border-radius: 22px; box-shadow: 0 3px 0 #6A7995; }
 button.zs-say { cursor: pointer; }
-/* The ring stands clear of every look's trims (shadows, spikes and scallops reach up to 4 px out), so it is never
-   drawn over them. */
-.zs-say:focus-visible { outline-offset: 5px; }
+/* The ring stands clear of every look's trims (shadows, spikes and scallops reach up to 4 px out) and passes under the
+   pointer, which reaches 8 px below the bubble. A trail of dots has the ring run between its two dots (curious and
+   asleep). Its outer edge stays inside the stage's 12 px of top padding. */
+.zs-say:focus-visible { outline-offset: 9px; }
+.zs:is([data-mood="curious"], [data-mood="asleep"]) .zs-say:focus-visible { outline-offset: 8px; }
 .zs-say b { font-weight: 800; }
 .zs-say .go { color: #08663F; }
 /* The words still to come hold their place, so the bubble is its final size from the first frame. */
