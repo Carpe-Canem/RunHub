@@ -165,7 +165,7 @@ test('a press shows a new bark; a redraw keeps the one showing', () => {
   assert.equal(two.key, 'b');
   assert.equal(two.bark, 'yip');                                        // a new line: a thrilled bark
   assert.equal(onPress(two, raw, true, () => 0).bark, null);            // asleep has none
-  // Back to the first line later: shown afresh, so it barks again, and not the same as last time on that mood.
+  // Back to the first line later: shown afresh, so it barks again, with one of that mood's barks (the asleep line between has none).
   const again = onPress(onPress(two, raw, true, () => 0), raw, true, () => 0);
   assert.equal(again.key, 'a');
   assert.ok(['woof', 'arf'].includes(again.bark));

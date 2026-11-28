@@ -229,7 +229,7 @@ main { padding-top: 18px; padding-bottom: 28px; }
 /* The bubble (v58, the owner's pick C): a paper-white comic balloon with ink text and a 2 px ink edge, its own shape
    per mood (below). The default is happy's round pill with a blue-grey drop shadow. On paper the highlight is a dark
    green. Trims are on ::before behind the words, so the focus ring is never cut off. */
-.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 9px 18px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: #1A1A1C; background: #FCF6EC; border: 2px solid #1A1A1C; border-radius: 22px; box-shadow: 0 3px 0 #6A7995; }
+.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 9px 17px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: #1A1A1C; background: #FCF6EC; border: 2px solid #1A1A1C; border-radius: 22px; box-shadow: 0 3px 0 #6A7995; }
 button.zs-say { cursor: pointer; }
 /* The ring stands clear of every look's trims (shadows, spikes and scallops reach up to 4 px out), so it is never
    drawn over them. */

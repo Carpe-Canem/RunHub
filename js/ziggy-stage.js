@@ -69,7 +69,8 @@ export function onPress(s, lines, motion, rnd = Math.random) {
 
 let el = null;      // the stage: made on the first call, the same node ever after
 let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball; let knot; let line; let hang; let short;
-let barkPic; let barkTimer = null; let barkAt = null; // when the line started whose bark is due (null: none due) // the bark sticker, and the timer that takes it down
+let barkPic; let barkTimer = null;   // the bark sticker, and the timer that takes it down
+let barkAt = null;   // when the line started whose bark is due (null: none due)
 let taut; let ropePic; let zees; let trip = null; // the held rope, drawn on a canvas; the rope's picture; the trip under way
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
@@ -521,7 +522,7 @@ export function resetZiggy() {
   if (!el) return;
   stop();
   land();
-  s = { ...START, seed: s.seed };
+  s = { ...START, seed: s.seed, turns: s.turns, bark: s.bark };   // in memory only: his wording slots and last bark carry on
   lines = [];
   played = null;
   aim = null;
