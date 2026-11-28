@@ -1,10 +1,10 @@
 // Hub: the first view, read at a glance. The countdown to the next start, the week's and the year's mileage, the
 // week's days, and three rows: the last 13 weeks, the latest results and the personal records.
-import { S, bus, fmt1, dayLabel } from './core.js';
+import { S, bus, fmt1, dayLabel, units } from './core.js';
 import { $, h, led } from './dom.js';
 import { miles } from './runs-model.js';
 import { RACES_DOWN } from './races-view.js';
-import { hubStats, fmtTime } from './races-model.js';
+import { hubStats, fmtTime, fmtPace } from './races-model.js';
 import { countdown, countdownLabel, tickAction } from './upcoming.js';
 import { openAddSheet } from './add-race.js';
 import { startText, NOTHING_ON, weekTile, yearTile, weekStrip, rowNotes } from './hub-model.js';
@@ -123,12 +123,16 @@ function raceRows(st, recsOpen) {
     ? h('a', { class: 'hub-row', href: '#races', 'data-focus': 'hub-latest' }, rowText('Latest results', note.latest))
     : still('Latest results', note.latest);
   if (!st || !st.records.length) return [latest, still('Personal records', note.records)];
+  const unit = units();
+  // The pace sits under the time, as on the Races list.
   return [latest, fold('recs', 'hub-recs', recsOpen, 'Personal records', note.records,
     h('ul', { class: 'rec-list' }, st.records.map((r) => h('li', null,
-      h('a', { class: 'rec-row', href: `#race/${r.id}`, 'data-focus': `rec-${r.id}`, 'aria-label': `${r.cls} record, ${fmtTime(r.t)}, ${dateText(r)}` },
+      h('a', { class: 'rec-row', href: `#race/${r.id}`, 'data-focus': `rec-${r.id}`, 'aria-label': `${r.cls} record, ${fmtTime(r.t)}${r.pace != null ? `, ${fmtPace(r.pace, unit)}` : ''}, ${dateText(r)}` },
         badge(r),
         h('span', { class: 'rec-date' }, dateText(r)),
-        h('span', { class: 'rec-time' }, fmtTime(r.t)))))))];
+        h('span', { class: 'rec-side' },
+          h('span', { class: 'rec-time' }, fmtTime(r.t)),
+          r.pace != null ? h('span', { class: 'rec-pace' }, fmtPace(r.pace, unit)) : null))))))];
 }
 
 // Each section draws on its own: a throw shows that section's note and the rest of the hub still draws.
