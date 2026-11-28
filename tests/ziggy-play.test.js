@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT } from '../js/ziggy-frames.js';
 import { steps } from '../js/ziggy-moves.js';
-import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
+import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, ROPE_FAR, ROPE_FAR_H, ropeSteps, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
 
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const rnd = seeded(13);
@@ -317,4 +317,17 @@ test('every chew and tug routine turns up, and the tug backs up without turning 
     }
     assert.deepEqual([...seen].sort(), [...routines].sort());
   }
+});
+
+test('the held tug rope steps a pixel at a time from his mouth to its far end (v56)', () => {
+  for (const [a, b] of [[[207, 66], [468, 67]], [[156, 42], [468, 67]], [[150, 45], [-60, 67]], [[10, 20], [10, 20]]]) {
+    const cols = ropeSteps(a, b);
+    assert.deepEqual(cols[0], a);
+    assert.deepEqual(cols.at(-1), b);
+    for (let i = 1; i < cols.length; i++) {
+      assert.equal(Math.abs(cols[i][0] - cols[i - 1][0]), 1);
+      assert.ok(Math.abs(cols[i][1] - cols[i - 1][1]) <= 1, `${a} to ${b}: a step of ${cols[i][1] - cols[i - 1][1]}`);
+    }
+  }
+  assert.ok(ROPE_FAR > 0 && ROPE_FAR_H > 0 && ROPE_FAR_H < 40);
 });

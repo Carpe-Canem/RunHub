@@ -244,6 +244,7 @@ button.zs-say { cursor: pointer; }
    point in his mouth. */
 .zs-line { position: absolute; left: 0; bottom: 0; background-repeat: no-repeat; }
 .zs-hang { position: absolute; width: 0; height: 0; }
+.zs-taut { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
 .zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
 .zs-spark, .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }

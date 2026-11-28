@@ -8,6 +8,7 @@ export const VERSION = versionOf(import.meta.url);
 // Newest first. A new version adds its entry here when it is stamped; tests/versions.test.js checks the top entry
 // is the stamped version.
 export const CHANGES = [
+  { v: '56', date: '2026-11-28', items: ['In tug of war the rope now runs at a slant to the far end, so only his end moves when he pulls.'] },
   { v: '55', date: '2026-11-28', items: ['Ziggy has a rawhide bone to lie down and chew, and a red rope to play tug with: someone off the edge pulls back, or he shakes a short rope and flings it.'] },
   { v: '54', date: '2026-11-28', items: ['Ziggy plays with a tennis ball: he pounces on it, fetches it at a gallop, or tosses it up and catches it.'] },
   { v: '53', date: '2026-11-28', items: ['Ziggy walks and gallops on legs of his own now, and leaves the ground mid-gallop.'] },

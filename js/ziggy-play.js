@@ -261,6 +261,16 @@ function planBall(mood, { x, room, rnd, flip, routine }) {
 // carries it to the end of the strip and drops it over). tug: tugger (a rope slides in, he grabs it and someone off
 // the strip pulls the other end, then yanks it away), fling (a short rope lands, he pounces, shakes it, flings it off).
 export const CHEW_ROUTINES = ['gnaw', 'spring', 'bring'];
+// The held tug rope runs at a slant to a far end that stays put: this far past the end of the strip he faces, and
+// this high off the ground (v56, the owner's pick over a level rope).
+export const ROPE_FAR = 60;
+export const ROPE_FAR_H = 20;
+// The rope from a to b in whole-pixel steps: [x, y] of its middle row for every column, y on the straight line
+// between them rounded, so the picture is never turned or scaled.
+export function ropeSteps([x0, y0], [x1, y1]) {
+  const n = Math.abs(Math.round(x1) - Math.round(x0)), d = x1 < x0 ? -1 : 1;
+  return Array.from({ length: n + 1 }, (_, i) => [Math.round(x0) + d * i, Math.round(y0 + ((y1 - y0) * i) / (n || 1))]);
+}
 export const TUG_ROUTINES = ['tugger', 'fling'];
 const TOY_REST = 105;    // the toy lies this far into his cell (past his paws) before he noses it between them
 const NOSE = FRAME_BALL['happy-nudge1'];
@@ -392,7 +402,7 @@ function planTug(mood, opts) {
     // there is room behind him; where there is none he braces on the spot.
     const shove = (px, frame, ms) => {
       const to = g.at - faces * px;
-      if (g.canMove && to >= 0 && to <= g.room) { g.plan.push({ travel: { to, ms, frames: [frame], frameMs: ms, keep: true } }); g.at = to; } else g.pose([[frame, ms]]);
+      if (g.canMove && to >= 0 && to <= g.room) { g.plan.push({ travel: { to, ms, frames: [frame], frameMs: 40, keep: true } }); g.at = to; } else g.pose([[frame, ms]]);
     };
     g.pose([['happy-tug1', 350]]);
     shove(10, 'happy-tug2', 450);
