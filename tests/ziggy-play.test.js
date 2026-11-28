@@ -367,15 +367,20 @@ test('worried paces head low to one side, then the other, and home again; on a n
     const plan = planActivity('worried', 'pace', { x, room, rnd });
     const travels = plan.filter((s) => s.travel).map((s) => s.travel);
     if (room < 96) { assert.equal(travels.length, 0); continue; }
-    assert.ok(travels.length >= 2, `room ${room} x ${x}`);
+    if (room >= 200) assert.ok(travels.length >= 2, `room ${room} x ${x}`);   // a strip just wide enough may give him no room to go
     let at = x;
     for (const t of travels) {
-      assert.ok(t.to >= 0 && t.to <= room && Math.abs(t.to - at) >= 24 && t.frameMs === 240);
+      // out to an end at least 24 px; the trip home may be shorter
+      assert.ok(t.to >= 0 && t.to <= room && Math.abs(t.to - at) >= (t === travels.at(-1) && t.to === x ? 1 : 24) && t.frameMs === 240);
       assert.equal(t.ms, travelMs(t.to - at, 'pace'));
       at = t.to;
     }
     assert.equal(at, x, 'home again');
-    if (x === Math.round(room / 2)) sides.add(Math.sign(travels[0].to - x));
+    // On a phone's strip he goes end to end (the owner's pick W2); on a wide one at most 300 px.
+    const ends = travels.map((t) => t.to);
+    if (room === 312) assert.ok(Math.min(...ends, x) <= 40 && Math.max(...ends, x) >= room - 40, `room ${room} x ${x}: ${ends}`);
+    assert.ok(Math.max(...ends, x) - Math.min(...ends, x) <= 300 + 40, `room ${room} x ${x}: ${ends}`);
+    if (x === Math.round(room / 2) && travels.length) sides.add(Math.sign(travels[0].to - x));
   }
   assert.deepEqual([...sides].sort(), [-1, 1], 'he sets off either way');
   const lengths = new Set(Array.from({ length: 30 }, () => planMs(planActivity('worried', 'pace', { x: 150, room: 312, rnd }))));

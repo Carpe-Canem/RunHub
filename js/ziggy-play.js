@@ -42,8 +42,8 @@ const PACE = {
   pace: { msPerPx: 11, max: 2800, frameMs: 240 },   // worried, head low: half a walk's pace (v57)
 };
 
-// The frames of a trip, by mood and pace. Drawn from the happy dog (v53) and used by every mood that travels; worried
-// and asleep never do. Eager keeps its own trot for its mood movement.
+// The frames of a trip, by mood and pace. Drawn from the happy dog (v53) and used by the awake moods; worried paces on
+// a head-low walk of its own (PACING, v57) and asleep never travels. Eager keeps its own trot for its mood movement.
 const WALK = ['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4'];
 const RUN = ['happy-run1', 'happy-run2', 'happy-run3'];
 export const GAITS = Object.fromEntries(['happy', 'thrilled', 'eager', 'curious'].map((m) => [m, { walk: WALK, run: RUN }]));
@@ -433,6 +433,7 @@ function planTug(mood, opts) {
 // breathes, his paws twitch in a dream, now and then he rolls over onto his back and home again (doze: nap | roll).
 export const REST_ROUTINES = ['nap', 'roll'];
 const PACING = ['worried-pace1', 'worried-pace2', 'worried-pace3', 'worried-pace4'];
+const PACE_SPAN = 300;   // px: the most he paces, end to end
 const between = (rnd, lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
 const times = (n, ...pose) => Array.from({ length: n }, () => pose).flat();
 // Breaths: in (b) and out (a), a second each.
@@ -466,21 +467,24 @@ function planPace({ x, room, rnd }) {
   // It opens on a sigh and closes on a glance, so his still never runs on into the next or last activity's for long.
   const plan = [{ pose: [['worried-low', 800], ['worried', 300]] }];
   let at = home;
-  // A trip of under 24 px (he is at that end already) is left out.
-  const go = (to) => {
+  // Out to an end: a trip of under 24 px (he is at that end already) is left out. Home: any trip at all.
+  const go = (to, least = 24) => {
     to = clamp(Math.round(to), 0, room);
-    if (!canMove || Math.abs(to - at) < 24) return;
+    if (!canMove || to === at || Math.abs(to - at) < least) return;
     plan.push({ travel: { to, ms: travelMs(to - at, 'pace'), frames: [...PACING], frameMs: PACE.pace.frameMs } });
     at = to;
   };
+  // The stretch he paces: the strip end to end, 20 px in from each end (the owner's pick W2), but never over PACE_SPAN
+  // so a wide screen still fits ACT_MAX; there it is centred on him. Each end a few px short now and then.
+  const span = Math.max(0, Math.min(room - 40, PACE_SPAN));
+  const lo = clamp(home - span / 2, Math.min(20, room), Math.max(0, room - 20 - span)) + Math.round(rnd() * 10);
+  const hi = lo + span - Math.round(rnd() * 20);
   const side = rnd() < 0.5 ? -1 : 1;
-  const out = 60 + Math.round(rnd() * 100);
-  const over = 60 + Math.round(rnd() * 100);
-  go(home + side * out);
+  go(side < 0 ? lo : hi);
   plan.push({ pose: [['worried-low', 900], ['worried', 250], ['worried-glance', 450], ['worried', 200]] });
-  go(home - side * over);
+  go(side < 0 ? hi : lo);
   plan.push({ pose: [['worried-low', 700], ['worried', 300]] });
-  go(home);
+  go(home, 1);
   plan.push({ pose: [['worried', 400], ['worried-glance', 450], ['worried', 300]] });
   // With no room to pace, sighs fill the time instead.
   while (planMs(plan) < ACT_MIN) plan.splice(-1, 0, { pose: [['worried-low', 900], ['worried', 300]] });
