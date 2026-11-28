@@ -8,6 +8,7 @@ export const VERSION = versionOf(import.meta.url);
 // Newest first. A new version adds its entry here when it is stamped; tests/versions.test.js checks the top entry
 // is the stamped version.
 export const CHANGES = [
+  { v: '51', date: '2026-11-28', items: ['Ziggy is always up to something: he strolls, dashes about and potters between his lines.'] },
   { v: '50', date: '2026-11-28', items: ['Up next shows the next three races, with Show more for the rest.', 'The version shows beside the title, and this list of changes is on Data.'] },
   { v: '49', date: '2026-11-28', items: ['Personal records show the pace under each time.', 'A Marathon badge no longer runs into its date.'] },
   { v: '48', date: '2026-11-28', items: ['The Hub fits on a phone screen without scrolling.'] },
