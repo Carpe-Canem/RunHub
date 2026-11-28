@@ -226,14 +226,21 @@ main { padding-top: 18px; padding-bottom: 28px; }
 /* Ziggy's stage ends the hub: a bubble the hub's width, a pointer, and the strip he walks on. On a narrow screen
    it takes the spare room above it, so he stands on the tab bar's edge. */
 .zs { position: relative; margin-top: auto; padding-top: 12px; }
-.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 16px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: var(--tx); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+/* The bubble (v58, the owner's pick C): a paper-white comic balloon with ink text and a 2 px ink edge, its own shape
+   per mood (below). The default is happy's round pill with a blue-grey drop shadow. On paper the highlight is a dark
+   green. Trims are on ::before behind the words, so the focus ring is never cut off. */
+.zs-say { position: relative; isolation: isolate; display: block; width: 100%; min-height: 44px; margin: 0; padding: 9px 18px; font: 500 14px/1.4 var(--f); text-align: left; overflow-wrap: anywhere; color: #1A1A1C; background: #FCF6EC; border: 2px solid #1A1A1C; border-radius: 22px; box-shadow: 0 3px 0 #6A7995; }
 button.zs-say { cursor: pointer; }
+/* The ring stands clear of every look's trims (shadows, spikes and scallops reach up to 4 px out), so it is never
+   drawn over them. */
+.zs-say:focus-visible { outline-offset: 5px; }
 .zs-say b { font-weight: 800; }
-.zs-say .go { color: var(--go); }
+.zs-say .go { color: #08663F; }
 /* The words still to come hold their place, so the bubble is its final size from the first frame. */
 .zs-off { opacity: 0; }
-/* The pointer: a corner of the bubble turned to point down at his head. Placed by left, as he is. */
-.zs-tail { position: relative; z-index: 1; display: block; width: 12px; height: 12px; margin: -7px 0 5px -6px; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; transform: rotate(45deg); }
+/* The pointer: a comic tail down at his head, over the balloon's edge. Placed by left, as he is. Every pointer takes
+   10 px of the stage's height (margins and height together), so no look makes the hub taller. */
+.zs-tail { position: relative; z-index: 1; display: block; width: 14px; height: 10px; margin: -2px 0 2px -4px; background: #FCF6EC; clip-path: polygon(0 0, 100% 0, 15% 100%); }
 .zs-strip { position: relative; height: 88px; }
 .zs-dog { position: absolute; left: 0; bottom: 0; }
 /* The ball: on the strip in a layer that clips at its ends (so it rolls in and out of sight), or in his mouth,
@@ -253,19 +260,32 @@ button.zs-say { cursor: pointer; }
 .zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
 .zs-spark, .zs-dog .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
-/* Thrilled: an amber burst, zig-zagged at each end, and three sparks round him. The shape is on a layer behind
-   the words so the focus ring is not cut off with it. */
-.zs[data-mood="thrilled"] .zs-say { color: #1A1200; font-weight: 600; background: none; border-color: transparent; }
-.zs[data-mood="thrilled"] .zs-say::before { content: ""; position: absolute; inset: -1px; z-index: -1; background: var(--led); clip-path: polygon(0 0, 100% 0, calc(100% - 7px) 17%, 100% 34%, calc(100% - 7px) 50%, 100% 66%, calc(100% - 7px) 83%, 100% 100%, 0 100%, 7px 83%, 0 66%, 7px 50%, 0 34%, 7px 17%); }
+/* Thrilled: an amber starburst, spiked all round, and three sparks round him. The burst is on a layer behind the
+   words, so the focus ring is not cut off with it; the highlight takes the burst's ink. */
+.zs[data-mood="thrilled"] .zs-say { color: #1A1200; font-weight: 600; background: none; border-color: transparent; border-radius: 0; box-shadow: none; }
+.zs[data-mood="thrilled"] .zs-say::before { content: ""; position: absolute; inset: -3px -2px; z-index: -1; background: var(--led); clip-path: polygon(0.0% 0, 5.9% 5px, 11.8% 0, 17.6% 5px, 23.5% 0, 29.4% 5px, 35.3% 0, 41.2% 5px, 47.1% 0, 52.9% 5px, 58.8% 0, 64.7% 5px, 70.6% 0, 76.5% 5px, 82.4% 0, 88.2% 5px, 94.1% 0, 100.0% 5px, calc(100% - 7px) 50%, 100.0% calc(100% - 5px), 94.1% 100%, 88.2% calc(100% - 5px), 82.4% 100%, 76.5% calc(100% - 5px), 70.6% 100%, 64.7% calc(100% - 5px), 58.8% 100%, 52.9% calc(100% - 5px), 47.1% 100%, 41.2% calc(100% - 5px), 35.3% 100%, 29.4% calc(100% - 5px), 23.5% 100%, 17.6% calc(100% - 5px), 11.8% 100%, 5.9% calc(100% - 5px), 0.0% 100%, 7px 50%); }
 .zs[data-mood="thrilled"] .zs-say:focus-visible { outline-color: var(--tx); }
 .zs[data-mood="thrilled"] .zs-say .go { color: inherit; }
-.zs[data-mood="thrilled"] .zs-tail { width: 14px; height: 9px; margin: -1px 0 2px -7px; background: var(--led); border: 0; transform: none; clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.zs[data-mood="thrilled"] .zs-tail { background: var(--led); clip-path: polygon(0 0, 100% 0, 40% 100%); }
 .zs[data-mood="thrilled"] .zs-spark { display: block; left: -7px; top: 26px; width: 4px; height: 4px; background: var(--led); }
 .zs[data-mood="thrilled"] .zs-spark + .zs-spark { left: auto; right: -5px; top: 20px; background: var(--go); }
 .zs[data-mood="thrilled"] .zs-spark + .zs-spark + .zs-spark { right: -9px; top: 50px; background: var(--led); }
-/* Asleep: a dashed outline with nothing in it, a trail of two dots for a pointer, and z's over him (below). */
-.zs[data-mood="asleep"] .zs-say { color: var(--mut); background: none; border-style: dashed; }
-.zs[data-mood="asleep"] .zs-tail { margin: 2px 0 -4px -6px; border: 0; transform: none; background: radial-gradient(circle at 4px 3px, var(--mut) 2px, transparent 2.5px), radial-gradient(circle at 9px 10px, var(--mut) 1.3px, transparent 1.8px); }
+/* Eager: a square balloon with a hard blue "pop" shadow, that bounces as he starts to speak. */
+.zs[data-mood="eager"] .zs-say { border-radius: 8px; box-shadow: 4px 4px 0 #35A5EA; }
+@media (prefers-reduced-motion: no-preference) { .zs[data-mood="eager"][data-state="typing"] .zs-say { animation: zs-bounce .5s steps(5) 1; } }
+@keyframes zs-bounce { 0% { translate: 0 0; } 25% { translate: 0 -3px; } 50% { translate: 0 0; } 75% { translate: 0 -1px; } 100% { translate: 0 0; } }
+/* Curious: a cloud, scalloped top and bottom, with a trail of two thought dots for a pointer. */
+.zs[data-mood="curious"] .zs-say { border-color: transparent; box-shadow: none; }
+.zs[data-mood="curious"] .zs-say::before { content: ""; position: absolute; inset: -4px 4px; z-index: -1; background: radial-gradient(circle, #FCF6EC 8px, transparent 8.5px) 0 0 / 18px 16px repeat-x, radial-gradient(circle, #FCF6EC 8px, transparent 8.5px) 9px 100% / 18px 16px repeat-x; }
+.zs[data-mood="curious"] .zs-tail { margin: 2px 0 -4px -6px; width: 12px; height: 12px; clip-path: none; background: radial-gradient(circle at 4px 3px, #FCF6EC 2px, transparent 2.5px), radial-gradient(circle at 9px 10px, #FCF6EC 1.3px, transparent 1.8px); }
+/* Worried: a hand-drawn wavy edge, on a greyer paper. */
+.zs[data-mood="worried"] .zs-say { background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20408%2044%22%20preserveAspectRatio%3D%22none%22%3E%3Cpath%20d%3D%22M6%203%20Q%2040%200%2074%203%20T%20142%203%20T%20210%203%20T%20278%203%20T%20346%203%20T%20402%204%20Q%20406%2012%20404%2022%20T%20403%2040%20Q%20370%2044%20336%2041%20T%20268%2041%20T%20200%2041%20T%20132%2041%20T%2064%2041%20T%205%2040%20Q%202%2030%204%2022%20T%206%203%20Z%22%20fill%3D%22%23EDE7DC%22%20stroke%3D%22%236A7995%22%20stroke-width%3D%222%22%20vector-effect%3D%22non-scaling-stroke%22%2F%3E%3C%2Fsvg%3E") 0 0 / 100% 100% no-repeat; border: 0; border-radius: 0; box-shadow: none; }
+.zs[data-mood="worried"] .zs-tail { background: #EDE7DC; }
+/* Asleep: a faint dashed cloud with nothing in it, dim words, a trail of two dots for a pointer, and z's over him
+   (below). With no paper behind it, the highlight is the Hub's own green. */
+.zs[data-mood="asleep"] .zs-say { color: var(--mut); background: none; border: 2px dashed #3A4A70; box-shadow: none; }
+.zs[data-mood="asleep"] .zs-say .go { color: var(--go); }
+.zs[data-mood="asleep"] .zs-tail { margin: 2px 0 -4px -6px; width: 12px; height: 12px; clip-path: none; background: radial-gradient(circle at 4px 3px, #3A4A70 2px, transparent 2.5px), radial-gradient(circle at 9px 10px, #3A4A70 1.3px, transparent 1.8px); }
 /* Sparks drift only while he is moving; otherwise they sit where they are. */
 .zs[data-state="moving"] .zs-spark,.zs[data-state="play"] .zs-spark, .zs[data-state="wander"] .zs-spark { animation: zs-spark .5s steps(2, jump-none) infinite alternate; }
 .zs[data-state="moving"] .zs-spark + .zs-spark,.zs[data-state="play"] .zs-spark + .zs-spark, .zs[data-state="wander"] .zs-spark + .zs-spark { animation-delay: -.2s; }
