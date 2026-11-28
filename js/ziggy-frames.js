@@ -27,6 +27,12 @@ export const SHEETS = {
     frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air', 'toy-flat', 'toy-up', 'knot',
       'zee-s', 'zee-m', 'zee-l'],
   },
+  // The bark stickers (v58): his barks as pixel letters in white with his blue-grey outline, each drawn from the cell's
+  // top left (BARK_SIZE says how much of the cell it fills).
+  barks: {
+    cell: [40, 10], cols: 4, palette: 'props-palette.txt',
+    frames: ['woof', 'arf', 'yip', 'awoo', 'zoom', 'ruff', 'bark', 'hmm', 'sniff', 'ooh', 'huff', 'mm'],
+  },
   // The long rope (v55): from the knot in his mouth to past the end of the strip, one piece so it is never scaled
   // or turned. Its knot end is on the left.
   rope: { cell: [1024, 5], cols: 1, palette: 'props-palette.txt', frames: ['rope'] },
@@ -155,4 +161,22 @@ export function headAt(frame, flipped) {
 // The worried and asleep frames are drawn facing left, the rest facing right.
 export function facesLeft(frame) {
   return /^(worried|asleep)/.test(frame);
+}
+
+// Each bark's own size [w, h] in px (the rest of its cell is clear), so a sticker can be put against a place by its edge.
+export const BARK_SIZE = {
+  woof: [34, 10], arf: [25, 10], yip: [40, 10], awoo: [34, 10], zoom: [34, 10], ruff: [32, 10], bark: [32, 10],
+  hmm: [33, 10], sniff: [40, 10], ooh: [29, 10], huff: [38, 10], mm: [28, 10],
+};
+
+// A bark sticker's top left on the strip (v58): in front of his face, 22 px past his head point on the side he faces
+// (the frame's own way, turned when he is drawn flipped), 4 px below the strip's top. Where that would leave the strip
+// (width wide) it goes behind his head instead, 4 px clear of his edge. dogLeft: his left edge on the strip.
+export function barkPlace(bark, frame, flipped, dogLeft, wide) {
+  const [w] = BARK_SIZE[bark];
+  const left = facesLeft(frame) !== flipped;
+  const head = dogLeft + headAt(frame, flipped);
+  let x = left ? head - 22 - w : head + 22;
+  if (x < 0 || x + w > wide) x = left ? dogLeft + SHEETS.hub.cell[0] + 4 : dogLeft - w - 4;
+  return { left: x, top: 4 };
 }

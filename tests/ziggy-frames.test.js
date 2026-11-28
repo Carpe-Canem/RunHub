@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT, BALL_CENTRE, SHORT_LEN, SLEEP_TOP, ZEES, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl, shortFrom, shortFrame } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT, BALL_CENTRE, SHORT_LEN, SLEEP_TOP, ZEES, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl, shortFrom, shortFrame, BARK_SIZE, barkPlace } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,11 +22,13 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 792 with 71 frames, the side sheet 192 × 40 with four, the props 96 × 32 with twelve', () => {
+test('the hub sheet is 768 × 792 with 71 frames, the side sheet 192 × 40 with four, the props 96 × 32 with twelve, the barks 160 × 30 with twelve', () => {
   assert.equal(SHEETS.hub.frames.length, 71);
   assert.deepEqual(sheetSize('hub'), { w: 768, h: 792 });
   assert.equal(SHEETS.props.frames.length, 12);
   assert.deepEqual(sheetSize('props'), { w: 96, h: 32 });
+  assert.equal(SHEETS.barks.frames.length, 12);
+  assert.deepEqual(sheetSize('barks'), { w: 160, h: 30 });
   assert.deepEqual(sheetSize('rope'), { w: 1024, h: 5 });
   assert.deepEqual(sheetSize('ropes'), { w: 288, h: 48 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
@@ -167,5 +169,30 @@ test('the z\'s have a start in every frame he sleeps in, and the highest stays i
   assert.deepEqual(Object.keys(SLEEP_TOP).sort(), sleeping.sort());
   for (const [name, top] of Object.entries(SLEEP_TOP)) {
     for (const [, , , up] of ZEES) assert.ok(top - up - 1 >= 0 && top < 88, `${name}: ${top - up}`);
+  }
+});
+
+test('a bark sticker is placed in front of his face on the side he faces, 22 px past his head point', () => {
+  const [w] = BARK_SIZE.woof;
+  // Faces right (happy, as drawn): head 62 in the cell, dog at 100 on a 408 strip.
+  assert.deepEqual(barkPlace('woof', 'happy', false, 100, 408), { left: 100 + 62 + 22, top: 4 });
+  // Faces left (worried): head 31, so it ends 22 px before it.
+  assert.deepEqual(barkPlace('woof', 'worried', false, 200, 408), { left: 200 + 31 - 22 - w, top: 4 });
+  // Drawn flipped after a trip, the same frame faces the other way and its head is mirrored.
+  assert.deepEqual(barkPlace('woof', 'happy', true, 200, 408), { left: 200 + (95 - 62) - 22 - w, top: 4 });
+});
+
+test('a bark that would leave the strip goes behind his head instead', () => {
+  const [w] = BARK_SIZE.yip;
+  // Faces right at the right end: behind him, 4 px clear of his left edge.
+  assert.deepEqual(barkPlace('yip', 'happy', false, 312, 408), { left: 312 - w - 4, top: 4 });
+  // Faces left at the left end: behind him, past his right edge.
+  assert.deepEqual(barkPlace('yip', 'worried', false, 0, 408), { left: 96 + 4, top: 4 });
+  // Always inside a strip as narrow as the Hub's phone width, wherever he stands.
+  for (const frame of ['happy', 'worried', 'eager', 'asleep']) for (const flip of [false, true]) {
+    for (let x = 0; x <= 408 - 96; x += 8) {
+      const { left } = barkPlace('yip', frame, flip, x, 408);
+      assert.ok(left >= 0 && left + w <= 408, `${frame} flip ${flip} at ${x}: ${left}`);
+    }
   }
 });

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SHEETS, HEAD, FRAME_LIFT, BALL_CENTRE, framePos, sheetSize, anchorOf } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_LIFT, BALL_CENTRE, BARK_SIZE, framePos, sheetSize, anchorOf } from '../js/ziggy-frames.js';
 import { POUNCE_ARC } from '../js/ziggy-play.js';
 import { readPalette, paletteOf, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
 import { decodePng } from '../scripts/sprite-png.mjs';
@@ -259,5 +259,20 @@ test('facing left, his nose is ringed in white as it is facing right, not set in
       if ('kgd'.includes(rows[y][x])) black++;
     }
     assert.ok(white >= 2 * black, `${name}: ${white} white and ${black} black round the nose`);
+  }
+});
+
+test("each bark sticker fills exactly the size BARK_SIZE says, from the cell's top left", () => {
+  assert.deepEqual(Object.keys(BARK_SIZE), SHEETS.barks.frames);
+  for (const name of SHEETS.barks.frames) {
+    const rows = readFrame('barks', name);
+    const used = rows.map((r) => r.search(/[^.]/));
+    const right = Math.max(...rows.map((r) => r.search(/[^.]\.*$/) + 1));
+    const h = rows.filter((r) => /[^.]/.test(r)).length;
+    assert.equal(Math.min(...used.filter((n) => n >= 0)), 0, `${name} starts at the left`);
+    assert.deepEqual([right, h], BARK_SIZE[name], name);
+    assert.match(rows[0], /[^.]/, `${name} starts at the top`);
+    // only the white letters and the blue-grey outline
+    assert.ok(rows.join('').split('').every((ch) => '.wo'.includes(ch)), name);
   }
 });

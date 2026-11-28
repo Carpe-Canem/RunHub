@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fmt0 } from '../js/core.js';
-import { ziggyLines, moodCheck, WORDINGS_CAP } from '../js/ziggy-says.js';
+import { ziggyLines, moodCheck, WORDINGS_CAP, BARKS, BARK_FOR, pickBark } from '../js/ziggy-says.js';
+import { SHEETS } from '../js/ziggy-frames.js';
 import { graphemes } from '../js/ziggy-moves.js';
 
 const utc = (y, m, d) => Date.UTC(y, m - 1, d) / 864e5;
@@ -348,4 +349,36 @@ test('every wording fits the cap, with the worst inputs, in miles and in km', ()
     /1,234 miles behind/, /120\.7/, /Wednesday/, /Sep 30/, /120 races/, /12 on an age-group podium/]) {
     assert.match(all, re);
   }
+});
+
+test('every bark is a real frame, and the picker never repeats', () => {
+  const frames = new Set(SHEETS.barks.frames);
+  assert.deepEqual(Object.keys(BARKS), ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep']);
+  assert.deepEqual(BARKS.asleep, []);
+  for (const names of [...Object.values(BARKS), ...Object.values(BARK_FOR)]) for (const n of names) assert.ok(frames.has(n), n);
+  // Every frame of the sheet is a bark of some mood or line.
+  assert.deepEqual([...frames].sort(), [...new Set([...Object.values(BARKS), ...Object.values(BARK_FOR)].flat())].sort());
+  const sets = [...Object.entries(BARKS).map(([mood, set]) => [mood, null, set]),
+    ...Object.entries(BARK_FOR).map(([key, set]) => ['happy', key, set])];
+  for (const [mood, key, set] of sets) {
+    if (!set.length) { assert.equal(pickBark(mood, key, null), null, mood); continue; }
+    let last = null; const got = new Set();
+    for (let k = 0; k < 300; k++) {
+      const b = pickBark(mood, key, last);
+      assert.ok(set.includes(b), `${mood}/${key}: ${b}`);
+      if (set.length > 1) assert.notEqual(b, last, `${mood}/${key} repeated ${b}`);
+      got.add(b); last = b;
+    }
+    assert.equal(got.size, set.length, `${mood}/${key} reaches every bark`);
+  }
+  // The injected number picks: 0 is the first of the others.
+  assert.equal(pickBark('happy', null, null, () => 0), 'woof');
+  assert.equal(pickBark('happy', null, 'woof', () => 0), 'arf');
+  assert.equal(pickBark('worried', null, 'huff', () => 0.99), 'mm');
+});
+
+test('a line with barks of its own uses them in place of its mood\'s', () => {
+  BARK_FOR.__test = ['ooh'];
+  try { assert.equal(pickBark('happy', '__test', 'ooh'), 'ooh'); assert.equal(pickBark('happy', '__test', null), 'ooh'); }
+  finally { delete BARK_FOR.__test; }
 });

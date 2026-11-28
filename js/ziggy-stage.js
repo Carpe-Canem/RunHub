@@ -3,10 +3,10 @@
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
 import {
-  SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, SLEEP_TOP, ZEES, anchorOf, shortFrom, shortFrame, framePos, sheetUrl, headAt, facesLeft, liftOf,
+  SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, SLEEP_TOP, ZEES, anchorOf, shortFrom, shortFrame, framePos, sheetUrl, headAt, facesLeft, liftOf, barkPlace, BARK_SIZE,
 } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
-import { wordsFor } from './ziggy-says.js';
+import { wordsFor, pickBark } from './ziggy-says.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
@@ -15,6 +15,7 @@ import {
 } from './ziggy-play.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
+const BARK_MS = 1600;             // how long a bark sticker stays up
 const TICK = 40;                   // ms between looks at the clock while a line types
 const GRACE = 34;                  // ms a trip is given past its slide
 const ROUTINES = [...BALL_ROUTINES, ...CHEW_ROUTINES, ...TUG_ROUTINES, ...REST_ROUTINES];
@@ -28,7 +29,9 @@ const LINE_W = SHEETS.rope.cell[0];
 // next line. act: the activity he is playing. turns: how many times each line key has been shown afresh; seed: a
 // number per page load that starts them apart, so the first wording is not always the first one. Together they
 // pick the wording (wordsFor(line, seed + turns[key])); a redraw that keeps the line keeps its wording.
-export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, flip: false, act: null, turns: {}, seed: 0 };
+// bark: the sticker this line shows when it starts (a frame of the barks sheet, or null), chosen when the line is shown
+// afresh and kept by a redraw, so a redraw never repeats it; the page shows it for BARK_MS.
+export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, flip: false, act: null, turns: {}, seed: 0, bark: null };
 
 // The wording of raw line i that state s says.
 const voice = (s, lines, i) => wordsFor(lines[i], s.seed + (s.turns[lines[i].key] ?? 0));
@@ -37,33 +40,34 @@ const voice = (s, lines, i) => wordsFor(lines[i], s.seed + (s.turns[lines[i].key
 const landed = (s) => (s.phase === 'wander' ? s.to : s.x);
 
 // Line i from its first character. motion false (reduced motion): the whole line at once, and no movement.
-function show(s, lines, i, motion) {
+function show(s, lines, i, motion, rnd) {
   const key = lines[i].key;
   const turned = { ...s, turns: { ...s.turns, [key]: (s.turns[key] ?? 0) + 1 } };
   const len = lengthOf(voice(turned, lines, i));
   return {
     ...turned, key, i, len, typed: motion ? 0 : len, phase: motion ? 'typing' : 'still', x: landed(s), to: null,
-    flip: false, act: null,
+    flip: false, act: null, bark: pickBark(lines[i].mood, key, s.bark, rnd),
   };
 }
 
 // The hub redrew with these lines. The line he is on is kept wherever it now is in the list, and new words for
 // it are swapped in under the typing; only a line that is gone sends him back to the first.
-export function onLines(s, lines, motion) {
+export function onLines(s, lines, motion, rnd = Math.random) {
   const { i, fresh } = keepLine(lines, s.key);
-  if (fresh) return show(s, lines, i, motion);
+  if (fresh) return show(s, lines, i, motion, rnd);
   const len = lengthOf(voice(s, lines, i));
   if (!motion) return { ...s, i, len, typed: len, phase: 'still', x: landed(s), to: null, flip: false, act: null };
   return { ...s, i, len, typed: carryTyped(s.typed, s.phase !== 'typing', len) };
 }
 
 // A press on the bubble or the dog: the next line, the first after the last. With one line there is no next.
-export function onPress(s, lines, motion) {
-  return lines.length > 1 ? show(s, lines, (s.i + 1) % lines.length, motion) : s;
+export function onPress(s, lines, motion, rnd = Math.random) {
+  return lines.length > 1 ? show(s, lines, (s.i + 1) % lines.length, motion, rnd) : s;
 }
 
 let el = null;      // the stage: made on the first call, the same node ever after
 let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball; let knot; let line; let hang; let short;
+let barkPic; let barkTimer = null; // the bark sticker, and the timer that takes it down
 let taut; let ropePic; let zees; let trip = null; // the held rope, drawn on a canvas; the rope's picture; the trip under way
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
@@ -114,13 +118,16 @@ function build() {
   short = sprite('ropes');
   short.classList.add('zs-ball');
   hang = h('span', { class: 'zs-hang' });
+  // The bark sticker lies on the strip, not in his sprite, so it never turns or lifts with him.
+  barkPic = sprite('barks');
+  barkPic.classList.add('zs-bark');
   // The held long rope is drawn column by column from the rope's own picture, stepped to a far end that stays put.
   taut = h('canvas', { class: 'zs-taut', height: SHEETS.hub.cell[1] });
   ropePic = new Image();
   ropePic.src = sheetUrl('rope');
   layer = h('span', { class: 'zs-props' });
-  strip = h('div', { class: 'zs-strip', 'aria-hidden': 'true' }, layer, dog);
-  el = h('div', { id: 'ziggyStage', class: 'zs' }, say, tail, strip);
+  strip = h('div', { class: 'zs-strip', 'aria-hidden': 'true' }, layer, dog, barkPic);
+  el = h('div', { id: 'ziggyStage', class: 'zs', 'data-bark': '' }, say, tail, strip);
   // The strip is measured when it is first laid out, and again whenever its width changes.
   new ResizeObserver(fit).observe(strip);
   document.addEventListener('visibilitychange', seen);
@@ -312,6 +319,26 @@ function fit() {
   if (timer === null && motionOK() && !document.hidden && s.phase !== 'typing') { land(); next(); }
 }
 
+// The line's bark goes up beside his face for BARK_MS, then comes down. A redraw never calls this: only a line shown afresh.
+function showBark() {
+  hideBark();
+  if (!s.bark || s.x === null || !strip.clientWidth) return;
+  const { left, top } = barkPlace(s.bark, shown, s.flip, s.x, strip.clientWidth);
+  setFrame(barkPic, 'barks', s.bark);
+  Object.assign(barkPic.style, { left: `${left}px`, top: `${top}px`, width: `${BARK_SIZE[s.bark][0]}px` });
+  el.dataset.bark = s.bark;
+  barkPic.classList.remove('pop');
+  void barkPic.offsetWidth;
+  barkPic.classList.add('pop');   // the pop is CSS, and only without Reduce Motion
+  barkTimer = setTimeout(hideBark, BARK_MS);
+}
+
+function hideBark() {
+  clearTimeout(barkTimer);
+  barkTimer = null;
+  if (el) el.dataset.bark = '';
+}
+
 // He is interrupted (a new line, a press, a reset, Reduce Motion, the tab shown again): nothing slides, he stands
 // where a trip would have taken him, and he faces the way he was drawn.
 function land() {
@@ -323,6 +350,7 @@ function land() {
   }
   pic.style.transform = '';
   aim = null;
+  hideBark();
   putAway();
   s = { ...s, flip: false, x: landed(s), to: null, phase: s.phase === 'wander' ? 'play' : s.phase };
 }
@@ -453,6 +481,7 @@ function begin() {
   land();
   hold();
   draw();
+  showBark();
   if (s.phase !== 'typing') return;
   t0 = performance.now();
   type();

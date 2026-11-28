@@ -244,6 +244,11 @@ button.zs-say { cursor: pointer; }
    point in his mouth. */
 .zs-line { position: absolute; left: 0; bottom: 0; background-repeat: no-repeat; }
 .zs-hang { position: absolute; width: 0; height: 0; }
+/* The bark sticker (v58): a pixel sticker on the strip in front of his face, set by the script; never part of the line. */
+.zs-bark { position: absolute; pointer-events: none; z-index: 2; }
+.zs[data-bark=""] .zs-bark { display: none; }
+@media (prefers-reduced-motion: no-preference) { .zs-bark.pop { animation: zs-pop .2s steps(2, jump-none); } }
+@keyframes zs-pop { from { transform: translateY(3px); opacity: 0; } }
 .zs-taut { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
 .zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
@@ -256,7 +261,7 @@ button.zs-say { cursor: pointer; }
 .zs[data-mood="thrilled"] .zs-say .go { color: inherit; }
 .zs[data-mood="thrilled"] .zs-tail { width: 14px; height: 9px; margin: -1px 0 2px -7px; background: var(--led); border: 0; transform: none; clip-path: polygon(0 0, 100% 0, 50% 100%); }
 .zs[data-mood="thrilled"] .zs-spark { display: block; left: -7px; top: 26px; width: 4px; height: 4px; background: var(--led); }
-.zs[data-mood="thrilled"] .zs-spark + .zs-spark { left: auto; right: -5px; top: 12px; background: var(--go); }
+.zs[data-mood="thrilled"] .zs-spark + .zs-spark { left: auto; right: -5px; top: 20px; background: var(--go); }
 .zs[data-mood="thrilled"] .zs-spark + .zs-spark + .zs-spark { right: -9px; top: 50px; background: var(--led); }
 /* Asleep: a dashed outline with nothing in it, a trail of two dots for a pointer, and z's over him (below). */
 .zs[data-mood="asleep"] .zs-say { color: var(--mut); background: none; border-style: dashed; }
@@ -431,6 +436,7 @@ button.zs-say { cursor: pointer; }
 .zg-props { width: 16px; height: 16px; }
 .zg-rope { width: 1024px; height: 5px; }
 .zg-ropes { width: 48px; height: 48px; }
+.zg-barks { width: 40px; height: 10px; }
 /* The side trot: its second frame (--f2, set with the first) for half of each stride. */
 .zg-trot { animation: zg-trot .36s steps(1) infinite; }
 @keyframes zg-trot { 50%, 100% { background-position: var(--f2); } }

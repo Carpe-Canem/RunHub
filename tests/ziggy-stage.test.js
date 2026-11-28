@@ -154,3 +154,27 @@ test('a seed offsets the first wording, and three wordings wrap', () => {
   assert.deepEqual(lens, want);
   assert.equal(new Set(lens).size, 3);
 });
+
+test('a press shows a new bark; a redraw keeps the one showing', () => {
+  const raw = [line('a', 'First.', 'happy'), line('b', 'Second.', 'thrilled'), line('c', 'Third.', 'asleep')];
+  let s = onLines(START, raw, true, () => 0);
+  assert.equal(s.bark, 'woof');                                       // the first line's mood bark
+  assert.equal(onLines(s, raw, true, () => 0.99).bark, 'woof');         // a redraw keeps it, whatever the dice say
+  assert.equal(onLines(s, raw, false, () => 0.99).bark, 'woof');        // also under Reduce Motion
+  const two = onPress(s, raw, true, () => 0);
+  assert.equal(two.key, 'b');
+  assert.equal(two.bark, 'yip');                                        // a new line: a thrilled bark
+  assert.equal(onPress(two, raw, true, () => 0).bark, null);            // asleep has none
+  // Back to the first line later: shown afresh, so it barks again, and not the same as last time on that mood.
+  const again = onPress(onPress(two, raw, true, () => 0), raw, true, () => 0);
+  assert.equal(again.key, 'a');
+  assert.ok(['woof', 'arf'].includes(again.bark));
+});
+
+test('one line: a press does nothing, so its sticker never repeats', () => {
+  const one = [line('a', 'Only.', 'worried')];
+  const s = onLines(START, one, true, () => 0);
+  assert.equal(s.bark, 'huff');
+  assert.equal(onPress(s, one, true, () => 0.99), s);
+  assert.equal(onLines(s, one, true, () => 0.99).bark, 'huff');
+});

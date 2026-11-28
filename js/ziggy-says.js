@@ -129,3 +129,19 @@ export function moodCheck(mood) {
   if (!MOODS.includes(mood)) return null;
   return [line('check-1', mood, [`Mood check: ${mood}.`]), line('check-2', mood, ['And a second line.'])];
 }
+
+// His barks (v58): frames of the barks sheet, by mood, and by line key where a line has its own (none yet).
+export const BARKS = {
+  happy: ['woof', 'arf'], thrilled: ['yip', 'awoo', 'zoom'], eager: ['ruff', 'woof', 'bark'],
+  curious: ['hmm', 'sniff', 'ooh'], worried: ['huff', 'mm'], asleep: [],
+};
+export const BARK_FOR = {};
+
+// The bark for a line shown afresh: the line's own if it has some, else its mood's; never the last one unless it is the
+// only one; null when there are none (asleep).
+export function pickBark(mood, key, last, rnd = Math.random) {
+  const set = Object.hasOwn(BARK_FOR, key) ? BARK_FOR[key] : BARKS[mood] ?? [];
+  if (!set.length) return null;
+  const others = set.length > 1 ? set.filter((b) => b !== last) : set;
+  return others[Math.min(others.length - 1, Math.floor(rnd() * others.length))];
+}
