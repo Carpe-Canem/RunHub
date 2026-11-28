@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { START, onLines, onPress } from '../js/ziggy-stage.js';
+import { START, onLines, onPress, barkLeft } from '../js/ziggy-stage.js';
 import { wordsFor } from '../js/ziggy-says.js';
 import { lengthOf } from '../js/ziggy-moves.js';
 
@@ -177,4 +177,17 @@ test('one line: a press does nothing, so its sticker never repeats', () => {
   assert.equal(s.bark, 'huff');
   assert.equal(onPress(s, one, true, () => 0.99), s);
   assert.equal(onLines(s, one, true, () => 0.99).bark, 'huff');
+});
+
+test('a bark due before the strip was measured shows for what is left of its 1600 ms', () => {
+  assert.equal(barkLeft(1000, 1000), 1600);
+  assert.equal(barkLeft(1000, 1400), 1200);   // the strip got its width 400 ms after the line started
+  assert.equal(barkLeft(1000, 2600), 0);
+  assert.equal(barkLeft(1000, 9000), 0);       // too late: never shown
+});
+
+test('the first line of a load has its bark in state before anything is measured (x is still null)', () => {
+  const s = onLines(START, [line('a', 'First.', 'eager')], true, () => 0);
+  assert.equal(s.x, null);
+  assert.equal(s.bark, 'ruff');
 });

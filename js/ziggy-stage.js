@@ -16,6 +16,8 @@ import {
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const BARK_MS = 1600;             // how long a bark sticker stays up
+// How much of a bark's BARK_MS is left when its line started at `started` (ms on the clock) and it is now `now`.
+export const barkLeft = (started, now) => Math.max(0, BARK_MS - (now - started));
 const TICK = 40;                   // ms between looks at the clock while a line types
 const GRACE = 34;                  // ms a trip is given past its slide
 const ROUTINES = [...BALL_ROUTINES, ...CHEW_ROUTINES, ...TUG_ROUTINES, ...REST_ROUTINES];
@@ -67,7 +69,7 @@ export function onPress(s, lines, motion, rnd = Math.random) {
 
 let el = null;      // the stage: made on the first call, the same node ever after
 let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball; let knot; let line; let hang; let short;
-let barkPic; let barkTimer = null; // the bark sticker, and the timer that takes it down
+let barkPic; let barkTimer = null; let barkAt = null; // when the line started whose bark is due (null: none due) // the bark sticker, and the timer that takes it down
 let taut; let ropePic; let zees; let trip = null; // the held rope, drawn on a canvas; the rope's picture; the trip under way
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
@@ -311,6 +313,9 @@ function fit() {
   const r = room();
   s = { ...s, x: s.x === null ? Math.round(r / 2) : Math.min(s.x, r), to: s.to === null ? null : Math.min(s.to, r) };
   draw();
+  // The line started before the strip had a width (the first call, or a reset while the hub was out of sight): its bark goes
+  // up now, for what is left of its time.
+  if (barkAt !== null && barkTimer === null) showBark();
   // The strip changed width under a plaything in play: its path was planned for the old one, so he starts afresh.
   if (playing && was !== null && was !== wide && timer !== null && s.phase !== 'typing') {
     stop(); land(); next();
@@ -321,8 +326,13 @@ function fit() {
 
 // The line's bark goes up beside his face for BARK_MS, then comes down. A redraw never calls this: only a line shown afresh.
 function showBark() {
-  hideBark();
-  if (!s.bark || s.x === null || !strip.clientWidth) return;
+  clearTimeout(barkTimer);
+  barkTimer = null;
+  if (!s.bark || barkAt === null) return;
+  const left_ = barkLeft(barkAt, performance.now());
+  if (!left_) { hideBark(); return; }
+  // Not measured yet: barkAt stays, and fit() calls this again once the strip has a width.
+  if (s.x === null || !strip.clientWidth) return;
   const { left, top } = barkPlace(s.bark, shown, s.flip, s.x, strip.clientWidth);
   setFrame(barkPic, 'barks', s.bark);
   Object.assign(barkPic.style, { left: `${left}px`, top: `${top}px`, width: `${BARK_SIZE[s.bark][0]}px` });
@@ -330,18 +340,19 @@ function showBark() {
   barkPic.classList.remove('pop');
   void barkPic.offsetWidth;
   barkPic.classList.add('pop');   // the pop is CSS, and only without Reduce Motion
-  barkTimer = setTimeout(hideBark, BARK_MS);
+  barkTimer = setTimeout(hideBark, left_);
 }
 
 function hideBark() {
   clearTimeout(barkTimer);
   barkTimer = null;
+  barkAt = null;
   if (el) el.dataset.bark = '';
 }
 
 // He is interrupted (a new line, a press, a reset, Reduce Motion, the tab shown again): nothing slides, he stands
 // where a trip would have taken him, and he faces the way he was drawn.
-function land() {
+function land(keepBark = false) {
   trip = null;
   for (const moved of [dog, tail]) {
     moved.style.transition = '';
@@ -350,15 +361,15 @@ function land() {
   }
   pic.style.transform = '';
   aim = null;
-  hideBark();
+  if (!keepBark) hideBark();
   putAway();
   s = { ...s, flip: false, x: landed(s), to: null, phase: s.phase === 'wander' ? 'play' : s.phase };
 }
 
 // Reduce Motion: the mood's still, and nothing runs.
-function still() {
+function still(keepBark = false) {
   stop();
-  land();
+  land(keepBark);
   s = { ...s, phase: 'still', act: null };
   hold();
   draw();
@@ -481,6 +492,7 @@ function begin() {
   land();
   hold();
   draw();
+  barkAt = performance.now();
   showBark();
   if (s.phase !== 'typing') return;
   t0 = performance.now();
@@ -542,7 +554,7 @@ export function ziggyStage(newLines, opts) {
   // After a reset the strip may not change width, so nothing else would place him.
   if (s.x === null) fit();
   if (s.key !== was.key) begin();
-  else if (!motion) still();
+  else if (!motion) still(true);   // a redraw of the line he is on: its sticker stays for its time
   else {
     if (s.phase === 'typing' && (s.len !== was.len || s.typed !== was.typed)) typeOn();
     draw();
