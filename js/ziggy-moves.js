@@ -14,8 +14,7 @@ export const FIDGETS = {
   asleep:   ['ear', 'paw'],
 };
 
-// 'wander' is not a frame sequence: the activity planner moves him, swapping the trot frames.
-export const TROT = ['eager', 'eager-trot'];   // the two frames of every trip, walked or run
+// 'wander' is not a frame sequence: the activity planner moves him, walking or galloping (GAITS in ziggy-play.js).
 export const MARGIN = 48;      // a trip goes at least this far
 export const MIN_ROOM = 96;    // on a narrower strip he stays put
 export const MS_PER_PX = 5.5;  // a walk's pace

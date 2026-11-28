@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS } from '../js/ziggy-frames.js';
 import {
-  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, TROT, steps, typedCount, carryTyped,
+  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, steps, typedCount, carryTyped,
   splitParts, lengthOf, keepLine, canFidget, wanderTo,
 } from '../js/ziggy-moves.js';
 
@@ -70,11 +70,6 @@ test('a move a mood does not have is an error', () => {
   assert.throws(() => steps('worried', 'yawn'), /worried.*yawn/);
   assert.throws(() => steps('happy', 'wander'), /happy.*wander/);
   assert.throws(() => steps('cat', 'mood'), /cat/);
-});
-
-test("the trot's frames exist in the hub sheet", () => {
-  assert.deepEqual(TROT, ['eager', 'eager-trot']);
-  for (const f of TROT) assert.ok(SHEETS.hub.frames.includes(f));
 });
 
 test('typing', () => {

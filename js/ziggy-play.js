@@ -1,7 +1,7 @@
 // What Ziggy does with a stretch of time: pick an activity, then plan it as steps the stage can play.
 // Pure: no DOM, no timers. Frame names are those of the hub sheet in ziggy-frames.js.
 
-import { FIDGETS, MIN_ROOM, MS_PER_PX, TROT, steps, wanderTo } from './ziggy-moves.js';
+import { FIDGETS, MIN_ROOM, MS_PER_PX, steps, wanderTo } from './ziggy-moves.js';
 
 export const ACT_MIN = 4000;     // an activity lasts at least this long, in ms,
 export const ACT_MAX = 12000;    // and at most this
@@ -23,11 +23,17 @@ const FRET = { glance: 3, still: 2, sigh: 1 };
 
 // Step = { pose: [[frame, ms], ...] } | { travel: { to, ms, frames, frameMs } }
 
-const LEAD_MS = 400;      // a plan that opens with a trot first holds his still this long, so it opens on a pose
+const LEAD_MS = 400;      // a plan that opens with a trip first holds his still this long, so it opens on a pose
 const PACE = {
   walk: { msPerPx: MS_PER_PX, max: 2600, frameMs: 150 },
   run:  { msPerPx: 2.4, max: 1200, frameMs: 90 },
 };
+
+// The frames of a trip, by mood and pace. Drawn from the happy dog (v53) and used by every mood that travels; worried
+// and asleep never do. Eager keeps its own trot for its mood movement.
+const WALK = ['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4'];
+const RUN = ['happy-run1', 'happy-run2', 'happy-run3'];
+export const GAITS = Object.fromEntries(['happy', 'thrilled', 'eager', 'curious'].map((m) => [m, { walk: WALK, run: RUN }]));
 
 export const travelMs = (dx, pace) => Math.min(PACE[pace].max, Math.round(Math.abs(dx) * PACE[pace].msPerPx));
 
@@ -87,7 +93,7 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
     prev = b;
     return true;
   };
-  // A trot to `to` (a place of the strip), or to a new one. Never one that leaves no room under ACT_MAX for the beat
+  // A walk or a gallop to `to` (a place of the strip), or to a new one. Never one that leaves no room under ACT_MAX for the beat
   // that must follow it: a plan ends on a pose.
   const travel = (pace, to = wanderTo(at, room, rnd)) => {
     if (!canMove) return;
@@ -96,7 +102,7 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
     const lead = plan.length ? 0 : LEAD_MS;
     if (total + lead + ms + poseMs(steps(mood, shortest)) > ACT_MAX) return;
     if (lead) add({ pose: [[mood, lead]] });
-    add({ travel: { to, ms, frames: [...TROT], frameMs: PACE[pace].frameMs } });
+    add({ travel: { to, ms, frames: [...GAITS[mood][pace]], frameMs: PACE[pace].frameMs } });
     at = to;
   };
   const breathe = (pairs) => add({ pose: Array.from({ length: pairs }, () => [['asleep-breathe', 1000], ['asleep', 1000]]).flat() });
@@ -115,7 +121,7 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
       for (let n = count(1, 2); n > 0; n--) play(pick(own));
       break;
     case 'dash':
-      // There and back: the same trot, faster, to a spot and then to where he started.
+      // There and back: a gallop to a spot and then to where he started.
       travel('run');
       play(own.includes('tail') && own.length > 1 ? 'tail' : pick(own));
       if (Math.abs(start - at) >= 48) travel('run', start);

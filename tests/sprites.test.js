@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SHEETS, HEAD, framePos, sheetSize } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_LIFT, framePos, sheetSize } from '../js/ziggy-frames.js';
 import { readPalette, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
 import { decodePng } from '../scripts/sprite-png.mjs';
 
@@ -182,5 +182,21 @@ test('he sniffs with his mouth shut, and his scratching paw is white', () => {
     // the raised paw is white well above where his feet are
     assert.ok(rows.slice(38, 52).join('').split('').filter((ch) => ch === 'w').length >
       still.slice(38, 52).join('').split('').filter((ch) => ch === 'w').length + 20, name);
+  }
+});
+
+test('a lifted frame is drawn whole: its top row clears the lift', () => {
+  for (const [name, px] of Object.entries(FRAME_LIFT)) {
+    const top = readFrame('hub', name).findIndex((row) => /[^.]/.test(row));
+    assert.ok(top >= px, `${name}: top row ${top}, lifted ${px}`);
+  }
+});
+
+test('the walk and the gallop keep his head still: the nose sits in one column through each cycle', () => {
+  // The nose's front: the rightmost column holding the nose colour in the top half of the cell.
+  const front = (name) => Math.max(...readFrame('hub', name).slice(0, 60).map((row) => row.lastIndexOf('n')));
+  for (const cycle of [['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4'], ['happy-run1', 'happy-run2', 'happy-run3']]) {
+    const xs = cycle.map(front);
+    assert.ok(Math.max(...xs) - Math.min(...xs) <= 3, `${cycle[0]}: nose fronts ${xs}`);
   }
 });

@@ -2,7 +2,7 @@
 // drives him. The rules (which line, how much is typed, where he stands) are pure functions of a small state; the
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
-import { SHEETS, headAt, facesLeft } from './ziggy-frames.js';
+import { SHEETS, headAt, facesLeft, liftOf } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
@@ -104,6 +104,8 @@ function draw() {
 // offset was fixed when the trip began, so its slide is never started again.
 function frame(name) {
   setFrame(pic, 'hub', name);
+  const lift = liftOf(name);
+  pic.style.transform = [s.flip ? 'scaleX(-1)' : '', lift ? `translateY(-${lift}px)` : ''].filter(Boolean).join(' ');
   if (s.phase === 'wander') return;
   aim = headAt(name, s.flip);
   if (s.x !== null) tail.style.left = `${s.x + aim}px`;
@@ -220,7 +222,6 @@ function travel({ to: planned, ms, frames, frameMs }, done) {
   if (!dx) { done(); return; }
   const flip = (dx < 0) !== facesLeft(frames[0]);
   s = { ...s, flip, phase: 'wander', to };
-  pic.style.transform = flip ? 'scaleX(-1)' : '';
   frame(frames[0]);
   // The pointer jumps to his head as it now faces, and only then slides with him.
   aim = headAt(frames[0], flip);

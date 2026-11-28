@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS } from '../js/ziggy-frames.js';
 import { steps } from '../js/ziggy-moves.js';
-import { ACT_MIN, ACT_MAX, ACTIVITIES, pickActivity, planActivity, planMs, travelMs } from '../js/ziggy-play.js';
+import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, pickActivity, planActivity, planMs, travelMs } from '../js/ziggy-play.js';
 
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const rnd = seeded(13);
@@ -124,4 +124,22 @@ test('travel times', () => {
   assert.equal(travelMs(-100, 'run'), 240);
   assert.equal(travelMs(5000, 'walk'), 2600);
   assert.equal(travelMs(5000, 'run'), 1200);
+});
+
+test('the awake moods walk and gallop on their own frames, never the borrowed trot (v53)', () => {
+  const WALK = ['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4'];
+  const RUN = ['happy-run1', 'happy-run2', 'happy-run3'];
+  assert.deepEqual(Object.keys(GAITS), ['happy', 'thrilled', 'eager', 'curious']);
+  for (const mood of Object.keys(GAITS)) {
+    assert.deepEqual(GAITS[mood], { walk: WALK, run: RUN }, mood);
+    const seen = { walk: 0, run: 0 };
+    for (const name of ['stroll', 'dash', 'potter']) for (let i = 0; i < 40; i++) {
+      for (const { travel: t } of planActivity(mood, name, { x: 150, room: 312, rnd }).filter((s) => s.travel)) {
+        assert.ok(!t.frames.includes('eager-trot'), `${mood} ${name}`);
+        if (t.frameMs === 150) { assert.deepEqual(t.frames, WALK); seen.walk++; }
+        else { assert.equal(t.frameMs, 90); assert.deepEqual(t.frames, RUN); seen.run++; }
+      }
+    }
+    assert.ok(seen.walk && seen.run, `${mood} walks and runs`);
+  }
 });

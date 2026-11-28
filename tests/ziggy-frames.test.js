@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, FRAME_HEAD, headAt, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,9 +22,9 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 440 with 39 frames, the side sheet 192 × 40 with four', () => {
-  assert.equal(SHEETS.hub.frames.length, 39);
-  assert.deepEqual(sheetSize('hub'), { w: 768, h: 440 });
+test('the hub sheet is 768 × 528 with 46 frames, the side sheet 192 × 40 with four', () => {
+  assert.equal(SHEETS.hub.frames.length, 46);
+  assert.deepEqual(sheetSize('hub'), { w: 768, h: 528 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
   assert.deepEqual(sheetSize('side'), { w: 192, h: 40 });
 });
@@ -88,4 +88,23 @@ test('a frame\'s head point: its own, else its mood\'s still, mirrored when flip
 test('worried and asleep frames face left, the rest right', () => {
   for (const name of SHEETS.hub.frames) assert.equal(facesLeft(name), /^(worried|asleep)/.test(name), name);
   assert.deepEqual(['worried-glance', 'asleep-paw', 'eager-trot', 'happy-look1'].map(facesLeft), [true, true, false, false]);
+});
+
+test('the walk and the gallop go on the end of the hub sheet (v53), each with its own head point', () => {
+  const GAIT = ['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3'];
+  assert.deepEqual(SHEETS.hub.frames.slice(39), GAIT);
+  assert.equal(SHEETS.hub.frames[38], 'happy-scratch2');
+  for (const name of GAIT) assert.ok(Object.hasOwn(FRAME_HEAD, name), name);
+});
+
+test('a lifted frame: off the ground by a few px, nothing else is', () => {
+  for (const [name, px] of Object.entries(FRAME_LIFT)) {
+    assert.ok(SHEETS.hub.frames.includes(name), name);
+    assert.ok(Number.isInteger(px) && px > 0 && px <= 8, `${name}: ${px}`);
+    assert.equal(liftOf(name), px);
+  }
+  assert.equal(liftOf('happy'), 0);
+  assert.equal(liftOf('eager-trot'), 0);
+  // The bound: in the gallop he leaves the ground at the tuck, and his walk bobs a pixel (owner's pick C, 2026-11-28).
+  assert.deepEqual(FRAME_LIFT, { 'happy-walk2': 1, 'happy-walk4': 1, 'happy-run1': 2, 'happy-run2': 6 });
 });
