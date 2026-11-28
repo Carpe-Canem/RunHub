@@ -24,8 +24,7 @@ const shortName = (n) => {
   const chars = graphemes(n);
   return chars.length > NAME_MAX ? `${chars.slice(0, NAME_MAX).join('').trimEnd()}…` : n;
 };
-// A name that ends its own sentence, or is cut with an ellipsis, gets no second stop.
-// The same for a name that ends the line on a bang.
+// The "!" that ends a line after a name; none when the name already ends in . ! ? or the cut ellipsis.
 const bang = (text) => (/[.!?…]$/.test(text) ? '' : '!');
 
 // Whole days from one YYYY-MM-DD to another.

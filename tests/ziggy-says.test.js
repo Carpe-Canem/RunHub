@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { fmt0 } from '../js/core.js';
 import { ziggyLines, moodCheck, WORDINGS_CAP } from '../js/ziggy-says.js';
 import { graphemes } from '../js/ziggy-moves.js';
-import { fmtTime } from '../js/races-model.js';
 
 const utc = (y, m, d) => Date.UTC(y, m - 1, d) / 864e5;
 const NOW = new Date(2026, 10, 27, 12);   // a Friday, local noon
@@ -343,5 +342,10 @@ test('every wording fits the cap, with the worst inputs, in miles and in km', ()
     assert.ok(seen.has(k), `worst case did not reach ${k}`);
   }
   if (process.env.SHOW_WIDEST) console.log(JSON.stringify(widest));
-  assert.ok(fmtTime(5025).length > 0);
+  // The worst inputs really reach the text, so the worst case cannot shrink unseen.
+  const all = worst('mi').flatMap((l) => l.ways.map(sayWay)).join(' | ');
+  for (const re of [/1:23:45/, /10:30 AM/, /The Orchard And Harbor Invit…/, /Half Marathon/, /122\.4/, /22\.4 over/, /12,345/, /1,234 ahead/,
+    /1,234 miles behind/, /120\.7/, /Wednesday/, /Sep 30/, /120 races/, /12 on an age-group podium/]) {
+    assert.match(all, re);
+  }
 });
