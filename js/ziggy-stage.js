@@ -319,10 +319,10 @@ function fit() {
   if (barkAt !== null && barkTimer === null) showBark();
   // The strip changed width under a plaything in play: its path was planned for the old one, so he starts afresh.
   if (playing && was !== null && was !== wide && timer !== null && s.phase !== 'typing') {
-    stop(); land(); next();
-    return;
-  }
-  if (timer === null && motionOK() && !document.hidden && s.phase !== 'typing') { land(); next(); }
+    stop(); land(true); next();
+  } else if (timer === null && motionOK() && !document.hidden && s.phase !== 'typing') { land(true); next(); }
+  // A sticker that is up moves with him, once he has been placed afresh.
+  if (was !== wide && barkTimer !== null) placeBark();
 }
 
 // The line's bark goes up beside his face for BARK_MS, then comes down. A redraw never calls this: only a line shown afresh.
@@ -334,14 +334,19 @@ function showBark() {
   if (!left_) { hideBark(); return; }
   // Not measured yet: barkAt stays, and fit() calls this again once the strip has a width.
   if (s.x === null || !strip.clientWidth) return;
-  const { left, top } = barkPlace(s.bark, shown, s.flip, s.x, strip.clientWidth);
   setFrame(barkPic, 'barks', s.bark);
-  Object.assign(barkPic.style, { left: `${left}px`, top: `${top}px`, width: `${BARK_SIZE[s.bark][0]}px` });
+  placeBark();
   el.dataset.bark = s.bark;
   barkPic.classList.remove('pop');
   void barkPic.offsetWidth;
   barkPic.classList.add('pop');   // the pop is CSS, and only without Reduce Motion
   barkTimer = setTimeout(hideBark, left_);
+}
+
+// The sticker's place by where he is now: when it goes up, and again if the strip changes width while it is up.
+function placeBark() {
+  const { left, top } = barkPlace(s.bark, shown, s.flip, s.x, strip.clientWidth);
+  Object.assign(barkPic.style, { left: `${left}px`, top: `${top}px`, width: `${BARK_SIZE[s.bark][0]}px` });
 }
 
 function hideBark() {
@@ -487,12 +492,21 @@ function travel({ to: planned, ms, frames, frameMs, arc = 0, keep = false }, don
   trot();
 }
 
+// A look's entrance (eager's bounce) is CSS, which runs again only once its selector has stopped matching; a line that
+// cuts another's typing never stops matching, so the animation is taken off and put back.
+function replayEntrance() {
+  say.style.animation = 'none';
+  void say.offsetWidth;
+  say.style.animation = '';
+}
+
 // A line has just appeared: it types from its first character, or with reduced motion is simply there.
 function begin() {
   stop();
   land();
   hold();
   draw();
+  replayEntrance();
   barkAt = performance.now();
   showBark();
   if (s.phase !== 'typing') return;

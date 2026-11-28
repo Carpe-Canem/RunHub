@@ -171,12 +171,13 @@ export const BARK_SIZE = {
 
 // A bark sticker's top left on the strip (v58): in front of his face, 22 px past his head point on the side he faces
 // (the frame's own way, turned when he is drawn flipped), 4 px below the strip's top. Where that would leave the strip
-// (width wide) it goes behind his head instead, 4 px clear of his edge. dogLeft: his left edge on the strip.
+// (width wide) it goes behind his head instead, 4 px clear of his edge. With room on neither side it is held on the strip.
+// dogLeft: his left edge on the strip.
 export function barkPlace(bark, frame, flipped, dogLeft, wide) {
   const [w] = BARK_SIZE[bark];
   const left = facesLeft(frame) !== flipped;
   const head = dogLeft + headAt(frame, flipped);
   let x = left ? head - 22 - w : head + 22;
   if (x < 0 || x + w > wide) x = left ? dogLeft + SHEETS.hub.cell[0] + 4 : dogLeft - w - 4;
-  return { left: x, top: 4 };
+  return { left: Math.max(0, Math.min(x, wide - w)), top: 4 };
 }

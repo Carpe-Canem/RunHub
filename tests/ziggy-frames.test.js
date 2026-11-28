@@ -172,6 +172,16 @@ test('the z\'s have a start in every frame he sleeps in, and the highest stays i
   }
 });
 
+test('on a strip too narrow for either side, the bark stays on it', () => {
+  const [w] = BARK_SIZE.yip;
+  for (const wide of [96, 120, 150, 169]) for (const frame of ['happy', 'worried']) for (const flip of [false, true]) {
+    for (let x = 0; x <= wide - 96; x += 1) {
+      const { left } = barkPlace('yip', frame, flip, x, wide);
+      assert.ok(left >= 0 && left + w <= wide, `${frame} flip ${flip} at ${x} of ${wide}: ${left}`);
+    }
+  }
+});
+
 test('a bark sticker is placed in front of his face on the side he faces, 22 px past his head point', () => {
   const [w] = BARK_SIZE.woof;
   // Faces right (happy, as drawn): head 62 in the cell, dog at 100 on a 408 strip.
