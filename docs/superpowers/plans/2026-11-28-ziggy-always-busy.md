@@ -272,7 +272,8 @@ Props colours: if a picked prop colour is not in `sprites/src/palette.txt`, prop
 - `NAME_MAX` changes only if the owner picks it in Task 6.1 (the name rules have little room for voice at 28).
 - The fact comes first or is in the green `go` highlight. Only `yearbehind` says "behind"; no line scolds (the existing sweep test).
 - Text contrast at least 4.5:1 on every look; the focus ring stays visible on every look.
-- Stickers: `aria-hidden`, never part of the bubble's text; his blue-grey `o` outline; static under Reduce Motion; clear of the z's (up to 35 px over his head), the pointer and the thrilled sparks.
+- Stickers: `aria-hidden`, never part of the bubble's text; his blue-grey `o` outline; static under Reduce Motion; clear of the z's (up to 35 px over his head), the pointer and the thrilled sparks. A sticker on the strip stays on it: he speaks wherever he stopped, ends included, so a bark that would leave the strip goes to his other side.
+- Each wording keeps the fact first or in the highlight, as today's line does (a candidate that opens with filler and no highlight is rejected).
 - Nothing stored: the random start is per load.
 - Ship as v58 the same way as the earlier phases.
 
@@ -312,12 +313,12 @@ Props colours: if a picked prop colour is not in `sprites/src/palette.txt`, prop
 **Interfaces:**
 - Produces:
   - `ziggyLines(...) -> Line[]`, `Line = { key, mood, ways: Part[][] }`, one or more wordings; `moodCheck(mood)` likewise (one wording each).
-  - `wordsFor(line: Line, n: number) -> { key, mood, parts }`: `parts = ways[n % ways.length]`. This is the shape `lengthOf`, `splitParts`, `keepLine` and the stage's state functions already take; they do not change.
-  - Stage: `START` gains `turns: {}` and `seed: 0`. `show()` moves `turns[key]` on by one for the line it shows; `onLines` with a kept line leaves `turns` alone. The words shown for line `i` are `wordsFor(raw[i], s.seed + (s.turns[key] ?? 0))`. `ziggyStage` sets `seed` once per load from `Math.floor(Math.random() * 6)` (6 covers both 2 and 3 wordings).
+  - `wordsFor(line: Line, n: number) -> { key, mood, parts }`: `parts = ways[n % ways.length]`. This is the shape `lengthOf` and `splitParts` take; they do not change. `keepLine` reads only `key`, so it takes the raw lines as they are.
+  - Stage: `START` gains `turns: {}` and `seed: 0`. `show()`, `onLines()` and `onPress()` take the raw lines. `show()` first moves `turns[key]` on by one for the line it shows, then computes `len` from the wording about to be shown, `wordsFor(raw[i], s.seed + turns[key])`; `onLines` with a kept line leaves `turns` alone and computes `len` from that line's current wording. Everything that draws reads `wordsFor(raw[s.i], s.seed + (s.turns[key] ?? 0))`. `ziggyStage` sets `seed` once per load from `Math.floor(Math.random() * 6)` (6 covers both 2 and 3 wordings).
 
 - [ ] **Step 1: Failing tests.**
   - `ziggy-says`: `check()` and `say()` read `ways[0]`; a new test "every line has one to three wordings, each a list of parts" over the existing sweep of cases; "the check hook" expects `ways: [[{ text: 'Mood check: thrilled.' }]]`.
-  - `ziggy-stage`: "a line shown again takes its next wording": two raw lines, each with two `ways`; press, press, press from line 0: line 0's words differ between its first and second showing. "a redraw keeps the wording": `onLines` with the same raw lines mid-typing gives the same `parts` and the same `turns`. "one line: a press keeps its words".
+  - `ziggy-stage`: "a line shown again takes its next wording": two raw lines, each with two `ways`; press, press, press from line 0: line 0's words differ between its first and second showing, and after each `show()` `len` equals `lengthOf` of the wording shown (two ways of different lengths). "a redraw keeps the wording": `onLines` with the same raw lines mid-typing gives the same `parts` and the same `turns`. "one line: a press keeps its words".
 - [ ] **Step 2: Run** `npm test`. Expected: FAIL on `ways` and `turns`.
 - [ ] **Step 3: Implement.** In `ziggy-says.js`, `line(key, mood, ...ways)` where each way is an array of parts (strings or `t(text, tone)`); today's wording is the only way for now. In the stage, keep the raw lines and voice them through `wordsFor` wherever `lines[i]` is read today.
 - [ ] **Step 4: Run** `npm test`. Expected: PASS.
