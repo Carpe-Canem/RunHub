@@ -247,7 +247,7 @@ button.zs-say { cursor: pointer; }
 .zs-taut { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
 .zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
-.zs-spark, .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
+.zs-spark, .zs-dog .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
 /* Thrilled: an amber burst, zig-zagged at each end, and three sparks round him. The shape is on a layer behind
    the words so the focus ring is not cut off with it. */
 .zs[data-mood="thrilled"] .zs-say { color: #1A1200; font-weight: 600; background: none; border-color: transparent; }
@@ -258,18 +258,22 @@ button.zs-say { cursor: pointer; }
 .zs[data-mood="thrilled"] .zs-spark { display: block; left: -7px; top: 26px; width: 4px; height: 4px; background: var(--led); }
 .zs[data-mood="thrilled"] .zs-spark + .zs-spark { left: auto; right: -5px; top: 12px; background: var(--go); }
 .zs[data-mood="thrilled"] .zs-spark + .zs-spark + .zs-spark { right: -9px; top: 50px; background: var(--led); }
-/* Asleep: a dashed outline with nothing in it, a trail of two dots for a pointer, and two z's over him. */
+/* Asleep: a dashed outline with nothing in it, a trail of two dots for a pointer, and z's over him (below). */
 .zs[data-mood="asleep"] .zs-say { color: var(--mut); background: none; border-style: dashed; }
 .zs[data-mood="asleep"] .zs-tail { margin: 2px 0 -4px -6px; border: 0; transform: none; background: radial-gradient(circle at 4px 3px, var(--mut) 2px, transparent 2.5px), radial-gradient(circle at 9px 10px, var(--mut) 1.3px, transparent 1.8px); }
-.zs[data-mood="asleep"] .zs-z { display: block; left: 46px; top: 26px; font: 800 11px/1 var(--f); color: var(--mut); }
-.zs[data-mood="asleep"] .zs-z + .zs-z { left: 56px; top: 12px; font-size: 14px; }
-/* Sparks and z's drift only while he is moving; otherwise they sit where they are. */
+/* Sparks drift only while he is moving; otherwise they sit where they are. */
 .zs[data-state="moving"] .zs-spark,.zs[data-state="play"] .zs-spark, .zs[data-state="wander"] .zs-spark { animation: zs-spark .5s steps(2, jump-none) infinite alternate; }
 .zs[data-state="moving"] .zs-spark + .zs-spark,.zs[data-state="play"] .zs-spark + .zs-spark, .zs[data-state="wander"] .zs-spark + .zs-spark { animation-delay: -.2s; }
-.zs[data-state="moving"] .zs-z,.zs[data-state="play"] .zs-z, .zs[data-state="wander"] .zs-z { animation: zs-z 2s steps(4, jump-none) infinite; }
-.zs[data-state="moving"] .zs-z + .zs-z,.zs[data-state="play"] .zs-z + .zs-z, .zs[data-state="wander"] .zs-z + .zs-z { animation-delay: -1s; }
 @keyframes zs-spark { to { transform: translateY(-4px); opacity: .3; } }
-@keyframes zs-z { from { transform: translate(-2px, 4px); opacity: .3; } to { transform: translate(2px, -4px); } }
+/* Asleep, or napping in an awake mood (v57, the owner's pick Z3): three pixel z's over his head, placed by the script.
+   One after another they appear, rise a pixel at a time and fade. With Reduce Motion (state still) they stand. */
+.zs[data-zz="on"] .zs-z { display: block; }
+.zs[data-zz="on"]:not([data-state="still"]) .zs-z { animation: zs-z1 2.7s infinite; }
+.zs[data-zz="on"]:not([data-state="still"]) .zs-z + .zs-z { animation-name: zs-z2; }
+.zs[data-zz="on"]:not([data-state="still"]) .zs-z + .zs-z + .zs-z { animation-name: zs-z3; }
+@keyframes zs-z1 { 0% { transform: none; opacity: 1; animation-timing-function: steps(6, end); } 33.3% { transform: translateY(-6px); opacity: 1; animation-timing-function: linear; } 85.2% { transform: translateY(-6px); opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+@keyframes zs-z2 { 0% { transform: none; opacity: 0; animation-timing-function: step-end; } 25.9% { transform: none; opacity: 1; animation-timing-function: steps(6, end); } 59.3% { transform: translateY(-6px); opacity: 1; animation-timing-function: linear; } 85.2% { transform: translateY(-6px); opacity: 1; } 100% { transform: translateY(-6px); opacity: 0; } }
+@keyframes zs-z3 { 0% { transform: none; opacity: 0; animation-timing-function: step-end; } 51.9% { transform: none; opacity: 1; animation-timing-function: steps(6, end); } 85.2% { transform: translateY(-6px); opacity: 1; animation-timing-function: linear; } 100% { transform: translateY(-6px); opacity: 0; } }
 /* Wide screens: the clock on the left, everything else on the right. The right column spans both rows, so the
    second row is free for what stands under the clock. */
 @media (min-width: 860px) {

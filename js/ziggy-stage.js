@@ -3,20 +3,20 @@
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
 import {
-  SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, anchorOf, shortFrom, shortFrame, framePos, sheetUrl, headAt, facesLeft, liftOf,
+  SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, SLEEP_TOP, ZEES, anchorOf, shortFrom, shortFrame, framePos, sheetUrl, headAt, facesLeft, liftOf,
 } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
 import {
-  ACTIVITIES, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, ROPE_FAR, ROPE_FAR_H, pickActivity, planActivity, propPath, ropeSteps,
+  ACTIVITIES, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, REST_ROUTINES, ROPE_FAR, ROPE_FAR_H, pickActivity, planActivity, propPath, ropeSteps,
 } from './ziggy-play.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const TICK = 40;                   // ms between looks at the clock while a line types
 const GRACE = 34;                  // ms a trip is given past its slide
-const ROUTINES = [...BALL_ROUTINES, ...CHEW_ROUTINES, ...TUG_ROUTINES];
+const ROUTINES = [...BALL_ROUTINES, ...CHEW_ROUTINES, ...TUG_ROUTINES, ...REST_ROUTINES];
 const KNOT_AT = anchorOf('knot');  // the knot's centre in its cell
 const LINE_W = SHEETS.rope.cell[0];
 
@@ -56,7 +56,7 @@ export function onPress(s, lines, motion) {
 
 let el = null;      // the stage: made on the first call, the same node ever after
 let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball; let knot; let line; let hang; let short;
-let taut; let ropePic; let trip = null; // the held rope, drawn on a canvas; the rope's picture; the trip under way
+let taut; let ropePic; let zees; let trip = null; // the held rope, drawn on a canvas; the rope's picture; the trip under way
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
 let activity = null; // an activity to play every time (the checks' hook)
@@ -91,7 +91,10 @@ function build() {
   tail = h('span', { class: 'zs-tail', 'aria-hidden': 'true' });
   pic = sprite('hub');
   dog = h('span', { class: 'zs-dog', onclick: press }, pic,
-    [1, 2, 3].map(() => h('i', { class: 'zs-spark' })), [1, 2].map(() => h('i', { class: 'zs-z' }, 'z')));
+    [1, 2, 3].map(() => h('i', { class: 'zs-spark' })));
+  // The z's over him while he sleeps (v57): pixel z's from the props sheet, placed by sleepZs().
+  zees = ZEES.map(([name]) => { const z = sprite('props'); z.classList.add('zs-z'); setFrame(z, 'props', name); return z; });
+  dog.append(...zees);
   // The ball plays in a layer of its own that clips at the strip's ends, so it can roll in and out of sight.
   ball = sprite('props');
   ball.classList.add('zs-ball');
@@ -138,12 +141,26 @@ function frame(name, up = 0) {
   const lift = liftOf(name) + up;
   pic.style.transform = [s.flip ? 'scaleX(-1)' : '', lift ? `translateY(-${lift}px)` : ''].filter(Boolean).join(' ');
   if (holding) mouthProp(name);
+  sleepZs(name);
   if (s.phase === 'wander') return;
   aim = headAt(name, s.flip);
   if (s.x !== null) tail.style.left = `${s.x + aim}px`;
 }
 
 const hold = () => frame(mood());
+
+// The z's: shown while he sleeps (the asleep mood, or a nap or a dream in an awake one), over his head and away from
+// his face, so they follow him as he lies down, rolls over and turns.
+function sleepZs(name) {
+  const on = (mood() === 'asleep' || /^happy-(nap|dream)/.test(name)) && Object.hasOwn(SLEEP_TOP, name);
+  el.dataset.zz = on ? 'on' : '';
+  if (!on) return;
+  const away = facesLeft(name) !== s.flip ? 1 : -1;
+  const x = headAt(name, s.flip);
+  const top = SLEEP_TOP[name] - liftOf(name);
+  // A z's picture starts a pixel into its cell (its outline): that pixel goes at the point.
+  ZEES.forEach(([, w, dx, up], i) => Object.assign(zees[i].style, { left: `${x + away * dx - (away < 0 ? w : 0) - 1}px`, top: `${top - up - 1}px` }));
+}
 
 // The plaything in his mouth: placed in his cell, so his flip and lift carry it. The ball and the toy by their
 // middle at FRAME_MOUTH; the rope by its knot at FRAME_KNOT (the long rope itself is on the strip: drawTaut).

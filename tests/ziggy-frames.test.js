@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT, BALL_CENTRE, SHORT_LEN, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl, shortFrom, shortFrame } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT, BALL_CENTRE, SHORT_LEN, SLEEP_TOP, ZEES, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl, shortFrom, shortFrame } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,10 +22,10 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 704 with 58 frames, the side sheet 192 × 40 with four, the props 96 × 32 with nine', () => {
-  assert.equal(SHEETS.hub.frames.length, 58);
-  assert.deepEqual(sheetSize('hub'), { w: 768, h: 704 });
-  assert.equal(SHEETS.props.frames.length, 9);
+test('the hub sheet is 768 × 792 with 71 frames, the side sheet 192 × 40 with four, the props 96 × 32 with twelve', () => {
+  assert.equal(SHEETS.hub.frames.length, 71);
+  assert.deepEqual(sheetSize('hub'), { w: 768, h: 792 });
+  assert.equal(SHEETS.props.frames.length, 12);
   assert.deepEqual(sheetSize('props'), { w: 96, h: 32 });
   assert.deepEqual(sheetSize('rope'), { w: 1024, h: 5 });
   assert.deepEqual(sheetSize('ropes'), { w: 288, h: 48 });
@@ -137,9 +137,9 @@ test('where the ball sits: in his mouth on the carry, walk and gallop frames, on
 
 test('the chew and tug poses go on the end of the hub sheet (v55), with a head point, and the toy and rope on theirs', () => {
   const NEW = ['happy-chew1', 'happy-chew2', 'happy-hold', 'happy-tug1', 'happy-tug2', 'happy-tug3'];
-  assert.deepEqual(SHEETS.hub.frames.slice(52), NEW);
+  assert.deepEqual(SHEETS.hub.frames.slice(52, 58), NEW);
   for (const name of NEW) assert.ok(Object.hasOwn(FRAME_HEAD, name), name);
-  assert.deepEqual(SHEETS.props.frames.slice(6), ['toy-flat', 'toy-up', 'knot']);
+  assert.deepEqual(SHEETS.props.frames.slice(6, 9), ['toy-flat', 'toy-up', 'knot']);
   for (const sheet of ['rope', 'ropes']) assert.equal(SHEETS[sheet].palette, 'props-palette.txt');
   for (const [name, x] of Object.entries(FRAME_TOY)) assert.ok(SHEETS.hub.frames.includes(name) && x >= 0 && x < 96, name);
   for (const [name, [x, y]] of Object.entries(FRAME_KNOT)) assert.ok(SHEETS.hub.frames.includes(name) && x >= 0 && x < 96 && y >= 0 && y < 88, name);
@@ -149,5 +149,23 @@ test('the chew and tug poses go on the end of the hub sheet (v55), with a head p
     const [dx, dy] = shortFrom(deg); const a = (deg * Math.PI) / 180;
     assert.ok(Math.abs(-dx - (24 - (SHORT_LEN / 2) * Math.cos(a))) <= 0.5 && Math.abs(-dy - (24 - (SHORT_LEN / 2) * Math.sin(a))) <= 0.5, `${deg}`);
     assert.ok(SHEETS.ropes.frames.includes(shortFrame(deg)));
+  }
+});
+
+test('the rest poses go on the end of the hub sheet (v57), each with a head point; the z\'s on the props sheet', () => {
+  const NEW = ['happy-lie', 'happy-lie-blink', 'happy-nap1', 'happy-nap2', 'happy-dream1', 'happy-dream2', 'happy-roll1',
+    'happy-roll2', 'happy-roll3', 'worried-pace1', 'worried-pace2', 'worried-pace3', 'worried-pace4'];
+  assert.deepEqual(SHEETS.hub.frames.slice(58), NEW);
+  for (const name of NEW) assert.ok(Object.hasOwn(FRAME_HEAD, name), name);
+  for (const name of NEW.filter((n) => n.startsWith('worried'))) assert.ok(facesLeft(name), name);
+  assert.deepEqual(SHEETS.props.frames.slice(9), ['zee-s', 'zee-m', 'zee-l']);
+  assert.deepEqual(ZEES.map(([name]) => name), ['zee-s', 'zee-m', 'zee-l']);
+});
+
+test('the z\'s have a start in every frame he sleeps in, and the highest stays inside the strip', () => {
+  const sleeping = SHEETS.hub.frames.filter((n) => /^(asleep|happy-(nap|dream|roll))/.test(n));
+  assert.deepEqual(Object.keys(SLEEP_TOP).sort(), sleeping.sort());
+  for (const [name, top] of Object.entries(SLEEP_TOP)) {
+    for (const [, , , up] of ZEES) assert.ok(top - up - 1 >= 0 && top < 88, `${name}: ${top - up}`);
   }
 });

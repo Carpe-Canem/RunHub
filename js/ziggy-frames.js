@@ -13,13 +13,19 @@ export const SHEETS = {
       'happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3', 'happy-bow',
       'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2', 'happy-chew1', 'happy-chew2',
       'happy-hold', 'happy-tug1', 'happy-tug2', 'happy-tug3',
+      // v57, rest: the lie and its blink, the flat nap and its breath, the dreaming paws, the roll onto his back and
+      // its wiggle, and the worried head-low walk.
+      'happy-lie', 'happy-lie-blink', 'happy-nap1', 'happy-nap2', 'happy-dream1', 'happy-dream2', 'happy-roll1',
+      'happy-roll2', 'happy-roll3', 'worried-pace1', 'worried-pace2', 'worried-pace3', 'worried-pace4',
     ],
   },
   side: { cell: [48, 40], cols: 4, frames: ['sit', 'trot1', 'trot2', 'nap'] },
   // The things he plays with, in colours of their own (the dog's palette is full).
   props: {
     cell: [16, 16], cols: 6, palette: 'props-palette.txt',
-    frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air', 'toy-flat', 'toy-up', 'knot'],
+    // v57: the z's over him while he sleeps, small, medium and large, each drawn from the cell's top left.
+    frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air', 'toy-flat', 'toy-up', 'knot',
+      'zee-s', 'zee-m', 'zee-l'],
   },
   // The long rope (v55): from the knot in his mouth to past the end of the strip, one piece so it is never scaled
   // or turned. Its knot end is on the left.
@@ -73,7 +79,21 @@ export const FRAME_HEAD = {
   // v55: lying to chew, and the tug (the crouch read in front of his raised tail; the pull-back and the shake by eye,
   // as the top row there is an ear).
   'happy-chew1': 74, 'happy-chew2': 74, 'happy-hold': 75, 'happy-tug1': 70, 'happy-tug2': 28, 'happy-tug3': 55,
+  // v57: lying down (read off the head; on his back, by eye), and the worried walk with its head out in front.
+  'happy-lie': 71, 'happy-lie-blink': 71, 'happy-nap1': 76, 'happy-nap2': 76, 'happy-dream1': 76, 'happy-dream2': 76,
+  'happy-roll1': 78, 'happy-roll2': 80, 'happy-roll3': 80,
+  'worried-pace1': 22, 'worried-pace2': 22, 'worried-pace3': 22, 'worried-pace4': 22,
 };
+
+// The z's while he sleeps (v57, the owner's pick Z3): the top row of his head in the frames he sleeps in, so the z's
+// start just over it whichever way he lies. The asleep frames all share the curl's.
+export const SLEEP_TOP = {
+  asleep: 45, 'asleep-breathe': 45, 'asleep-paw': 45, 'asleep-ear': 45,
+  'happy-nap1': 56, 'happy-nap2': 56, 'happy-dream1': 54, 'happy-dream2': 56,
+  'happy-roll1': 47, 'happy-roll2': 46, 'happy-roll3': 46,
+};
+// Each z: its frame, its width, and where its top left sits from his head's top: px away from his face, px up.
+export const ZEES = [['zee-s', 5, 8, 12], ['zee-m', 7, 14, 22], ['zee-l', 9, 21, 34]];
 
 // The ball (props sheet): its centre sits at this point of its 16 × 16 cell, and its bottom on the cell's last row.
 export const BALL_CENTRE = [8, 9];

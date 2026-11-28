@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT } from '../js/ziggy-frames.js';
 import { steps } from '../js/ziggy-moves.js';
-import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, ROPE_FAR, ROPE_FAR_H, ropeSteps, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
+import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, REST_ROUTINES, ROPE_FAR, ROPE_FAR_H, ropeSteps, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
 
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const rnd = seeded(13);
+const PACING = ['worried-pace1', 'worried-pace2', 'worried-pace3', 'worried-pace4'];
 
 test('every activity lasts 4 to 12 s, uses real frames and ends on the still', () => {
   for (const [mood, set] of Object.entries(ACTIVITIES)) for (const name of Object.keys(set)) {
@@ -65,9 +66,11 @@ test('the picker never repeats, plays the whole set, and asleep always dozes', (
   assert.equal(pickActivity('asleep', 'doze', rnd), 'doze');
 });
 
-test('worried never travels', () => {
+test('worried travels only when he paces, and only on his head-low walk', () => {
   for (const name of Object.keys(ACTIVITIES.worried)) for (let i = 0; i < 50; i++) {
-    assert.ok(planActivity('worried', name, { x: 150, room: 312, rnd }).every((s) => s.pose));
+    const plan = planActivity('worried', name, { x: 150, room: 312, rnd });
+    if (name !== 'pace') assert.ok(plan.every((s) => s.pose), name);
+    for (const { travel: t } of plan.filter((s) => s.travel)) assert.deepEqual(t.frames, PACING);
   }
 });
 
@@ -84,7 +87,7 @@ test('a beat hook makes every beat that fidget', () => {
 });
 
 test('worried is never the same loop: the plans differ in their beats and in their length', () => {
-  for (const name of Object.keys(ACTIVITIES.worried)) {
+  for (const name of ['mope', 'fret']) {
     const plans = Array.from({ length: 50 }, () => planActivity('worried', name, { x: 150, room: 312, rnd }));
     assert.ok(new Set(plans.map((p) => JSON.stringify(p.map((s) => s.pose.map(([f]) => f))))).size > 1, `${name}: sequences`);
     assert.ok(new Set(plans.map(planMs)).size > 1, `${name}: lengths`);
@@ -330,4 +333,83 @@ test('the held tug rope steps a pixel at a time from his mouth to its far end (v
     }
   }
   assert.ok(ROPE_FAR > 0 && ROPE_FAR_H > 0 && ROPE_FAR_H < 40);
+});
+
+// ---- rest (v57)
+const framesOf = (plan) => plan.flatMap((s) => (s.pose ? s.pose.map(([f]) => f) : s.travel.frames));
+
+test('a rest lies down where he is, naps with a dream or rolls over, and gets up again, on any strip', () => {
+  for (const mood of BALL_MOODS) for (const routine of REST_ROUTINES) for (const room of ROOMS) for (let i = 0; i < 10; i++) {
+    const plan = planActivity(mood, 'rest', { x: room / 2, room, rnd, routine });
+    const ms = planMs(plan);
+    assert.ok(ms >= ACT_MIN && ms <= ACT_MAX, `${mood} ${routine}: ${ms}`);
+    assert.ok(plan.every((s) => s.pose && s.flip === undefined), 'he rests where he is, facing as he was');
+    const f = framesOf(plan);
+    assert.equal(f[0], mood); assert.equal(f.at(-1), mood);
+    assert.deepEqual(f.slice(1, 3), ['happy-bow', 'happy-lie'], 'down by the bow');
+    assert.deepEqual(f.slice(-3, -1), ['happy-lie', 'happy-bow'], 'up by the bow');
+    if (routine === 'nap') assert.ok(f.includes('happy-nap2') && f.includes('happy-dream1') && f.includes('happy-dream2') && !f.includes('happy-roll2'));
+    else assert.ok(f.includes('happy-roll2') && f.includes('happy-roll3') && !f.includes('happy-nap1'));
+  }
+  const drawn = new Set(Array.from({ length: 60 }, () => framesOf(planActivity('happy', 'rest', { x: 100, room: 312, rnd })).includes('happy-roll1')));
+  assert.equal(drawn.size, 2, 'both routines turn up');
+});
+
+test('the longest nap still fits, with fewer paddles', () => {
+  const plan = planActivity('happy', 'rest', { x: 0, room: 312, rnd: () => 0.999, routine: 'nap' });
+  assert.ok(planMs(plan) <= ACT_MAX, `${planMs(plan)}`);
+  assert.ok(framesOf(plan).filter((f) => f === 'happy-dream1').length >= 2);
+});
+
+test('worried paces head low to one side, then the other, and home again; on a narrow strip he stays put', () => {
+  const sides = new Set();
+  for (const room of ROOMS) for (const x of [0, Math.round(room / 2), room]) for (let i = 0; i < 20; i++) {
+    const plan = planActivity('worried', 'pace', { x, room, rnd });
+    const travels = plan.filter((s) => s.travel).map((s) => s.travel);
+    if (room < 96) { assert.equal(travels.length, 0); continue; }
+    assert.ok(travels.length >= 2, `room ${room} x ${x}`);
+    let at = x;
+    for (const t of travels) {
+      assert.ok(t.to >= 0 && t.to <= room && Math.abs(t.to - at) >= 24 && t.frameMs === 240);
+      assert.equal(t.ms, travelMs(t.to - at, 'pace'));
+      at = t.to;
+    }
+    assert.equal(at, x, 'home again');
+    if (x === Math.round(room / 2)) sides.add(Math.sign(travels[0].to - x));
+  }
+  assert.deepEqual([...sides].sort(), [-1, 1], 'he sets off either way');
+  const lengths = new Set(Array.from({ length: 30 }, () => planMs(planActivity('worried', 'pace', { x: 150, room: 312, rnd }))));
+  assert.ok(lengths.size > 1, 'not the same length every time');
+});
+
+test('a doze has dreaming paws, and a roll onto his back drawn the other way round, then back as he was', () => {
+  for (const flip of [false, true]) for (const routine of ['roll', 'nap']) for (let i = 0; i < 20; i++) {
+    const plan = planActivity('asleep', 'doze', { x: 100, room: 312, rnd, flip, routine });
+    const f = framesOf(plan);
+    assert.ok(f.includes('asleep-paw') && f.includes('asleep-breathe'));
+    const rolls = plan.filter((s) => s.pose.some(([n]) => n.startsWith('happy-roll')));
+    if (routine === 'nap') { assert.equal(rolls.length, 0); continue; }
+    assert.equal(rolls.length, 1);
+    assert.equal(rolls[0].flip, !flip);
+    assert.ok(rolls[0].pose.every(([n]) => n.startsWith('happy-roll')));
+    assert.equal(plan[plan.indexOf(rolls[0]) + 1].flip, flip, 'back on the curl, facing as he was');
+  }
+  const rolled = new Set(Array.from({ length: 60 }, () => framesOf(planActivity('asleep', 'doze', { x: 100, room: 312, rnd })).includes('happy-roll2')));
+  assert.equal(rolled.size, 2, 'he rolls over now and then, not every time');
+});
+
+test('one activity runs into the next without his still being held over 1.5 s across the join (v57)', () => {
+  // The still that ends one plan and the one that opens the next are a single hold on screen.
+  const lead = (plan) => { const p = plan[0].pose; let ms = 0; for (const [f, t] of p) { if (f !== p[0][0]) break; ms += t; } return [p[0][0], ms]; };
+  const tail = (plan) => { const p = plan.at(-1).pose; let ms = 0; for (let i = p.length - 1; i >= 0 && p[i][0] === p.at(-1)[0]; i--) ms += p[i][1]; return [p.at(-1)[0], ms]; };
+  for (const [mood, set] of Object.entries(ACTIVITIES)) for (const a of Object.keys(set)) for (const b of Object.keys(set)) {
+    if (a === b && Object.keys(set).length > 1) continue;   // never twice running
+    for (let i = 0; i < 30; i++) {
+      const [fa, ma] = tail(planActivity(mood, a, { x: 150, room: 312, rnd }));
+      const first = planActivity(mood, b, { x: 150, room: 312, rnd });
+      if (!first[0].pose) continue;
+      const [fb, mb] = lead(first);
+      if (fa === fb) assert.ok(ma + mb <= 1500, `${mood} ${a} -> ${b}: ${fa} ${ma + mb}`);
+    }
+  }
 });

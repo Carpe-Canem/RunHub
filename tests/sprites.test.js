@@ -246,3 +246,18 @@ test('the toy is the rawhide bone and the rope red and cream (owner, 2026-11-28)
   const long = readFrame('rope', 'rope');
   assert.deepEqual([long[0].replaceAll('o', '').replaceAll('.', ''), long[4].replaceAll('o', '').replaceAll('.', '')], ['', '']);
 });
+
+test('facing left, his nose is ringed in white as it is facing right, not set in black fur (v57)', () => {
+  // The nose's box in each left-facing still (the owner saw a black patch on the muzzle there, 2026-11-28).
+  const NOSE = { worried: [21, 26, 41, 45], 'worried-low': [21, 26, 43, 47], asleep: [23, 28, 77, 82] };
+  for (const [name, [x0, x1, y0, y1]] of Object.entries(NOSE)) {
+    const rows = readFrame('hub', name);
+    let white = 0, black = 0;
+    for (let y = y0 - 1; y <= y1 + 1; y++) for (let x = x0 - 1; x <= x1 + 1; x++) {
+      if (x >= x0 && x <= x1 && y >= y0 && y <= y1) continue;
+      if ('wc'.includes(rows[y][x])) white++;
+      if ('kgd'.includes(rows[y][x])) black++;
+    }
+    assert.ok(white >= 2 * black, `${name}: ${white} white and ${black} black round the nose`);
+  }
+});

@@ -9,12 +9,13 @@ export const ACT_MAX = 12000;    // and at most this
 
 // Phase 1: the activity names for each mood and how often each is picked.
 // Phase 3 (v54) adds the ball; phase 4 (v55) the chew toy and the rope.
+// Phase 5 (v57) adds a calm rest for the awake moods and a head-low pacing for worried.
 export const ACTIVITIES = {
-  happy:    { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2 },
-  thrilled: { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2 },
-  eager:    { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2 },
-  curious:  { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2 },
-  worried:  { mope: 1, fret: 1 },
+  happy:    { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2, rest: 1 },
+  thrilled: { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2, rest: 1 },
+  eager:    { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2, rest: 1 },
+  curious:  { stroll: 3, dash: 2, potter: 2, ball: 3, chew: 2, tug: 2, rest: 1 },
+  worried:  { mope: 1, fret: 1, pace: 1 },
   asleep:   { doze: 1 },
 };
 
@@ -38,6 +39,7 @@ const LEAD_MS = 400;      // a plan that opens with a trip first holds his still
 const PACE = {
   walk: { msPerPx: MS_PER_PX, max: 2600, frameMs: 150 },
   run:  { msPerPx: 2.4, max: 1200, frameMs: 90 },
+  pace: { msPerPx: 11, max: 2800, frameMs: 240 },   // worried, head low: half a walk's pace (v57)
 };
 
 // The frames of a trip, by mood and pace. Drawn from the happy dog (v53) and used by every mood that travels; worried
@@ -74,6 +76,9 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
   if (name === 'ball') return planBall(mood, { x, room, rnd, flip, routine });
   if (name === 'chew') return planChew(mood, { x, room, rnd, flip, routine });
   if (name === 'tug') return planTug(mood, { x, room, rnd, flip, routine });
+  if (name === 'rest') return planRest(mood, { rnd, routine });
+  if (name === 'pace') return planPace({ x, room, rnd });
+  if (name === 'doze') return planDoze({ rnd, flip, routine, beat });
   const beats = FIDGETS[mood].filter((f) => f !== 'wander');
   const hooked = !!beat && beats.includes(beat);
   const own = hooked ? [beat] : beats;
@@ -120,7 +125,6 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
     add({ travel: { to, ms, frames: [...GAITS[mood][pace]], frameMs: PACE[pace].frameMs } });
     at = to;
   };
-  const breathe = (pairs) => add({ pose: Array.from({ length: pairs }, () => [['asleep-breathe', 1000], ['asleep', 1000]]).flat() });
   // Worried: a run of beats drawn by weight, never the same twice running. With a beat hook, the hook's, as before.
   const fidget = (table, hookBeats, lo, hi) => {
     if (hooked) { for (let n = hookBeats; n > 0; n--) play(beat); return; }
@@ -153,12 +157,6 @@ export function planActivity(mood, name, { x, room, rnd = Math.random, beat = nu
       break;
     case 'fret':
       fidget(FRET, 4, 3, 5);
-      break;
-    case 'doze':
-      breathe(count(1, 2));
-      play(pick(own));
-      breathe(count(1, 2));
-      play(pick(own));
       break;
   }
 
@@ -427,6 +425,82 @@ function planTug(mood, opts) {
     g.pose([['happy-tug3', 160], ...g.watch(900)], { prop: short({ fly: { from: [k[0] + g.dir() * 15, k[1]], to: g.off() + g.dir() * 30, ms: 700, apex: 30 }, spin: true }) });
   }
   return g.plan;
+}
+
+// ---- Rest (v57, the owner's picks of 2026-11-28). The awake moods lie down where they are and either nap, breathing,
+// with a dream (their paws paddle), or roll onto their back for a wiggle; then they get up again (rest: nap | roll).
+// Worried paces head low to one side, sighs, to the other side, and back to his spot (pace). Asleep dozes: he
+// breathes, his paws twitch in a dream, now and then he rolls over onto his back and home again (doze: nap | roll).
+export const REST_ROUTINES = ['nap', 'roll'];
+const PACING = ['worried-pace1', 'worried-pace2', 'worried-pace3', 'worried-pace4'];
+const between = (rnd, lo, hi) => lo + Math.floor(rnd() * (hi - lo + 1));
+const times = (n, ...pose) => Array.from({ length: n }, () => pose).flat();
+// Breaths: in (b) and out (a), a second each.
+const breaths = (a, b, n) => times(n, [b, 1000], [a, 1000]);
+// On his back, legs up: over, a wiggle of his legs n times, still a moment, and back onto his side.
+const rollOver = (n, ms) => [['happy-roll1', ms + 40], ...times(n, ['happy-roll2', ms], ['happy-roll3', ms]), ['happy-roll2', 650], ['happy-roll1', 280]];
+
+function planRest(mood, { rnd, routine }) {
+  const which = REST_ROUTINES.includes(routine) ? routine : REST_ROUTINES[Math.floor(rnd() * 2) % 2];
+  const down = [[mood, 300], ['happy-bow', 380], ['happy-lie', 800], ['happy-lie-blink', 150], ['happy-lie', 400]];
+  const up = [['happy-lie', 600], ['happy-lie-blink', 150], ['happy-lie', 400], ['happy-bow', 300], [mood, 300]];
+  const plan = [{ pose: down }];
+  if (which === 'nap') {
+    plan.push({ pose: breaths('happy-nap1', 'happy-nap2', between(rnd, 1, 2)) });
+    const dream = { pose: times(between(rnd, 3, 6), ['happy-dream1', 170], ['happy-dream2', 170]) };
+    plan.push(dream);
+    plan.push({ pose: [['happy-nap1', 500], ...breaths('happy-nap1', 'happy-nap2', 1)] });
+    plan.push({ pose: up });
+    // A shorter dream until it fits (never under two paddles).
+    while (planMs(plan) > ACT_MAX && dream.pose.length > 4) dream.pose.splice(-2, 2);
+  } else {
+    plan.push({ pose: rollOver(between(rnd, 3, 5), 220) });
+    plan.push({ pose: up });
+  }
+  return plan;
+}
+
+function planPace({ x, room, rnd }) {
+  const home = clamp(Math.round(x), 0, Math.max(0, room));
+  const canMove = room >= MIN_ROOM;
+  // It opens on a sigh and closes on a glance, so his still never runs on into the next or last activity's for long.
+  const plan = [{ pose: [['worried-low', 800], ['worried', 300]] }];
+  let at = home;
+  // A trip of under 24 px (he is at that end already) is left out.
+  const go = (to) => {
+    to = clamp(Math.round(to), 0, room);
+    if (!canMove || Math.abs(to - at) < 24) return;
+    plan.push({ travel: { to, ms: travelMs(to - at, 'pace'), frames: [...PACING], frameMs: PACE.pace.frameMs } });
+    at = to;
+  };
+  const side = rnd() < 0.5 ? -1 : 1;
+  const out = 60 + Math.round(rnd() * 100);
+  const over = 60 + Math.round(rnd() * 100);
+  go(home + side * out);
+  plan.push({ pose: [['worried-low', 900], ['worried', 250], ['worried-glance', 450], ['worried', 200]] });
+  go(home - side * over);
+  plan.push({ pose: [['worried-low', 700], ['worried', 300]] });
+  go(home);
+  plan.push({ pose: [['worried', 400], ['worried-glance', 450], ['worried', 300]] });
+  // With no room to pace, sighs fill the time instead.
+  while (planMs(plan) < ACT_MIN) plan.splice(-1, 0, { pose: [['worried-low', 900], ['worried', 300]] });
+  return plan;
+}
+
+// beat: the twitch to end on (ear or paw), the checks' hook. flip: he is drawn mirrored now; the roll's frames face
+// the other way from his curl, so they are drawn the other way round.
+function planDoze({ rnd, flip, routine, beat }) {
+  const roll = routine === 'roll' || (routine !== 'nap' && rnd() < 0.5);
+  const plan = [{ pose: breaths('asleep', 'asleep-breathe', 1) }];
+  plan.push({ pose: times(between(rnd, 3, 6), ['asleep-paw', 160], ['asleep', 160]) });
+  plan.push({ pose: breaths('asleep', 'asleep-breathe', roll ? 1 : between(rnd, 1, 2)) });
+  if (roll) {
+    plan.push({ pose: rollOver(between(rnd, 2, 3), 240), flip: !flip });
+    plan.push({ pose: breaths('asleep', 'asleep-breathe', 1), flip });
+  }
+  const twitch = FIDGETS.asleep.includes(beat) ? beat : FIDGETS.asleep[Math.floor(rnd() * 2) % 2];
+  plan.push({ pose: steps('asleep', twitch) });
+  return plan;
 }
 
 // ---- Where the ball is through one prop step: [{ t, x, h, frame }] every PROP_TICK ms and at its end. Pure, so the
