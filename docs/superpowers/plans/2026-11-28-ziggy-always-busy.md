@@ -250,6 +250,124 @@ Each phase follows the same steps. The exact frames, props and timings come from
 | 3. Ball | `props` sheet (`sprites/src/props/`, `sprites/ziggy-props.png`, `SHEETS.props`), a `{ prop: { name, frames, from, to, ms } }` step, a prop element on the strip that `land()` clears; ball frames; pounce and carry poses; a `ball` activity | |
 | 4. Chew toy and rope | toy and rope props; lie-and-chew and tug poses; `chew` and `tug` activities | |
 | 5. Rest | lie down, nap, roll over, dreaming paws; head-low walk; `rest` for awake moods, `pace` for worried, roll-over and dreams in `doze` | |
-| 6. Bubble and voice | a bubble look per mood, bark stickers outside the text, every line reworded in a puppy voice under a length cap (spec, "Phase 6"); planned in detail after phase 5 | the plain panel bubble for happy, eager, curious, worried |
+| 6. Bubble and voice | a bubble look per mood, bark stickers outside the text, every line reworded in a puppy voice under a length cap; planned in detail in "Phase 6" below | the plain panel bubble for happy, eager, curious, worried |
 
 Props colours: if a picked prop colour is not in `sprites/src/palette.txt`, props get `sprites/src/props-palette.txt` (at most 16) and the build and sprite tests read it for the props sheet only.
+
+---
+
+## Phase 6: the bubble and his voice (v58)
+
+**Goal:** the bubble gets a look of its own per mood, every line is reworded in a puppy voice with two or three wordings that take turns, and short barks appear as pixel stickers over space already there. The Hub gets no taller.
+
+**Architecture:** `ziggyLines` stays pure and now gives each line all its wordings (`ways`). The stage, which alone knows when a line is shown again, picks the wording: a turn per line key, started from a random number once per page load, moved on each time that line is shown afresh. A redraw that keeps the line keeps its wording. Barks are frames of a new `barks` sheet (props palette), chosen by a pure picker and shown by the stage beside the line. Bubble looks are CSS per `data-mood`, as thrilled and asleep are today.
+
+**Spec:** `docs/superpowers/specs/2026-11-28-ziggy-always-busy-design.md`, section "Phase 6: the bubble and his voice".
+
+### Phase 6 constraints
+
+- When a line is said and the facts it carries stay as they are; only the words around the facts change. No new rules, no new moods.
+- **The cap, measured 2026-11-28 at 440 × 956:** the bubble's text box is 376 px wide (408 px bubble, 16 px padding each side). Every line today fits one row with a realistic long name; the widest is `raceday`, 52 graphemes, 351 px (thrilled, weight 600). So: every wording of every rule, with the worst inputs below, is at most **52 graphemes** (node test) and **one row** in the browser in its mood's look (browser check).
+- Worst inputs: a name cut at `NAME_MAX` (28, today) such as `The Orchard And Harbor Invit…`; times `1:23:45` and `10:30 AM`; class `Half Marathon`; week `122.4` with `22.4` over; year `12,345` with `1,234` ahead or behind; usual `120.7`; weekday `Wednesday`; date `Sep 30`; `120` races, `12` podiums.
+- `NAME_MAX` changes only if the owner picks it in Task 6.1 (the name rules have little room for voice at 28).
+- The fact comes first or is in the green `go` highlight. Only `yearbehind` says "behind"; no line scolds (the existing sweep test).
+- Text contrast at least 4.5:1 on every look; the focus ring stays visible on every look.
+- Stickers: `aria-hidden`, never part of the bubble's text; his blue-grey `o` outline; static under Reduce Motion; clear of the z's (up to 35 px over his head), the pointer and the thrilled sparks.
+- Nothing stored: the random start is per load.
+- Ship as v58 the same way as the earlier phases.
+
+### Review Focus
+
+1. **Data arrives mid-line** (runs load while a line types): a kept line keeps its wording; only its numbers change. Pinned in Task 6.2.
+2. **One line only** (`quiet`, or one rule holds): a press does nothing, the wording stays, no sticker repeats on a redraw. Pinned in Task 6.2 and Task 6.4.
+3. **The longest name in the tightest look:** the picked look with the most inset (paw corners, double edge) still holds the 52-grapheme worst case on one row. Checked in Task 6.5.
+4. **Reduce Motion:** the line is whole at once and the sticker shows without moving, then goes. Checked in Task 6.5.
+5. **km and singulars:** `km` lines and `1 race finished` fit and read right in every wording. Pinned in Task 6.3.
+
+### Picks (filled in after Task 6.1)
+
+| Choice | Pick |
+|--------|------|
+| Bubble look per mood (happy, thrilled, eager, curious, worried, asleep) | |
+| Sticker size and placement | |
+| Barks per mood, and per line where set | |
+| Stickers on activity beats too, or with lines only | |
+| Wordings per rule (2 or 3 each, as in the options page or as edited) | |
+| `NAME_MAX` | 28 unless picked |
+
+### Task 6.1: Mock-up round (gate)
+
+**Files:** `.claude/mockups/voice/` only (local, never committed).
+
+- [ ] **Step 1: Captures.** With `.claude/mockups/walk/cap.html` grown to hide the whole stage (`.zs-say`, `.zs-tail`, `.zs-dog`), the banner hidden and safe areas 62/34, capture `index.html?demo` at 440 × 956 with headless Edge, and record the bubble, pointer and strip rectangles.
+- [ ] **Step 2: Options page** `voice/ziggy-voice-options.html`, self-contained (Manrope embedded as a data URI, the hub sheet and stickers as data URIs): about six bubble families that differ in kind, each on a phone at 440 × 956 drawn as live CSS over the capture, switchable through the six moods, each mood shown with its worst-case line; each family with a different sticker placement; a wordings table for all 13 rules, two or three per rule, each with its worst-case grapheme count and one-row check measured in the page, editable in place.
+- [ ] **Step 3: Check** every look's text contrast (at least 4.5:1) and one-row fit in the page before sending.
+- [ ] **Step 4: Send** with `SendUserFile` and stop for the owner's picks. Write them into the Picks table above and commit the plan.
+
+### Task 6.2: Lines carry their wordings; the stage takes turns
+
+**Files:**
+- Modify: `js/ziggy-says.js`, `js/ziggy-stage.js`, `tests/ziggy-says.test.js`, `tests/ziggy-stage.test.js`
+
+**Interfaces:**
+- Produces:
+  - `ziggyLines(...) -> Line[]`, `Line = { key, mood, ways: Part[][] }`, one or more wordings; `moodCheck(mood)` likewise (one wording each).
+  - `wordsFor(line: Line, n: number) -> { key, mood, parts }`: `parts = ways[n % ways.length]`. This is the shape `lengthOf`, `splitParts`, `keepLine` and the stage's state functions already take; they do not change.
+  - Stage: `START` gains `turns: {}` and `seed: 0`. `show()` moves `turns[key]` on by one for the line it shows; `onLines` with a kept line leaves `turns` alone. The words shown for line `i` are `wordsFor(raw[i], s.seed + (s.turns[key] ?? 0))`. `ziggyStage` sets `seed` once per load from `Math.floor(Math.random() * 6)` (6 covers both 2 and 3 wordings).
+
+- [ ] **Step 1: Failing tests.**
+  - `ziggy-says`: `check()` and `say()` read `ways[0]`; a new test "every line has one to three wordings, each a list of parts" over the existing sweep of cases; "the check hook" expects `ways: [[{ text: 'Mood check: thrilled.' }]]`.
+  - `ziggy-stage`: "a line shown again takes its next wording": two raw lines, each with two `ways`; press, press, press from line 0: line 0's words differ between its first and second showing. "a redraw keeps the wording": `onLines` with the same raw lines mid-typing gives the same `parts` and the same `turns`. "one line: a press keeps its words".
+- [ ] **Step 2: Run** `npm test`. Expected: FAIL on `ways` and `turns`.
+- [ ] **Step 3: Implement.** In `ziggy-says.js`, `line(key, mood, ...ways)` where each way is an array of parts (strings or `t(text, tone)`); today's wording is the only way for now. In the stage, keep the raw lines and voice them through `wordsFor` wherever `lines[i]` is read today.
+- [ ] **Step 4: Run** `npm test`. Expected: PASS.
+- [ ] **Step 5: Commit** "Ziggy's lines carry their wordings; a line shown again takes the next".
+
+### Task 6.3: His voice
+
+**Files:**
+- Modify: `js/ziggy-says.js`, `tests/ziggy-says.test.js`
+
+**Interfaces:**
+- Consumes: the Picks table's wordings (and `NAME_MAX` if picked).
+- Produces: `WORDINGS_CAP = 52` exported from `js/ziggy-says.js`.
+
+- [ ] **Step 1: Failing tests.**
+  - Every exact-text test (rules 1 to 13, km, stops, long and empty names, emoji cut) checks the picked wording in every `ways` entry: one `check(line, mood, [text1, text2, ...])` per rule. These change on purpose (owner, 2026-11-28).
+  - "each wording keeps its facts": for each rule, every way contains the same numbers and names as today's line (`/22\.4 over/`, the name, the time, the weekday, the date), and the toned parts are the same texts.
+  - "every wording fits the cap": with the worst inputs of the constraints above, in miles and in km, every way of every rule is at most `WORDINGS_CAP` graphemes (`graphemes()` from `ziggy-moves.js`).
+  - "only the year is ever behind" and the toned-part checks run over every way.
+- [ ] **Step 2: Run** `node --test tests/ziggy-says.test.js`. Expected: FAIL on the new texts.
+- [ ] **Step 3: Implement** the picked wordings, the facts in the same order of importance, the same `go` parts.
+- [ ] **Step 4: Run** `npm test`. Expected: PASS.
+- [ ] **Step 5: Commit** "Ziggy talks like a puppy: two or three wordings per line, under the cap".
+
+### Task 6.4: Bark stickers
+
+**Files:**
+- Modify: `js/ziggy-frames.js` (`SHEETS.barks`), `js/ziggy-says.js` (barks table and picker), `js/ziggy-stage.js`, `styles.css`
+- Create: `sprites/src/barks/*.txt`, `sprites/ziggy-barks.png` (built)
+- Test: `tests/ziggy-frames.test.js`, `tests/ziggy-says.test.js`, `tests/ziggy-stage.test.js`
+
+**Interfaces:**
+- Produces:
+  - `SHEETS.barks = { cell: [w, h] from the pick, cols, palette: 'props-palette.txt', frames: [the picked barks, e.g. 'woof', 'arf', 'yip', 'awoo', 'ruff', 'hmm', 'sniff'] }`. New colours, if any, go on the end of `props-palette.txt` (16 at most).
+  - `BARKS: { [mood]: string[] }` and `BARK_FOR: { [key]: string[] }` (a line's own barks, where the pick sets them) in `js/ziggy-says.js`; `pickBark(mood, key, last, rnd = Math.random) -> string | null`: the line's barks if set, else the mood's; never `last` unless it is the only one; `null` for a mood with none.
+  - Stage: one `.zs-bark` sprite, `aria-hidden`, placed as picked; shown when a line starts (and on activity beats if picked) for `BARK_MS = 1600`, then hidden. `data-bark` on `#ziggyStage` holds its name or `''`. `land()` hides it. Reduce Motion: shown without its pop, for the same time.
+- [ ] **Step 1: Failing tests.** `tests/sprites.test.js` and `scripts/build-sprites.mjs` already loop over every sheet in `SHEETS` (grid, palette, one-colour outline, PNG size); add the barks sheet to the sheet-size test in `tests/ziggy-frames.test.js` and retitle it. `ziggy-says`: "every bark is a real frame, and the picker never repeats" (300 draws per mood and per key, `got.size` equals the set). `ziggy-stage`: "a press shows a new bark; a redraw keeps the one showing".
+- [ ] **Step 2: Run** `npm test`. Expected: FAIL.
+- [ ] **Step 3: Draw** the picked sticker grids (`.claude/mockups/voice/` scripts, the same pixel letters as the options page), `node scripts/build-sprites.mjs`, then implement the picker, the stage sprite and the CSS.
+- [ ] **Step 4: Run** `npm test`. Expected: PASS.
+- [ ] **Step 5: Commit** "Ziggy barks: pixel stickers beside his lines".
+
+### Task 6.5: Bubble looks, check and ship v58
+
+**Files:**
+- Modify: `styles.css` (the `.zs[data-mood=...]` rules), `js/version.js`, `index.html` (stamp)
+
+- [ ] **Step 1: The looks.** Port the picked CSS from the options page into `styles.css` per mood. Trims are drawn with `::before` / `::after` on a layer behind the text (as thrilled's burst is), so the focus ring is never clipped. The bubble keeps `min-height: 44px` and its 12 px top room; no look adds height.
+- [ ] **Step 2: Fit.** `.claude/mockups/rest/probe.sh` with `HOST=127.0.0.1` and `u=mock.html`: `scrollHeight <= 956` at 440 × 956. In the pane, for each mood, set the worst-case line of each of its rules (`await import('./js/core.js')`, as in memory `headless-edge-for-checks`) and read `.zs-say`'s height: 44 px every time.
+- [ ] **Step 3: Contrast and focus.** For each mood read the computed text and background colours and check 4.5:1; tab to the bubble and screenshot the focus ring on each look.
+- [ ] **Step 4: Stickers.** Screenshots mid-line for each mood, with the pane shown: the sticker clear of the pointer, the sparks and (asleep, nap) the z's. Reduce Motion with headless Edge `--force-prefers-reduced-motion`: `data-bark` set, no animation running on it.
+- [ ] **Step 5: Screen reader text.** The bubble's `textContent` is the line plus " Next line", with no bark words.
+- [ ] **Step 6: Ship.** `{ v: '58', date: '<today>', items: ['Ziggy has a bubble of his own for every mood, talks like a puppy, and barks.'] }` at the top of `CHANGES`; `node scripts/stamp-version.mjs 58`; `npm test` (PASS); commit "Ziggy's bubble and voice; v58"; `git push origin run-board`; `git push origin run-board:main`.
