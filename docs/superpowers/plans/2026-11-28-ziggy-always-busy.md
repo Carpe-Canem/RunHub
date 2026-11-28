@@ -250,5 +250,6 @@ Each phase follows the same steps. The exact frames, props and timings come from
 | 3. Ball | `props` sheet (`sprites/src/props/`, `sprites/ziggy-props.png`, `SHEETS.props`), a `{ prop: { name, frames, from, to, ms } }` step, a prop element on the strip that `land()` clears; ball frames; pounce and carry poses; a `ball` activity | |
 | 4. Chew toy and rope | toy and rope props; lie-and-chew and tug poses; `chew` and `tug` activities | |
 | 5. Rest | lie down, nap, roll over, dreaming paws; head-low walk; `rest` for awake moods, `pace` for worried, roll-over and dreams in `doze` | |
+| 6. Bubble and voice | a bubble look per mood, bark stickers outside the text, every line reworded in a puppy voice under a length cap (spec, "Phase 6"); planned in detail after phase 5 | the plain panel bubble for happy, eager, curious, worried |
 
 Props colours: if a picked prop colour is not in `sprites/src/palette.txt`, props get `sprites/src/props-palette.txt` (at most 16) and the build and sprite tests read it for the props sheet only.

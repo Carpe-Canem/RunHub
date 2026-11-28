@@ -182,6 +182,7 @@ One plan, with a gate for the owner's approval before each art phase ships (buil
 3. **Ball**: the props sheet and prop step are built here, with the ball, pounce and carry poses.
 4. **Chew toy and rope tug**: the toy, the rope, and their poses.
 5. **Rest**: lie down, nap, roll over, dreaming paws, and the worried head-low walk (pacing).
+6. **His bubble and his voice** (added 2026-11-28, after phase 5): see "Phase 6: the bubble and his voice".
 
 Each art phase is its own Leonardo round (owner's credits), mock-up round and version.
 
@@ -200,3 +201,51 @@ Each art phase is its own Leonardo round (owner's credits), mock-up round and ve
 - The props sheet's cell size.
 - How steps are represented in code, as long as the plan stays pure and testable.
 - Phase 1's exact activity list from today's frames, within the list above.
+
+## Phase 6: the bubble and his voice
+
+Added 2026-11-28 at the owner's request, to be built after phase 5. Status: approach chosen by the owner; this section awaits their approval.
+
+### Intent
+
+The owner, on the speech bubble today: "it feels plain and he sounds like a robot". Both the look and the words are to change. The bubble should catch the eye and be his, and his lines should carry puppy energy, while still giving the training facts at a glance.
+
+### Decided by the owner
+
+1. **Approach 1 (2026-11-28): a mood-shaped bubble, punchy lines of the same length, barks outside the box.** Each mood gets its own bubble look; his lines are rewritten in a puppy voice within a length cap; short sound words ("Woof!", "Yip yip!", "Hmm?") appear as small pixel stickers that sit over space already there (on the bubble's corner or beside him on the strip), so they add no height.
+2. **This reverses the non-goal "No change to what he says or when"** for the wording only. When each line is said, and the facts it carries, stay as they are (the rules in `js/ziggy-says.js`).
+3. **The Hub must not get taller** (v48: it fits 440 × 956 with no scroll). The owner asked for creative workarounds rather than a taller bubble.
+
+### Approaches considered
+
+- **1. Mood-shaped bubble, punchy lines, barks outside the box** (chosen). Personality in the look and in the words; facts stay instant; no extra height.
+- **2. Two-beat bubble**: an excited burst types first, then gives way to the fact in the same space. Rejected: every fact arrives a second or two later, against checking at a glance.
+- **3. Taller bubble, Hub reflowed**: two or three rows of free voice, the space won back elsewhere. Rejected: it reworks the approved v48 layout and risks the one-screen fit.
+
+### Goals
+
+- A bubble look per mood, more distinctive than today's panel box (today only thrilled, an amber burst, and asleep, dashed, differ). Directions to mock up: rounded with pixel paw prints at the corners (happy), the burst kept (thrilled), a bouncy double edge (eager), a dotted edge (curious), a wobbly edge (worried), dashed and dim (asleep).
+- Every line rewritten in his voice: short sentences, exclamations, dog logic ("Good human!"), the facts and their green highlight kept.
+- Bark stickers: small pixel words in his outlined 16-bit style, shown with a line (or a beat of an activity), chosen per mood and line, never the same one twice running.
+
+### Non-goals
+
+- No new moods, no new rules, no change to when a line is said.
+- No change to the side dog or to anything outside the Hub's stage.
+- Nothing stored.
+
+### Anti-goals
+
+- **A taller Hub.** A line may not wrap to more rows than today's lines do at 440 px; a test holds every rule's line (with long race names and big numbers) to a character cap, measured against the bubble.
+- **Facts buried in the fun.** The number or the name comes first or is highlighted; a reader can still get it in a glance.
+- **Cringe or repetition.** The same joke on every visit wears thin: each rule has two or three wordings, picked in turn, never the same twice running; barks vary.
+- **Lost accessibility.** The bubble text stays the whole message for screen readers (stickers are `aria-hidden`); text contrast at least 4.5:1 on every bubble look; the focus ring stays visible; with Reduce Motion stickers appear without movement.
+- **A different dog.** Stickers and bubble trims use his outline colour and the props palette, in his pixel style.
+
+### How art reaches the page
+
+As for the art phases: about six rendered options per visual choice at 440 × 956 on the real Hub (bubble looks per mood, sticker style and placement), and the wordings for every line shown in the same page for the owner to pick from or edit. Then build, test and ship.
+
+### Left to the builder
+
+- The character cap (measured from today's longest line at 440 px), the sticker set and where each sits, the CSS for each bubble look, and how wordings are stored and rotated, as long as `ziggyLines` stays pure and testable.
