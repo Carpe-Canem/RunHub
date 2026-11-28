@@ -125,7 +125,12 @@ test('a redraw keeps the wording', () => {
   assert.deepEqual(n, s);
   const grown = onLines(s, [wide('a', 'Short.', 'A rather longer wording, grown.'), turning[1]], true);
   assert.deepEqual(grown.turns, s.turns);
-  assert.equal(grown.len, lengthOf(wordsFor(turning[0], s.seed + s.turns.a)) + (grown.len - s.len));
+  const slot = (st) => (st.seed + st.turns.a) % 2;
+  const grownLine = wide('a', 'Short, grown.', 'A rather longer wording, grown.');
+  const bigger = onLines(s, [grownLine, turning[1]], true);
+  assert.equal(slot(bigger), slot(s));
+  assert.equal(bigger.len, lengthOf({ parts: grownLine.ways[slot(s)] }));
+  assert.equal(bigger.len, lengthOf(wordsFor(grownLine, bigger.seed + bigger.turns.a)));
 });
 
 test('one line: a press keeps its words', () => {
@@ -133,4 +138,19 @@ test('one line: a press keeps its words', () => {
   const s = onLines(START, one, true);
   assert.equal(onPress(s, one, true), s);
   assert.deepEqual(onPress(s, one, true).turns, s.turns);
+});
+
+test('a seed offsets the first wording, and three wordings wrap', () => {
+  const three = { key: 'a', mood: 'happy', ways: [[{ text: 'One.' }], [{ text: 'Two, longer.' }], [{ text: 'Three, longest of all.' }]] };
+  const other = line('b', 'Other.');
+  const raw = [three, other];
+  let s = onLines({ ...START, seed: 3 }, raw, true);
+  const lens = [];
+  for (let k = 0; k < 3; k++) {
+    lens.push(s.len);
+    s = onPress(onPress(s, raw, true), raw, true);   // away to b and back to a: shown afresh
+  }
+  const want = [1, 2, 3].map((k) => lengthOf({ parts: three.ways[(3 + k) % 3] }));
+  assert.deepEqual(lens, want);
+  assert.equal(new Set(lens).size, 3);
 });
