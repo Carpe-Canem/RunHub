@@ -1,6 +1,6 @@
 # Ziggy is always busy: design
 
-Date: 2026-11-28. Status: draft, for the owner's approval.
+Date: 2026-11-28. Status: approved by the owner on 2026-11-28.
 
 ## Intent
 
