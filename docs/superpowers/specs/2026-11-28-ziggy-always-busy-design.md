@@ -204,7 +204,7 @@ Each art phase is its own Leonardo round (owner's credits), mock-up round and ve
 
 ## Phase 6: the bubble and his voice
 
-Added 2026-11-28 at the owner's request, to be built after phase 5. Status: approach chosen by the owner; this section awaits their approval.
+Added 2026-11-28 at the owner's request, to be built after phase 5. Status: approved by the owner on 2026-11-28.
 
 ### Intent
 
