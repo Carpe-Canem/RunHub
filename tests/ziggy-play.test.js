@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, FRAME_MOUTH, FRAME_BALL } from '../js/ziggy-frames.js';
+import { SHEETS, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT } from '../js/ziggy-frames.js';
 import { steps } from '../js/ziggy-moves.js';
-import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
+import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
 
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const rnd = seeded(13);
@@ -233,4 +233,88 @@ test('a ball path ends where it was sent, on the ground, and turns as it rolls',
   assert.deepEqual([fly.at(-1).x, fly.at(-1).h], [300, 0]);
   assert.equal(Math.max(...fly.map((p) => p.h)), 48);
   assert.ok(fly.some((p) => p.frame === 'ball-squash') && fly.some((p) => p.frame === 'ball-air'));
+});
+
+// ---- the chew toy and the rope (v55)
+const playPlans = function* () {
+  for (const [name, routines] of [['chew', CHEW_ROUTINES], ['tug', TUG_ROUTINES]]) {
+    for (const mood of BALL_MOODS) for (const routine of routines) for (const room of ROOMS) {
+      for (const x of [0, Math.round(room / 2), room, room + 100]) for (const flip of [false, true]) {
+        yield { name, mood, routine, room, x, flip, plan: planActivity(mood, name, { x, room, rnd, flip, routine }) };
+      }
+    }
+  }
+};
+
+test('every chew and tug routine lasts 4 to 12 s on any strip, uses real frames and ends on his still', () => {
+  for (const { name, mood, routine, room, plan } of playPlans()) {
+    const ms = planMs(plan);
+    assert.ok(ms >= ACT_MIN && ms <= ACT_MAX, `${name} ${routine} room ${room}: ${ms}`);
+    assert.ok(plan[0].pose && plan.at(-1).pose);
+    assert.equal(plan.at(-1).pose.at(-1)[0], mood);
+    for (const st of plan) {
+      for (const f of st.pose ? st.pose.map(([n]) => n) : st.travel.frames) assert.ok(SHEETS.hub.frames.includes(f), f);
+      for (const [f, t] of st.pose ?? []) assert.ok(t <= 1500, `${routine}: ${f} ${t}`);
+      if (st.travel) assert.ok(st.travel.to >= 0 && st.travel.to <= room && Number.isInteger(st.travel.to), `${routine} room ${room}: ${st.travel.to}`);
+      if (st.travel?.keep) assert.equal(name, 'tug', 'only the tug goes without turning round');
+    }
+    if (room < 96) assert.ok(plan.every((st) => st.pose), `${routine} room ${room} stays put`);
+  }
+});
+
+test('the toy and the rope come in from off the strip, stay on it, and leave it at the end', () => {
+  for (const { name, routine, room, plan } of playPlans()) {
+    const W = room + 96;
+    const props = plan.filter((st) => st.prop && !st.prop.held).map((st) => st.prop);
+    const first = propPath(props[0]);
+    assert.ok(first[0].x < 0 || first[0].x > W, `${routine}: comes in from off the strip (${first[0].x})`);
+    const last = propPath(props.at(-1)).at(-1);
+    assert.ok(last.x < 0 || last.x > W, `${routine} room ${room}: leaves (${last.x})`);
+    assert.ok(plan.at(-1).prop === props.at(-1), 'it leaves in the last step');
+    for (const p of props.slice(1, -1)) for (const { x, h } of propPath(p)) {
+      assert.ok(x >= 0 && x <= W && h >= 0 && h <= 88 - 16, `${routine} room ${room}: ${x},${h}`);
+    }
+    for (const p of props) for (const { frame } of propPath(p)) {
+      const sheet = name === 'chew' ? 'props' : p.rope === 'long' ? 'rope' : 'ropes';
+      assert.ok(SHEETS[sheet].frames.includes(frame), `${routine}: ${frame}`);
+    }
+    for (const st of plan.slice(0, -1)) for (const k of ['roll', 'fly', 'slide']) if (st.prop?.[k]) assert.ok(st.prop[k].ms <= planMs([st]), `${routine}: a ${k} outruns its step`);
+  }
+});
+
+test('he holds the toy only on frames with a mouth for it, the rope only where it has a knot, and the toy stands between his paws', () => {
+  for (const { name, routine, room, x, plan } of playPlans()) {
+    let held = false, flip = null, at = Math.min(Math.max(0, x), room);
+    for (const st of plan) {
+      if (st.flip !== undefined) flip = st.flip;
+      if (st.prop) held = !!st.prop.held;
+      const frames = st.pose ? st.pose.map(([n]) => n) : st.travel.frames;
+      const table = name === 'chew' ? FRAME_MOUTH : FRAME_KNOT;
+      if (held) for (const f of frames) assert.ok(Object.hasOwn(table, f), `${routine}: holds it on ${f}`);
+      if (st.prop?.swing) {
+        assert.ok(st.prop.swing.reduce((n, [, ms]) => n + ms, 0) <= planMs([st]));
+        for (const [deg] of st.prop.swing) assert.ok(SHEETS.ropes.frames.includes(`short${deg}`), `${deg}`);
+      }
+      if (st.travel) { if (!st.travel.keep) flip = st.travel.to < at; at = st.travel.to; continue; }
+      if (st.prop?.frame === 'toy-up') {
+        assert.ok(frames.every((f) => Object.hasOwn(FRAME_TOY, f)), `${routine}: chews on ${frames}`);
+        assert.equal(st.prop.lie.x, Math.round(at + (flip ? 95 - FRAME_TOY['happy-chew1'] : FRAME_TOY['happy-chew1'])), `${routine} room ${room}`);
+      }
+    }
+    assert.equal(held, false, `${routine}: lets go`);
+  }
+});
+
+test('every chew and tug routine turns up, and the tug backs up without turning round', () => {
+  for (const [name, routines] of [['chew', CHEW_ROUTINES], ['tug', TUG_ROUTINES]]) {
+    const seen = new Set();
+    for (let i = 0; i < 80; i++) {
+      const plan = planActivity('happy', name, { x: 150, room: 312, rnd });
+      const frames = plan.flatMap((st) => (st.pose ? st.pose.map(([n]) => n) : st.travel.frames));
+      if (name === 'chew') seen.add(frames.includes('happy-pin') ? 'spring' : frames.includes('happy-carry') ? 'bring' : 'gnaw');
+      else seen.add(frames.includes('happy-tug2') ? 'tugger' : 'fling');
+      if (frames.includes('happy-tug2')) assert.ok(plan.some((st) => st.travel?.keep));
+    }
+    assert.deepEqual([...seen].sort(), [...routines].sort());
+  }
 });

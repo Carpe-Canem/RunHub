@@ -11,14 +11,23 @@ export const SHEETS = {
       'curious-ear', 'worried', 'worried-talk', 'worried-low', 'worried-glance', 'asleep', 'asleep-breathe', 'asleep-ear',
       'asleep-paw', 'happy-sniff1', 'happy-sniff2', 'happy-look1', 'happy-look2', 'happy-scratch1', 'happy-scratch2',
       'happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3', 'happy-bow',
-      'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2',
+      'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2', 'happy-chew1', 'happy-chew2',
+      'happy-hold', 'happy-tug1', 'happy-tug2', 'happy-tug3',
     ],
   },
   side: { cell: [48, 40], cols: 4, frames: ['sit', 'trot1', 'trot2', 'nap'] },
   // The things he plays with, in colours of their own (the dog's palette is full).
   props: {
     cell: [16, 16], cols: 6, palette: 'props-palette.txt',
-    frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air'],
+    frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air', 'toy-flat', 'toy-up', 'knot'],
+  },
+  // The long rope (v55): from the knot in his mouth to past the end of the strip, one piece so it is never scaled
+  // or turned. Its knot end is on the left.
+  rope: { cell: [1024, 5], cols: 1, palette: 'props-palette.txt', frames: ['rope'] },
+  // The short rope with a knot at each end, turned clockwise by the angle in its name about the cell's centre.
+  ropes: {
+    cell: [48, 48], cols: 6, palette: 'props-palette.txt',
+    frames: ['short0', 'short30', 'short60', 'short90', 'short120', 'short150'],
   },
 };
 
@@ -61,6 +70,9 @@ export const FRAME_HEAD = {
   'happy-run1': 76, 'happy-run2': 76, 'happy-run3': 76,
   // Head down at the ball: the top row there is his back or tail, so these are read off the head itself.
   'happy-pin': 56, 'happy-carry': 67, 'happy-nudge1': 71, 'happy-nudge2': 73,
+  // v55: lying to chew, and the tug (the crouch read in front of his raised tail; the pull-back and the shake by eye,
+  // as the top row there is an ear).
+  'happy-chew1': 74, 'happy-chew2': 74, 'happy-hold': 75, 'happy-tug1': 70, 'happy-tug2': 28, 'happy-tug3': 55,
 };
 
 // The ball (props sheet): its centre sits at this point of its 16 × 16 cell, and its bottom on the cell's last row.
@@ -72,7 +84,37 @@ export const FRAME_MOUTH = {
   'happy-carry': [74, 45],
   'happy-walk1': [77, 45], 'happy-walk2': [77, 45], 'happy-walk3': [77, 45], 'happy-walk4': [77, 45],
   'happy-run1': [85, 46], 'happy-run2': [85, 55], 'happy-run3': [85, 44],
+  'happy-hold': [82, 55],   // v55: lying with the toy across his mouth
 };
+
+// The point of a held prop's frame that goes at his mouth (FRAME_MOUTH): the ball's middle, the toy's.
+export const PROP_MID = { 'ball-air': BALL_CENTRE, 'toy-flat': [8, 12] };
+
+// Where a prop's frame is anchored, in its own cell: the point put at a place on the strip (x, and h px above the
+// ground) or at a point of his cell. The ball and the toy: their middle and their bottom row (so h 0 is on the
+// ground); the knot and the short rope: their centre. Every ball frame is anchored as BALL_CENTRE's x.
+const PROP_ANCHOR = { 'toy-flat': [8, 15], 'toy-up': [7, 15], knot: [8, 9] };
+export const anchorOf = (frame) => PROP_ANCHOR[frame] ?? (frame.startsWith('short') ? [24, 24] : [BALL_CENTRE[0], 15]);
+
+// Where the toy stands between his paws as he chews, as the x of its middle in cell px (v55).
+export const FRAME_TOY = { 'happy-chew1': 84, 'happy-chew2': 84 };
+
+// Where the rope's knot is when it is in his mouth (or, nudge1, at his nose on the ground): its centre in cell px.
+// Only these frames may show him holding the rope (v55).
+export const FRAME_KNOT = {
+  'happy-tug1': [87, 66], 'happy-tug2': [36, 42], 'happy-tug3': [72, 43], 'happy-carry': [74, 45], 'happy-nudge1': [91, 82],
+  'happy-walk1': [77, 45], 'happy-walk2': [77, 45], 'happy-walk3': [77, 45], 'happy-walk4': [77, 45],
+};
+
+// The short rope's knots are this far apart, centre to centre.
+export const SHORT_LEN = 30;
+// The short rope frame for an angle (0 to 150 in 30s, turned clockwise), and where its cell's top-left goes for its
+// back knot to sit at a point: the rope then runs forward (0), down (90) or back under him (150).
+export const shortFrame = (deg) => `short${deg}`;
+export function shortFrom(deg) {
+  const a = (deg * Math.PI) / 180;
+  return [-Math.round(24 - (SHORT_LEN / 2) * Math.cos(a)), -Math.round(24 - (SHORT_LEN / 2) * Math.sin(a))];
+}
 
 // Where the ball lies on the ground in front of him, as the x of its centre in cell px: before his paws in the
 // bow, under them in the pin, at his nose in the nudge.

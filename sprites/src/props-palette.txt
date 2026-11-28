@@ -3,3 +3,9 @@ f #C9DE3A tennis yellow-green
 s #93A925 tennis shade
 h #EAF58A tennis highlight
 w #FCF6EC seam white
+t #B8875A rawhide
+u #7A5232 rawhide shade
+v #DDB88A rawhide light
+r #C8382E rope red
+d #8E2620 rope red shade
+c #C9B9A0 rope cream shade

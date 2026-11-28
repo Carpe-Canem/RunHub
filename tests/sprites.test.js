@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SHEETS, HEAD, FRAME_LIFT, BALL_CENTRE, framePos, sheetSize } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_LIFT, BALL_CENTRE, framePos, sheetSize, anchorOf } from '../js/ziggy-frames.js';
 import { POUNCE_ARC } from '../js/ziggy-play.js';
 import { readPalette, paletteOf, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
 import { decodePng } from '../scripts/sprite-png.mjs';
@@ -212,7 +212,7 @@ test('in the pounce he is drawn whole at the top of his leap: his top row clears
 
 test('the ball rests on the bottom row of its cell, round about its centre, in tennis yellow-green', () => {
   const [cx, cy] = BALL_CENTRE;
-  for (const name of SHEETS.props.frames) {
+  for (const name of SHEETS.props.frames.filter((n) => n.startsWith('ball'))) {
     const rows = readFrame('props', name);
     assert.match(rows.at(-1), /[^.]/, `${name} sits on the bottom row`);
     assert.ok(count(rows, 'f') > 20, `${name} is mostly ball`);
@@ -223,4 +223,26 @@ test('the ball rests on the bottom row of its cell, round about its centre, in t
     const y0 = rows.findIndex((r) => /[^.]/.test(r));
     assert.deepEqual([x1 - x0 + 1, (x0 + x1) / 2, (y0 + rows.length - 1) / 2], [13, cx, cy], name);
   }
+});
+
+test('the toy is the rawhide bone and the rope red and cream (owner, 2026-11-28), each anchored on itself', () => {
+  for (const name of ['toy-flat', 'toy-up']) {
+    const rows = readFrame('props', name);
+    assert.match(rows.at(-1), /[^.]/, `${name} lies on the bottom row`);
+    assert.ok(count(rows, 'tuv') > 40 && count(rows, 'rdwc') === 0, `${name} is rawhide`);
+  }
+  const ropes = [['props', 'knot'], ['rope', 'rope'], ...SHEETS.ropes.frames.map((n) => ['ropes', n])];
+  for (const [sheet, name] of ropes) {
+    const rows = readFrame(sheet, name);
+    assert.ok(count(rows, 'rd') > 10 && count(rows, 'wc') > 10 && count(rows, 'tuvfsh') === 0, `${sheet}/${name} is red and cream`);
+  }
+  for (const name of [...SHEETS.props.frames, ...SHEETS.ropes.frames]) {
+    const [ax, ay] = anchorOf(name); const sheet = name.startsWith('short') ? 'ropes' : 'props';
+    const [w, h] = SHEETS[sheet].cell;
+    assert.ok(ax >= 0 && ax < w && ay >= 0 && ay < h, `${name}: ${ax},${ay}`);
+    if (sheet === 'ropes' || name === 'knot') assert.notEqual(readFrame(sheet, name)[ay][ax], '.', `${name} is anchored on itself`);
+  }
+  // the long rope: one piece, three rows of rope between outline, its knot end on the left
+  const long = readFrame('rope', 'rope');
+  assert.deepEqual([long[0].replaceAll('o', '').replaceAll('.', ''), long[4].replaceAll('o', '').replaceAll('.', '')], ['', '']);
 });

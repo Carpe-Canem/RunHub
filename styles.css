@@ -240,6 +240,10 @@ button.zs-say { cursor: pointer; }
    inside his sprite so it turns and leaves the ground with him. */
 .zs-props { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .zs-ball { position: absolute; left: 0; bottom: 0; }
+/* The rope (v55): the long line lies in the props layer, so it clips where the strip ends; the short rope hangs from a
+   point in his mouth. */
+.zs-line { position: absolute; left: 0; bottom: 0; background-repeat: no-repeat; }
+.zs-hang { position: absolute; width: 0; height: 0; }
 .zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
 .zs-spark, .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
@@ -420,6 +424,8 @@ button.zs-say { cursor: pointer; }
 .zg-side { width: 48px; height: 40px; }
 .zg-hub { width: 96px; height: 88px; }
 .zg-props { width: 16px; height: 16px; }
+.zg-rope { width: 1024px; height: 5px; }
+.zg-ropes { width: 48px; height: 48px; }
 /* The side trot: its second frame (--f2, set with the first) for half of each stride. */
 .zg-trot { animation: zg-trot .36s steps(1) infinite; }
 @keyframes zg-trot { 50%, 100% { background-position: var(--f2); } }

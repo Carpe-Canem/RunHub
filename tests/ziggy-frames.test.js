@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, BALL_CENTRE, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, FRAME_TOY, FRAME_KNOT, BALL_CENTRE, SHORT_LEN, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl, shortFrom, shortFrame } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,11 +22,13 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 616 with 52 frames, the side sheet 192 × 40 with four, the props 96 × 16 with six', () => {
-  assert.equal(SHEETS.hub.frames.length, 52);
-  assert.deepEqual(sheetSize('hub'), { w: 768, h: 616 });
-  assert.equal(SHEETS.props.frames.length, 6);
-  assert.deepEqual(sheetSize('props'), { w: 96, h: 16 });
+test('the hub sheet is 768 × 704 with 58 frames, the side sheet 192 × 40 with four, the props 96 × 32 with nine', () => {
+  assert.equal(SHEETS.hub.frames.length, 58);
+  assert.deepEqual(sheetSize('hub'), { w: 768, h: 704 });
+  assert.equal(SHEETS.props.frames.length, 9);
+  assert.deepEqual(sheetSize('props'), { w: 96, h: 32 });
+  assert.deepEqual(sheetSize('rope'), { w: 1024, h: 5 });
+  assert.deepEqual(sheetSize('ropes'), { w: 288, h: 48 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
   assert.deepEqual(sheetSize('side'), { w: 192, h: 40 });
 });
@@ -114,8 +116,8 @@ test('a lifted frame: off the ground by a few px, nothing else is', () => {
 
 test('the ball poses go on the end of the hub sheet (v54), with a ball, its own frames on the props sheet', () => {
   const BALL = ['happy-bow', 'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2'];
-  assert.deepEqual(SHEETS.hub.frames.slice(46), BALL);
-  assert.deepEqual(SHEETS.props.frames, ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air']);
+  assert.deepEqual(SHEETS.hub.frames.slice(46, 52), BALL);
+  assert.deepEqual(SHEETS.props.frames.slice(0, 6), ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air']);
   assert.equal(SHEETS.props.palette, 'props-palette.txt');
   const [bx, by] = BALL_CENTRE;
   assert.ok(bx >= 0 && bx < SHEETS.props.cell[0] && by >= 0 && by < SHEETS.props.cell[1]);
@@ -130,5 +132,22 @@ test('where the ball sits: in his mouth on the carry, walk and gallop frames, on
   for (const [name, x] of Object.entries(FRAME_BALL)) {
     assert.ok(SHEETS.hub.frames.includes(name), name);
     assert.ok(Number.isInteger(x) && x >= 0 && x <= 100, `${name}: ${x}`);
+  }
+});
+
+test('the chew and tug poses go on the end of the hub sheet (v55), with a head point, and the toy and rope on theirs', () => {
+  const NEW = ['happy-chew1', 'happy-chew2', 'happy-hold', 'happy-tug1', 'happy-tug2', 'happy-tug3'];
+  assert.deepEqual(SHEETS.hub.frames.slice(52), NEW);
+  for (const name of NEW) assert.ok(Object.hasOwn(FRAME_HEAD, name), name);
+  assert.deepEqual(SHEETS.props.frames.slice(6), ['toy-flat', 'toy-up', 'knot']);
+  for (const sheet of ['rope', 'ropes']) assert.equal(SHEETS[sheet].palette, 'props-palette.txt');
+  for (const [name, x] of Object.entries(FRAME_TOY)) assert.ok(SHEETS.hub.frames.includes(name) && x >= 0 && x < 96, name);
+  for (const [name, [x, y]] of Object.entries(FRAME_KNOT)) assert.ok(SHEETS.hub.frames.includes(name) && x >= 0 && x < 96 && y >= 0 && y < 88, name);
+  assert.ok(Object.hasOwn(FRAME_MOUTH, 'happy-hold'));
+  // the short rope's back knot lands on the point it is hung from
+  for (const deg of [0, 30, 60, 90, 120, 150]) {
+    const [dx, dy] = shortFrom(deg); const a = (deg * Math.PI) / 180;
+    assert.ok(Math.abs(-dx - (24 - (SHORT_LEN / 2) * Math.cos(a))) <= 0.5 && Math.abs(-dy - (24 - (SHORT_LEN / 2) * Math.sin(a))) <= 0.5, `${deg}`);
+    assert.ok(SHEETS.ropes.frames.includes(shortFrame(deg)));
   }
 });

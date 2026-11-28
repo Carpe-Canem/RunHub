@@ -2,16 +2,21 @@
 // drives him. The rules (which line, how much is typed, where he stands) are pure functions of a small state; the
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
-import { SHEETS, BALL_CENTRE, FRAME_MOUTH, framePos, headAt, facesLeft, liftOf } from './ziggy-frames.js';
+import {
+  SHEETS, FRAME_MOUTH, FRAME_KNOT, PROP_MID, anchorOf, shortFrom, shortFrame, framePos, headAt, facesLeft, liftOf,
+} from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
-import { ACTIVITIES, BALL_ROUTINES, pickActivity, planActivity, propPath } from './ziggy-play.js';
+import { ACTIVITIES, BALL_ROUTINES, CHEW_ROUTINES, TUG_ROUTINES, pickActivity, planActivity, propPath } from './ziggy-play.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const TICK = 40;                   // ms between looks at the clock while a line types
 const GRACE = 34;                  // ms a trip is given past its slide
+const ROUTINES = [...BALL_ROUTINES, ...CHEW_ROUTINES, ...TUG_ROUTINES];
+const KNOT_AT = anchorOf('knot');  // the knot's centre in its cell
+const LINE_W = SHEETS.rope.cell[0];
 
 // key: the line showing. i: its place in the list. typed, len: characters shown, and in the whole line.
 // phase: 'typing', 'moving' (the mood's own movement), 'play' (a pose of an activity), 'wander' (a trip of one)
@@ -48,7 +53,7 @@ export function onPress(s, lines, motion) {
 }
 
 let el = null;      // the stage: made on the first call, the same node ever after
-let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball;
+let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball; let knot; let line; let hang; let short;
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
 let activity = null; // an activity to play every time (the checks' hook)
@@ -58,8 +63,9 @@ let s = START;
 let timer = null;   // the one timer
 let t0 = 0;         // when the line would have started typing, to have got as far as it has
 let shown = null;   // the frame he is showing
-let held = false;   // the ball is in his mouth (inside his sprite, so it flips and lifts with him)
-let loose = false;  // the ball is on the strip, rolling, flying or lying there
+let playing = null; // the plaything out: 'ball', 'toy', 'rope-long' or 'rope-short' (on the strip or in his mouth)
+let holding = null; // the same while it is in his mouth (inside his sprite, so it flips and lifts with him)
+let heldFrame = 'ball-air';
 let wide = null;    // the strip's width when last measured
 
 const mood = () => lines[s.i].mood;
@@ -86,6 +92,14 @@ function build() {
   // The ball plays in a layer of its own that clips at the strip's ends, so it can roll in and out of sight.
   ball = sprite('props');
   ball.classList.add('zs-ball');
+  // The rope: a knot, the long line that runs off the strip, and the short rope (hung from a point in his mouth).
+  knot = sprite('props');
+  knot.classList.add('zs-ball');
+  line = sprite('rope');
+  line.classList.add('zs-line');
+  short = sprite('ropes');
+  short.classList.add('zs-ball');
+  hang = h('span', { class: 'zs-hang' });
   layer = h('span', { class: 'zs-props' });
   strip = h('div', { class: 'zs-strip', 'aria-hidden': 'true' }, layer, dog);
   el = h('div', { id: 'ziggyStage', class: 'zs' }, say, tail, strip);
@@ -97,7 +111,7 @@ function build() {
 // Everything the state decides, written to the page. The frame is not: whatever is moving him sets that.
 function draw() {
   const line = lines[s.i];
-  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '', prop: held ? 'held' : loose ? 'ball' : '' });
+  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '', prop: holding ? 'held' : playing || '' });
   const { on: shown, off: hid } = splitParts(line.parts, s.typed);
   on.replaceChildren(...shown.map(part));
   off.replaceChildren(...hid.map(part));
@@ -116,7 +130,7 @@ function frame(name, up = 0) {
   setFrame(pic, 'hub', name);
   const lift = liftOf(name) + up;
   pic.style.transform = [s.flip ? 'scaleX(-1)' : '', lift ? `translateY(-${lift}px)` : ''].filter(Boolean).join(' ');
-  if (held) mouthBall(name);
+  if (holding) mouthProp(name);
   if (s.phase === 'wander') return;
   aim = headAt(name, s.flip);
   if (s.x !== null) tail.style.left = `${s.x + aim}px`;
@@ -124,41 +138,112 @@ function frame(name, up = 0) {
 
 const hold = () => frame(mood());
 
-// The ball in his mouth: placed in his cell, so his flip and lift carry it.
-function mouthBall(name) {
-  const [mx, my] = FRAME_MOUTH[name] ?? FRAME_MOUTH['happy-carry'];
-  Object.assign(ball.style, { left: `${mx - BALL_CENTRE[0]}px`, top: `${my - BALL_CENTRE[1]}px`, bottom: 'auto' });
-  setFrame(ball, 'props', 'ball-air');
-}
-
-// What the ball does from the start of a step: into his mouth, or along a path on the strip as one animation that
-// ends where the path does (the place is also written to its style, so it stays there once the animation is over).
-function prop(p) {
-  for (const a of ball.getAnimations()) a.cancel();
-  if (p.held) {
-    held = true; loose = false;
-    pic.append(ball);
-    mouthBall(shown);
+// The plaything in his mouth: placed in his cell, so his flip and lift carry it. The ball and the toy by their
+// middle at FRAME_MOUTH; the rope by its knot at FRAME_KNOT (the long rope's line is on the strip: placeLine).
+function mouthProp(name) {
+  if (holding === 'rope-long') {
+    const [kx, ky] = FRAME_KNOT[name] ?? FRAME_KNOT['happy-tug1'];
+    Object.assign(knot.style, { left: `${kx - KNOT_AT[0]}px`, top: `${ky - KNOT_AT[1]}px`, bottom: 'auto' });
+    placeLine(name);
     return;
   }
-  held = false; loose = true;
-  layer.append(ball);
-  const path = propPath(p);
-  const ms = path.at(-1).t;
-  const at = ({ x, h: up, frame: f }) => {
-    const { x: fx, y: fy } = framePos('props', f);
-    return { left: `${x - BALL_CENTRE[0]}px`, bottom: `${up}px`, backgroundPosition: `${-fx}px ${-fy}px` };
-  };
-  Object.assign(ball.style, { top: 'auto', ...at(path.at(-1)) });
-  ball.animate(path.map((pt) => ({ ...at(pt), offset: pt.t / ms, easing: 'steps(1, end)' })), { duration: ms });
+  if (holding === 'rope-short') {
+    const [kx, ky] = FRAME_KNOT[name] ?? FRAME_KNOT['happy-carry'];
+    Object.assign(hang.style, { left: `${kx}px`, top: `${ky}px` });
+    return;
+  }
+  const [mx, my] = FRAME_MOUTH[name] ?? FRAME_MOUTH['happy-carry'];
+  const [cx, cy] = PROP_MID[heldFrame];
+  Object.assign(ball.style, { left: `${mx - cx}px`, top: `${my - cy}px`, bottom: 'auto' });
+  setFrame(ball, 'props', heldFrame);
 }
 
-// The ball goes: put away mid-play (he is interrupted) or between activities.
+// The long rope's line runs from the knot in his mouth past the end of the strip he faces. It lies in the props
+// layer (which clips at the strip's ends), placed by the same left as he is, so on a trip it slides with him.
+function placeLine(name, x = s.phase === 'wander' ? s.to : s.x) {
+  const [kx, ky] = FRAME_KNOT[name] ?? FRAME_KNOT['happy-tug1'];
+  const knotX = x + (s.flip ? CELL - 1 - kx : kx);
+  const up = SHEETS.hub.cell[1] - 1 - ky + liftOf(name);
+  Object.assign(line.style, { left: `${s.flip ? knotX - LINE_W + 1 : knotX}px`, bottom: `${up - 2}px` });
+}
+
+// Where a prop frame's cell goes for its anchor to be at x, h px above the ground.
+function anchored({ x, h: up, frame: f }) {
+  const sheet = f.startsWith('short') ? 'ropes' : 'props';
+  const [ax, ay] = anchorOf(f);
+  const { x: fx, y: fy, h: ch } = framePos(sheet, f);
+  return { left: `${x - ax}px`, bottom: `${up - (ch - 1 - ay)}px`, backgroundPosition: `${-fx}px ${-fy}px` };
+}
+
+// One animation along a prop path, ending where the path does (the place is also written to its style, so it stays
+// there once the animation is over).
+// dx, dy: px added to every place (the long rope's line, from its knot), keeping its own picture when bg is false.
+function along(node, path, { dx = 0, dy = 0, bg = true } = {}) {
+  const ms = Math.max(1, path.at(-1).t);
+  const at = (pt) => {
+    const { backgroundPosition, ...a } = anchored(pt);
+    return { left: `${parseFloat(a.left) + dx}px`, bottom: `${parseFloat(a.bottom) + dy}px`, ...(bg ? { backgroundPosition } : {}) };
+  };
+  Object.assign(node.style, { top: 'auto', ...at(path.at(-1)) });
+  if (path.length > 1) node.animate(path.map((pt) => ({ ...at(pt), offset: pt.t / ms, easing: 'steps(1, end)' })), { duration: ms });
+}
+
+// What the plaything does from the start of a step: into his mouth, or along a path on the strip.
+function prop(p) {
+  for (const n of [ball, knot, line, hang, short]) for (const a of n.getAnimations()) a.cancel();
+  const kind = p.rope ? `rope-${p.rope}` : p.frame ? 'toy' : 'ball';
+  if (kind !== 'ball' && kind !== 'toy') ball.remove();
+  if (kind !== 'rope-long') { line.remove(); knot.remove(); }
+  if (kind !== 'rope-short') { hang.remove(); short.remove(); }
+  playing = kind;
+  if (p.held) {
+    holding = kind;
+    heldFrame = p.frame ?? 'ball-air';
+    if (kind === 'rope-long') { pic.append(knot); layer.append(line); setFrame(knot, 'props', 'knot'); }
+    else if (kind === 'rope-short') { hang.append(short); pic.append(hang); swingRope(p.swing ?? [[90, 1]]); }
+    else pic.append(ball);
+    mouthProp(shown);
+    return;
+  }
+  holding = null;
+  const path = propPath(p);
+  if (kind === 'rope-long') {
+    // The knot leads and the line trails off the strip behind it, the way he faces.
+    layer.append(line, knot);
+    setFrame(knot, 'props', 'knot');
+    along(knot, path.map((pt) => ({ ...pt, frame: 'knot' })));
+    const cellH = SHEETS.props.cell[1];
+    along(line, path.map((pt) => ({ ...pt, frame: 'knot' })), { dx: p.faces < 0 ? KNOT_AT[0] - LINE_W + 1 : KNOT_AT[0], dy: cellH - 1 - KNOT_AT[1] - 2, bg: false });
+    return;
+  }
+  const node = kind === 'rope-short' ? short : ball;
+  Object.assign(node.style, { transform: '' });
+  layer.append(node);
+  along(node, path);
+}
+
+// The short rope in his mouth turns through its angles, [[deg, ms], ...], as one animation; its back knot stays
+// on the point it hangs from.
+function swingRope(swing) {
+  const at = (deg) => {
+    const [dx, dy] = shortFrom(deg);
+    const { x: fx, y: fy } = framePos('ropes', shortFrame(deg));
+    return { left: `${dx}px`, top: `${dy}px`, bottom: 'auto', backgroundPosition: `${-fx}px ${-fy}px` };
+  };
+  Object.assign(short.style, at(swing.at(-1)[0]));
+  const ms = swing.reduce((n, [, t]) => n + t, 0);
+  if (swing.length < 2) { Object.assign(short.style, at(swing[0][0])); return; }
+  let t = 0;
+  const frames = swing.map(([deg, d]) => { const k = { ...at(deg), offset: t / ms, easing: 'steps(1, end)' }; t += d; return k; });
+  short.animate([...frames, { ...at(swing.at(-1)[0]), offset: 1 }], { duration: ms });
+}
+
+// The plaything goes: put away mid-play (he is interrupted) or between activities.
 function putAway() {
-  for (const a of ball.getAnimations()) a.cancel();
-  ball.remove();
-  held = false;
-  loose = false;
+  for (const n of [ball, knot, line, hang, short]) { for (const a of n.getAnimations()) a.cancel(); n.remove(); }
+  line.style.transition = '';
+  holding = null;
+  playing = null;
 }
 
 // May he play now? Not while the tab or the hub is out of sight, a line is typing, or motion is reduced.
@@ -174,8 +259,8 @@ function fit() {
   const r = room();
   s = { ...s, x: s.x === null ? Math.round(r / 2) : Math.min(s.x, r), to: s.to === null ? null : Math.min(s.to, r) };
   draw();
-  // The strip changed width under a ball in play: its path was planned for the old one, so he starts afresh.
-  if ((loose || held) && was !== null && was !== wide && timer !== null && s.phase !== 'typing') {
+  // The strip changed width under a plaything in play: its path was planned for the old one, so he starts afresh.
+  if (playing && was !== null && was !== wide && timer !== null && s.phase !== 'typing') {
     stop(); land(); next();
     return;
   }
@@ -185,7 +270,7 @@ function fit() {
 // He is interrupted (a new line, a press, a reset, Reduce Motion, the tab shown again): nothing slides, he stands
 // where a trip would have taken him, and he faces the way he was drawn.
 function land() {
-  for (const moved of [dog, tail]) {
+  for (const moved of [dog, tail, line]) {
     moved.style.transition = '';
     // Taking the transition away does not stop a slide that is under way; cancelling it does.
     for (const a of moved.getAnimations()) a.cancel();
@@ -253,7 +338,7 @@ function next() {
   const asked = activity ?? (only === 'wander' ? 'stroll' : null);
   const name = asked !== null && Object.hasOwn(set, asked) ? asked : pickActivity(m, played);
   const beat = FIDGETS[m].includes(only) ? only : null;
-  const routine = BALL_ROUTINES.includes(only) ? only : null;
+  const routine = ROUTINES.includes(only) ? only : null;
   putAway();
   const plan = planActivity(m, name, { x: s.x, room: room(), beat, flip: s.flip, routine });
   played = name;
@@ -275,11 +360,13 @@ function run(plan, k) {
 
 // He trots to another spot. The dog and the pointer slide by one transition; the timer swaps his legs and ends
 // the trip by the clock (a transition's own end is never heard if the view is hidden part-way).
-function travel({ to: planned, ms, frames, frameMs, arc = 0 }, done) {
-  const to = Math.round(Math.min(planned, room()));
+function travel({ to: planned, ms, frames, frameMs, arc = 0, keep = false }, done) {
+  const to = Math.round(Math.max(0, Math.min(planned, room())));
   const dx = to - s.x;
-  if (!dx) { done(); return; }
-  const flip = (dx < 0) !== facesLeft(frames[0]);
+  // A trip of nothing still takes its time, on its own frame, so the plan keeps its length.
+  if (!dx) { pose([[frames[0], ms]], done); return; }
+  // keep: he goes without turning round (backing up in a tug).
+  const flip = keep ? s.flip : (dx < 0) !== facesLeft(frames[0]);
   s = { ...s, flip, phase: 'wander', to };
   frame(frames[0]);
   // The pointer jumps to his head as it now faces, and only then slides with him.
@@ -289,6 +376,8 @@ function travel({ to: planned, ms, frames, frameMs, arc = 0 }, done) {
   const slide = `left ${ms}ms linear`;
   dog.style.transition = slide;
   tail.style.transition = slide;
+  // The long rope's line slides with him.
+  if (holding === 'rope-long') { placeLine(frames[0], s.x); void line.offsetWidth; line.style.transition = slide; placeLine(frames[0], to); }
   draw();
   const from = performance.now();
   const trot = () => {
@@ -298,6 +387,7 @@ function travel({ to: planned, ms, frames, frameMs, arc = 0 }, done) {
       // Between steps only the slide goes: he keeps facing the way he went.
       dog.style.transition = '';
       tail.style.transition = '';
+      line.style.transition = '';
       s = { ...s, phase: 'play', x: s.to, to: null };
       draw();
       done();
