@@ -363,8 +363,8 @@ function run(plan, k) {
 function travel({ to: planned, ms, frames, frameMs, arc = 0, keep = false }, done) {
   const to = Math.round(Math.max(0, Math.min(planned, room())));
   const dx = to - s.x;
-  // A trip of nothing still takes its time, on its own frame, so the plan keeps its length.
-  if (!dx) { pose([[frames[0], ms]], done); return; }
+  // A trip of nothing: done at once, but a tug's shove (one frame) still takes its time, so the tug keeps its length.
+  if (!dx) { if (keep) pose([[frames[0], ms]], done); else done(); return; }
   // keep: he goes without turning round (backing up in a tug).
   const flip = keep ? s.flip : (dx < 0) !== facesLeft(frames[0]);
   s = { ...s, flip, phase: 'wander', to };
