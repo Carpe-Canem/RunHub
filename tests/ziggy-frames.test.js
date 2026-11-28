@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, headAt, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,7 +22,7 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 440 with 33 frames, the side sheet 192 × 40 with four', () => {
+test('the hub sheet is 768 × 440 with 39 frames, the side sheet 192 × 40 with four', () => {
   assert.equal(SHEETS.hub.frames.length, 39);
   assert.deepEqual(sheetSize('hub'), { w: 768, h: 440 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
@@ -68,4 +68,22 @@ test('frame names are unique within a sheet', () => {
 test('the sheet\'s address carries the script\'s version', () => {
   assert.equal(sheetUrl('hub', 'https://x.test/js/ziggy-frames.js?v=43'), 'https://x.test/sprites/ziggy-hub.png?v=43');
   assert.equal(sheetUrl('side', 'https://x.test/js/ziggy-frames.js'), 'https://x.test/sprites/ziggy-side.png');
+});
+
+test('a frame\'s head point: its own, else its mood\'s still, mirrored when flipped', () => {
+  for (const [name, x] of Object.entries(FRAME_HEAD)) {
+    assert.ok(SHEETS.hub.frames.includes(name), name);
+    assert.ok(Number.isInteger(x) && x >= 0 && x < 96, `${name}: ${x}`);
+  }
+  assert.equal(headAt('eager-trot', false), FRAME_HEAD['eager-trot'] ?? HEAD.eager);
+  assert.equal(headAt('happy', false), HEAD.happy);
+  assert.equal(headAt('happy', true), 95 - HEAD.happy);
+  for (const name of SHEETS.hub.frames) {
+    const x = headAt(name, true);
+    assert.ok(x >= 0 && x < 96, name);
+  }
+});
+
+test('worried and asleep frames face left, the rest right', () => {
+  for (const name of SHEETS.hub.frames) assert.equal(facesLeft(name), /^(worried|asleep)/.test(name), name);
 });

@@ -45,3 +45,18 @@ export function sheetUrl(sheet, base = import.meta.url) {
 // For each mood's still, the x in the cell (px from its left) of the top of his head, read off the grid.
 // The bubble's pointer aims there. Asleep is curled up, so its point is the blaze, not the top of his back.
 export const HEAD = { happy: 62, thrilled: 63, eager: 73, curious: 55, worried: 31, asleep: 25 };
+
+// Frames whose head sits more than 4 px from their mood's still: the middle of the topmost row of the grid, rounded up
+// (the same rule that gives the stills above). Every other frame uses its mood's HEAD.
+export const FRAME_HEAD = { 'happy-look1': 55, 'happy-look2': 51 };
+
+// The x of the top of his head in a frame (px from the cell's left); mirrored when he is drawn flipped.
+export function headAt(frame, flipped) {
+  const x = FRAME_HEAD[frame] ?? HEAD[frame.split('-')[0]];
+  return flipped ? SHEETS.hub.cell[0] - 1 - x : x;
+}
+
+// The worried and asleep frames are drawn facing left, the rest facing right.
+export function facesLeft(frame) {
+  return /^(worried|asleep)/.test(frame);
+}
