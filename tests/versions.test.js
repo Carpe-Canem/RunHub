@@ -31,3 +31,26 @@ test('the CSP allows the import map by hash', () => {
 test('the CSP is the expected policy plus the hash', () => {
   assert.equal(csp.replace(/ 'sha256-[A-Za-z0-9+/=]+'/, ''), EXPECTED_CSP);
 });
+
+test('the changelog leads with the stamped version, newest first, each with something in it', async () => {
+  const { CHANGES, versionOf } = await import('../js/version.js');
+  const v = /src="js\/main\.js\?v=(\d+)"/.exec(html)[1];
+  assert.equal(CHANGES[0].v, v, 'add an entry to CHANGES in js/version.js for this version');
+  CHANGES.forEach((c, i) => {
+    assert.match(c.date, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(c.items.length > 0);
+    if (i) assert.ok(+CHANGES[i - 1].v > +c.v, `v${c.v} is out of order`);
+  });
+  assert.equal(versionOf('https://x.test/js/version.js?v=50'), '50');
+  assert.equal(versionOf('https://x.test/js/version.js'), 'dev');
+});
+
+test('Up next folds only when at least two races would be hidden', async () => {
+  const { upShown, UP_FIRST } = await import('../js/races-view.js');
+  assert.equal(UP_FIRST, 3);
+  assert.equal(upShown(0, false), 0);
+  assert.equal(upShown(3, false), 3);
+  assert.equal(upShown(4, false), 4);
+  assert.equal(upShown(6, false), 3);
+  assert.equal(upShown(6, true), 6);
+});

@@ -93,14 +93,38 @@ function upRow(r, today) {
       }, 'Remove')));
 }
 
+// Up next shows this many, and folds the rest when there are at least two more (one more is simply shown).
+export const UP_FIRST = 3;
+export const upShown = (n, open) => (open || n <= UP_FIRST + 1 ? n : UP_FIRST);
+// Kept for the visit, so the redraws during a sync and the midnight rebuild leave it as it was.
+let upOpen = false;
+let upLast = [];
+
+// Only Up next is replaced; focus goes to the first race that was folded, or back to the button.
+function toggleUp(open) {
+  upOpen = open;
+  const el = document.querySelector('#view-races .up-next');
+  if (!el) return;
+  const next = upNext(upLast);
+  el.replaceWith(next);
+  const to = open ? next.querySelector(`.up-row:nth-child(${UP_FIRST + 1})`) : next.querySelector('[data-focus="up-more"]');
+  if (to) to.focus({ preventScroll: !open });
+}
+
 // Upcoming races: from the bio and added by hand. Not affected by the distance filter or the race model.
 export function upNext(up) {
   const today = isoDay(new Date());
+  upLast = up;
+  const n = upShown(up.length, upOpen);
+  const fold = up.length > UP_FIRST + 1;
   return h('section', { class: 'up-next', 'aria-label': 'Up next', 'data-day': today },
     h('div', { class: 'finished-head' },
       h('h3', { class: 'sub-title' }, 'Up next'),
       h('button', { type: 'button', class: 'btn small', 'data-focus': 'up-add', onclick: (e) => openAddSheet(e.currentTarget) }, 'Add race')),
-    up.length ? h('ul', { class: 'up-list' }, up.map((r) => upRow(r, today))) : h('p', { class: 'empty' }, UP_EMPTY));
+    up.length ? h('ul', { class: 'up-list' }, up.slice(0, n).map((r) => upRow(r, today))) : h('p', { class: 'empty' }, UP_EMPTY),
+    fold ? h('button', {
+      type: 'button', class: `up-more${upOpen ? ' open' : ''}`, 'data-focus': 'up-more', 'aria-expanded': String(upOpen), onclick: () => toggleUp(!upOpen),
+    }, upOpen ? 'Show fewer' : `Show ${up.length - UP_FIRST} more`, h('i', { class: 'up-chev', 'aria-hidden': 'true' })) : null);
 }
 
 // The one-second tick on Races: after midnight the days text is old and a race may have dropped off. Only Up next

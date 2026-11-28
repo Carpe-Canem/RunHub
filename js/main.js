@@ -30,6 +30,7 @@ import { openAddSheet, closeAddSheet } from './add-race.js';
 import { buildRaces } from './races-model.js';
 import { startRouter, current } from './router.js';
 import { statusOf, statusRow } from './status.js';
+import { showVersion, renderAbout } from './version.js';
 
 // Views that exist so far. 'race' (one race) belongs to the Races section: on wide screens the list and
 // the race sit side by side (#dash.split); on narrow ones CSS shows one of them, by #dash's data-view.
@@ -358,6 +359,8 @@ async function init() {
   // Scroll positions are put back by onRoute; the browser's own restoring on Back would fight it.
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   wireSetup();
+  showVersion();
+  renderAbout();
   watchTopbar(document.querySelector('header.top'), document.documentElement);
   await linkFromAddress();   // before anything else
   // The same link arriving in a page that is already open (no reload happens for a change after the #).

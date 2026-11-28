@@ -62,6 +62,16 @@ p { margin: 0 0 10px; }
 .top-inner, main { max-width: 1000px; margin: 0 auto; padding-left: var(--gl); padding-right: var(--gr); }
 .top-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding-top: 8px; padding-bottom: 8px; min-height: 60px; }
 .top h1 { font-size: 17px; margin: 0; margin-right: auto; }
+/* The version, faint beside the title: there to be found, not read. */
+.ver { margin-left: 2px; font-size: 11px; font-weight: 700; letter-spacing: .02em; color: #56658A; vertical-align: 1px; }
+.about-ver { color: var(--tx); }
+.changelog summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--mut); }
+.cl-list { list-style: none; margin: 4px 0 10px; padding: 0; }
+.cl-list > li + li { border-top: 1px solid var(--line); }
+.cl-list > li { padding: 8px 0; }
+.cl-head { margin: 0 0 2px; font-size: 13px; color: var(--mut); }
+.cl-head strong { color: var(--tx); }
+.cl-list ul { margin: 0; padding-left: 18px; font-size: 13px; }
 /* The sync status is also the refresh button. On narrow screens the row reads title, status, Data; at 860 px and
    up the document's own order is the layout, so the status ends the bar. */
 .status { order: 1; display: flex; align-items: center; min-width: 0; }
@@ -287,6 +297,10 @@ button.zs-say { cursor: pointer; }
 .up-meta, .up-src { font-size: 12px; color: var(--mut); }
 .up-side { display: flex; align-items: center; gap: 10px; }
 .up-days { font-size: 13px; font-weight: 800; color: var(--led); white-space: nowrap; }
+.up-more { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; margin: 0; padding: 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--mut); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 0; }
+.up-more:hover { color: var(--tx); }
+.up-chev { width: 7px; height: 7px; margin-top: -4px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); }
+.up-more.open .up-chev { margin-top: 3px; transform: rotate(-135deg); }
 .finished-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 4px; }
 .finished-head .sub-title { margin: 0; }
 .toggle { display: inline-flex; background: var(--panel); border-radius: 10px; padding: 3px; gap: 2px; }
