@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
+import { SHEETS, HEAD, FRAME_HEAD, FRAME_LIFT, FRAME_MOUTH, FRAME_BALL, BALL_CENTRE, headAt, liftOf, facesLeft, framePos, sheetSize, sheetUrl } from '../js/ziggy-frames.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
 
@@ -22,9 +22,11 @@ test('a frame sits at its place in the list, eight to a row on the hub sheet', (
   assert.deepEqual(framePos('side', 'nap'), { x: 144, y: 0, w: 48, h: 40 });
 });
 
-test('the hub sheet is 768 × 528 with 46 frames, the side sheet 192 × 40 with four', () => {
-  assert.equal(SHEETS.hub.frames.length, 46);
-  assert.deepEqual(sheetSize('hub'), { w: 768, h: 528 });
+test('the hub sheet is 768 × 616 with 52 frames, the side sheet 192 × 40 with four, the props 96 × 16 with six', () => {
+  assert.equal(SHEETS.hub.frames.length, 52);
+  assert.deepEqual(sheetSize('hub'), { w: 768, h: 616 });
+  assert.equal(SHEETS.props.frames.length, 6);
+  assert.deepEqual(sheetSize('props'), { w: 96, h: 16 });
   assert.deepEqual(SHEETS.side.frames, ['sit', 'trot1', 'trot2', 'nap']);
   assert.deepEqual(sheetSize('side'), { w: 192, h: 40 });
 });
@@ -68,6 +70,7 @@ test('frame names are unique within a sheet', () => {
 test('the sheet\'s address carries the script\'s version', () => {
   assert.equal(sheetUrl('hub', 'https://x.test/js/ziggy-frames.js?v=43'), 'https://x.test/sprites/ziggy-hub.png?v=43');
   assert.equal(sheetUrl('side', 'https://x.test/js/ziggy-frames.js'), 'https://x.test/sprites/ziggy-side.png');
+  assert.equal(sheetUrl('props', 'https://x.test/js/ziggy-frames.js?v=54'), 'https://x.test/sprites/ziggy-props.png?v=54');
 });
 
 test('a frame\'s head point: its own, else its mood\'s still, mirrored when flipped', () => {
@@ -92,7 +95,7 @@ test('worried and asleep frames face left, the rest right', () => {
 
 test('the walk and the gallop go on the end of the hub sheet (v53), each with its own head point', () => {
   const GAIT = ['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3'];
-  assert.deepEqual(SHEETS.hub.frames.slice(39), GAIT);
+  assert.deepEqual(SHEETS.hub.frames.slice(39, 46), GAIT);
   assert.equal(SHEETS.hub.frames[38], 'happy-scratch2');
   for (const name of GAIT) assert.ok(Object.hasOwn(FRAME_HEAD, name), name);
 });
@@ -107,4 +110,25 @@ test('a lifted frame: off the ground by a few px, nothing else is', () => {
   assert.equal(liftOf('eager-trot'), 0);
   // The bound: in the gallop he leaves the ground at the tuck, and his walk bobs a pixel (owner's pick C, 2026-11-28).
   assert.deepEqual(FRAME_LIFT, { 'happy-walk2': 1, 'happy-walk4': 1, 'happy-run1': 2, 'happy-run2': 6 });
+});
+
+test('the ball poses go on the end of the hub sheet (v54), with a ball, its own frames on the props sheet', () => {
+  const BALL = ['happy-bow', 'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2'];
+  assert.deepEqual(SHEETS.hub.frames.slice(46), BALL);
+  assert.deepEqual(SHEETS.props.frames, ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air']);
+  assert.equal(SHEETS.props.palette, 'props-palette.txt');
+  const [bx, by] = BALL_CENTRE;
+  assert.ok(bx >= 0 && bx < SHEETS.props.cell[0] && by >= 0 && by < SHEETS.props.cell[1]);
+});
+
+test('where the ball sits: in his mouth on the carry, walk and gallop frames, on the ground in front of the rest', () => {
+  for (const [name, [x, y]] of Object.entries(FRAME_MOUTH)) {
+    assert.ok(SHEETS.hub.frames.includes(name), name);
+    assert.ok(x >= 0 && x < 96 && y >= 0 && y < 88, `${name}: ${x},${y}`);
+  }
+  for (const name of ['happy-carry', ...SHEETS.hub.frames.filter((n) => /^happy-(walk|run)/.test(n))]) assert.ok(Object.hasOwn(FRAME_MOUTH, name), name);
+  for (const [name, x] of Object.entries(FRAME_BALL)) {
+    assert.ok(SHEETS.hub.frames.includes(name), name);
+    assert.ok(Number.isInteger(x) && x >= 0 && x <= 100, `${name}: ${x}`);
+  }
 });

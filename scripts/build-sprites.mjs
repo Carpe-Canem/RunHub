@@ -10,16 +10,17 @@ import { encodePng } from './sprite-png.mjs';
 const SRC = new URL('../sprites/src/', import.meta.url);
 const OUT = new URL('../sprites/', import.meta.url);
 
-// [{ letter, hex, name }], in file order. A pixel's palette index is its colour's place here plus one.
-export function readPalette() {
-  const lines = readFileSync(new URL('palette.txt', SRC), 'utf8').split(/\r?\n/).filter((line) => line.trim());
+// [{ letter, hex, name }], in file order. A pixel's palette index is its colour's place here plus one. The dog's
+// sheets use palette.txt; a sheet that names a palette of its own (the props) uses that.
+export function readPalette(file = 'palette.txt') {
+  const lines = readFileSync(new URL(file, SRC), 'utf8').split(/\r?\n/).filter((line) => line.trim());
   const palette = lines.map((line) => {
     const m = /^([a-z]) (#[0-9A-F]{6}) (.+)$/.exec(line.trim());
-    if (!m) throw new Error(`palette.txt: "${line}" is not a letter, #RRGGBB and a name`);
+    if (!m) throw new Error(`${file}: "${line}" is not a letter, #RRGGBB and a name`);
     return { letter: m[1], hex: m[2], name: m[3] };
   });
-  if (palette.length > 16) throw new Error(`palette.txt: ${palette.length} colours, and the limit is 16`);
-  if (new Set(palette.map((c) => c.letter)).size !== palette.length) throw new Error('palette.txt: a letter is used twice');
+  if (palette.length > 16) throw new Error(`${file}: ${palette.length} colours, and the limit is 16`);
+  if (new Set(palette.map((c) => c.letter)).size !== palette.length) throw new Error(`${file}: a letter is used twice`);
   return palette;
 }
 
@@ -35,6 +36,8 @@ export function parseGrid(text, [w, h], letters, file) {
   return rows;
 }
 
+export const paletteOf = (sheet) => readPalette(SHEETS[sheet].palette);
+
 export function readFrame(sheet, name) {
   const file = `sprites/src/${sheet}/${name}.txt`;
   let text;
@@ -43,12 +46,12 @@ export function readFrame(sheet, name) {
   } catch {
     throw new Error(`${file} is missing`);
   }
-  return parseGrid(text, SHEETS[sheet].cell, `.${readPalette().map((c) => c.letter).join('')}`, file);
+  return parseGrid(text, SHEETS[sheet].cell, `.${paletteOf(sheet).map((c) => c.letter).join('')}`, file);
 }
 
 // The whole sheet as palette indices, row by row: 0 is transparent, 1 is the palette's first colour.
 export function sheetIndices(sheet) {
-  const letters = `.${readPalette().map((c) => c.letter).join('')}`;
+  const letters = `.${paletteOf(sheet).map((c) => c.letter).join('')}`;
   const { w, h } = sheetSize(sheet);
   const out = new Uint8Array(w * h);
   for (const name of SHEETS[sheet].frames) {
@@ -62,7 +65,7 @@ export function sheetIndices(sheet) {
 
 export function buildSheet(sheet) {
   const { w, h } = sheetSize(sheet);
-  const rgb = readPalette().map(({ hex }) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
+  const rgb = paletteOf(sheet).map(({ hex }) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
   return encodePng(w, h, sheetIndices(sheet), [[0, 0, 0], ...rgb]);
 }
 

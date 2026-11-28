@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SHEETS } from '../js/ziggy-frames.js';
+import { SHEETS, FRAME_MOUTH, FRAME_BALL } from '../js/ziggy-frames.js';
 import { steps } from '../js/ziggy-moves.js';
-import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, pickActivity, planActivity, planMs, travelMs } from '../js/ziggy-play.js';
+import { ACT_MIN, ACT_MAX, ACTIVITIES, GAITS, BALL_ROUTINES, POUNCE_ARC, pickActivity, planActivity, planMs, propPath, travelMs } from '../js/ziggy-play.js';
 
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const rnd = seeded(13);
@@ -142,4 +142,95 @@ test('the awake moods walk and gallop on their own frames, never the borrowed tr
     }
     assert.ok(seen.walk && seen.run, `${mood} walks and runs`);
   }
+});
+
+// ---- the ball (v54)
+const BALL_MOODS = ['happy', 'thrilled', 'eager', 'curious'];
+const ROOMS = [0, 60, 96, 200, 312, 1200, 5000];
+const ballPlans = function* () {
+  for (const mood of BALL_MOODS) for (const routine of BALL_ROUTINES) for (const room of ROOMS) {
+    for (const x of [0, Math.round(room / 2), room, room + 100]) for (const flip of [false, true]) {
+      yield { mood, routine, room, x, flip, plan: planActivity(mood, 'ball', { x, room, rnd, flip, routine }) };
+    }
+  }
+};
+// Where the ball ends up after a prop step: the last point of its path.
+const endOf = (prop) => propPath(prop).at(-1);
+
+test('every ball routine lasts 4 to 12 s on any strip, uses real frames and ends on his still', () => {
+  for (const { mood, routine, room, plan } of ballPlans()) {
+    const ms = planMs(plan);
+    assert.ok(ms >= ACT_MIN && ms <= ACT_MAX, `${mood} ${routine} room ${room}: ${ms}`);
+    assert.ok(plan[0].pose && plan.at(-1).pose);
+    assert.equal(plan.at(-1).pose.at(-1)[0], mood);
+    for (const st of plan) {
+      for (const f of st.pose ? st.pose.map(([n]) => n) : st.travel.frames) assert.ok(SHEETS.hub.frames.includes(f), f);
+      for (const [f, t] of st.pose ?? []) assert.ok(t <= 1500, `${routine}: ${f} ${t}`);
+      if (st.travel) assert.ok(st.travel.to >= 0 && st.travel.to <= room && Number.isInteger(st.travel.to), `${routine} room ${room}: ${st.travel.to}`);
+    }
+    if (room < 96) assert.ok(plan.every((st) => st.pose), `${routine} room ${room} stays put`);
+  }
+});
+
+test('the ball rolls in from off the strip, stays on it, and rolls off it at the end', () => {
+  for (const { routine, room, plan } of ballPlans()) {
+    const W = room + 96;
+    const props = plan.filter((st) => st.prop && !st.prop.held).map((st) => st.prop);
+    assert.ok(props[0].roll && (props[0].roll.from < 0 || props[0].roll.from > W), `${routine}: comes in from off the strip`);
+    const out = props.at(-1).roll;
+    assert.ok(out && (out.to < 0 || out.to > W), `${routine} room ${room}: leaves`);
+    assert.ok(plan.at(-1).prop === props.at(-1), 'it leaves in the last step');
+    for (const p of props.slice(1, -1)) for (const { x, h, frame } of propPath(p)) {
+      assert.ok(x >= 0 && x <= W, `${routine} room ${room}: x ${x}`);
+      assert.ok(h >= 0 && h <= 88 - 16, `${routine}: h ${h}`);
+      assert.ok(SHEETS.props.frames.includes(frame), frame);
+    }
+    // a step's ball does not outrun the step
+    for (const st of plan) if (st.prop && st.prop.roll && st !== plan.at(-1)) assert.ok(st.prop.roll.ms <= planMs([st]));
+    for (const st of plan) if (st.prop && st.prop.fly) assert.ok(st.prop.fly.ms <= planMs([st]));
+  }
+});
+
+test('he holds the ball only on frames with a mouth for it, and it lies where his pin or nudge expects it', () => {
+  for (const { mood, routine, room, x, plan } of ballPlans()) {
+    let held = false, flip = null, at = Math.min(Math.max(0, x), room), ball = null;
+    for (const st of plan) {
+      if (st.flip !== undefined) flip = st.flip;
+      if (st.prop) {
+        held = !!st.prop.held;
+        if (!held) ball = endOf(st.prop);
+      }
+      const frames = st.pose ? st.pose.map(([n]) => n) : st.travel.frames;
+      if (held) for (const f of frames) assert.ok(Object.hasOwn(FRAME_MOUTH, f), `${mood} ${routine}: holds it on ${f}`);
+      if (st.travel) { flip = st.travel.to < at; at = st.travel.to; continue; }
+      const f = frames[0];
+      if (!held && !st.prop && (f === 'happy-pin' || f === 'happy-nudge1')) {
+        const want = at + (flip ? 95 - FRAME_BALL[f] : FRAME_BALL[f]);
+        assert.ok(Math.abs(ball.x - want) <= 1 && ball.h === 0, `${routine} room ${room} x ${x}: ball ${ball.x}, ${f} wants ${want}`);
+      }
+    }
+    assert.equal(held, false);
+  }
+});
+
+test('all three routines turn up, and the pounce leaves the ground', () => {
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) {
+    const plan = planActivity('happy', 'ball', { x: 150, room: 312, rnd });
+    const leaps = plan.filter((st) => st.travel && st.travel.arc);
+    const gallops = plan.filter((st) => st.travel && !st.travel.arc);
+    seen.add(gallops.length ? 'fetch' : leaps.some((st) => st.travel.arc === POUNCE_ARC) ? 'pounce' : 'catch');
+    for (const st of leaps) assert.deepEqual(st.travel.frames, ['happy-pounce']);
+  }
+  assert.deepEqual([...seen].sort(), [...BALL_ROUTINES].sort());
+});
+
+test('a ball path ends where it was sent, on the ground, and turns as it rolls', () => {
+  const roll = propPath({ roll: { from: 400, to: 100, ms: 900 } });
+  assert.deepEqual([roll[0].x, roll.at(-1).x, roll.at(-1).t], [400, 100, 900]);
+  assert.ok(new Set(roll.map((p) => p.frame)).size === 4);
+  const fly = propPath({ fly: { from: [200, 36], to: 300, ms: 1200, apex: 48, hops: [20, 8], roll: true } });
+  assert.deepEqual([fly.at(-1).x, fly.at(-1).h], [300, 0]);
+  assert.equal(Math.max(...fly.map((p) => p.h)), 48);
+  assert.ok(fly.some((p) => p.frame === 'ball-squash') && fly.some((p) => p.frame === 'ball-air'));
 });

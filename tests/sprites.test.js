@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { SHEETS, HEAD, FRAME_LIFT, framePos, sheetSize } from '../js/ziggy-frames.js';
-import { readPalette, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
+import { SHEETS, HEAD, FRAME_LIFT, BALL_CENTRE, framePos, sheetSize } from '../js/ziggy-frames.js';
+import { POUNCE_ARC } from '../js/ziggy-play.js';
+import { readPalette, paletteOf, readFrame, parseGrid, sheetIndices, buildSheet } from '../scripts/build-sprites.mjs';
 import { decodePng } from '../scripts/sprite-png.mjs';
 
 const HUB = SHEETS.hub.frames;
@@ -21,20 +22,23 @@ function diffBox(a, b) {
   return x1 < 0 ? { w: 0, h: 0 } : { w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
-test('the palette has at most 16 colours, each one letter and #RRGGBB', () => {
-  const palette = readPalette();
-  assert.ok(palette.length >= 1 && palette.length <= 16, `${palette.length} colours`);
-  for (const { letter, hex, name } of palette) {
-    assert.match(letter, /^[a-z]$/);
-    assert.match(hex, /^#[0-9A-F]{6}$/);
-    assert.ok(name.length > 0, `${letter} has a name`);
+test('each palette has at most 16 colours, each one letter and #RRGGBB', () => {
+  for (const palette of [readPalette(), readPalette('props-palette.txt')]) {
+    assert.ok(palette.length >= 1 && palette.length <= 16, `${palette.length} colours`);
+    for (const { letter, hex, name } of palette) {
+      assert.match(letter, /^[a-z]$/);
+      assert.match(hex, /^#[0-9A-F]{6}$/);
+      assert.ok(name.length > 0, `${letter} has a name`);
+    }
+    assert.equal(new Set(palette.map((c) => c.letter)).size, palette.length, 'letters are unique');
   }
-  assert.equal(new Set(palette.map((c) => c.letter)).size, palette.length, 'letters are unique');
+  // The props are outlined in his blue-grey, so they sit in the same picture.
+  assert.equal(readPalette('props-palette.txt').find((c) => c.letter === 'o').hex, readPalette().find((c) => c.letter === 'o').hex);
 });
 
-test('every frame has a grid of exactly its cell, in palette letters', () => {
-  const letters = `.${readPalette().map((c) => c.letter).join('')}`;
+test("every frame has a grid of exactly its cell, in its own palette's letters", () => {
   for (const [sheet, { cell: [w, h], frames }] of Object.entries(SHEETS)) {
+    const letters = `.${paletteOf(sheet).map((c) => c.letter).join('')}`;
     for (const name of frames) {
       const rows = readFrame(sheet, name);
       assert.equal(rows.length, h, `${sheet}/${name} has ${h} rows`);
@@ -198,5 +202,25 @@ test('the walk and the gallop keep his head still: the nose sits in one column t
   for (const cycle of [['happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4'], ['happy-run1', 'happy-run2', 'happy-run3']]) {
     const xs = cycle.map(front);
     assert.ok(Math.max(...xs) - Math.min(...xs) <= 3, `${cycle[0]}: nose fronts ${xs}`);
+  }
+});
+
+test('in the pounce he is drawn whole at the top of his leap: his top row clears the arc', () => {
+  const top = readFrame('hub', 'happy-pounce').findIndex((row) => /[^.]/.test(row));
+  assert.ok(top >= POUNCE_ARC, `top row ${top}, arc ${POUNCE_ARC}`);
+});
+
+test('the ball rests on the bottom row of its cell, round about its centre, in tennis yellow-green', () => {
+  const [cx, cy] = BALL_CENTRE;
+  for (const name of SHEETS.props.frames) {
+    const rows = readFrame('props', name);
+    assert.match(rows.at(-1), /[^.]/, `${name} sits on the bottom row`);
+    assert.ok(count(rows, 'f') > 20, `${name} is mostly ball`);
+    if (!/roll/.test(name)) continue;
+    // a rolling ball is 13 across, its middle column and row at the centre
+    const cols = rows.map((r) => [r.search(/[^.]/), r.length - 1 - [...r].reverse().join('').search(/[^.]/)]).filter(([a]) => a >= 0);
+    const x0 = Math.min(...cols.map(([a]) => a)), x1 = Math.max(...cols.map(([, b]) => b));
+    const y0 = rows.findIndex((r) => /[^.]/.test(r));
+    assert.deepEqual([x1 - x0 + 1, (x0 + x1) / 2, (y0 + rows.length - 1) / 2], [13, cx, cy], name);
   }
 });

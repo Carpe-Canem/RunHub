@@ -10,10 +10,16 @@ export const SHEETS = {
       'eager-trot', 'eager-blink', 'eager-ear', 'eager-tail', 'curious', 'curious-talk', 'curious-tilt', 'curious-blink',
       'curious-ear', 'worried', 'worried-talk', 'worried-low', 'worried-glance', 'asleep', 'asleep-breathe', 'asleep-ear',
       'asleep-paw', 'happy-sniff1', 'happy-sniff2', 'happy-look1', 'happy-look2', 'happy-scratch1', 'happy-scratch2',
-      'happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3',
+      'happy-walk1', 'happy-walk2', 'happy-walk3', 'happy-walk4', 'happy-run1', 'happy-run2', 'happy-run3', 'happy-bow',
+      'happy-pounce', 'happy-pin', 'happy-carry', 'happy-nudge1', 'happy-nudge2',
     ],
   },
   side: { cell: [48, 40], cols: 4, frames: ['sit', 'trot1', 'trot2', 'nap'] },
+  // The things he plays with, in colours of their own (the dog's palette is full).
+  props: {
+    cell: [16, 16], cols: 6, palette: 'props-palette.txt',
+    frames: ['ball-roll1', 'ball-roll2', 'ball-roll3', 'ball-roll4', 'ball-squash', 'ball-air'],
+  },
 };
 
 function sheetOf(sheet) {
@@ -53,7 +59,24 @@ export const FRAME_HEAD = {
   'happy-look1': 55, 'happy-look2': 51,
   'happy-walk1': 68, 'happy-walk2': 69, 'happy-walk3': 68, 'happy-walk4': 68,
   'happy-run1': 76, 'happy-run2': 76, 'happy-run3': 76,
+  // Head down at the ball: the top row there is his back or tail, so these are read off the head itself.
+  'happy-pin': 56, 'happy-carry': 67, 'happy-nudge1': 71, 'happy-nudge2': 73,
 };
+
+// The ball (props sheet): its centre sits at this point of its 16 × 16 cell, and its bottom on the cell's last row.
+export const BALL_CENTRE = [8, 9];
+
+// Where the ball's centre is when it is in his mouth, in cell px: the carry pose's own ball, and for the walk and the
+// gallop the same place under each frame's nose. Only these frames may show him holding it.
+export const FRAME_MOUTH = {
+  'happy-carry': [74, 45],
+  'happy-walk1': [77, 45], 'happy-walk2': [77, 45], 'happy-walk3': [77, 45], 'happy-walk4': [77, 45],
+  'happy-run1': [85, 46], 'happy-run2': [85, 55], 'happy-run3': [85, 44],
+};
+
+// Where the ball lies on the ground in front of him, as the x of its centre in cell px: before his paws in the
+// bow, under them in the pin, at his nose in the nudge.
+export const FRAME_BALL = { 'happy-bow': 96, 'happy-pin': 70, 'happy-nudge1': 90, 'happy-nudge2': 91 };
 
 // Frames drawn this many px above the ground (the grids all stand on the bottom row): in the gallop he leaves the
 // ground as he gathers and tucks, and his walk bobs on the passing steps. The owner's pick C, 2026-11-28.

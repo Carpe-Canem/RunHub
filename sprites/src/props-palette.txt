@@ -1,0 +1,5 @@
+o #6A7995 outline blue-grey
+f #C9DE3A tennis yellow-green
+s #93A925 tennis shade
+h #EAF58A tennis highlight
+w #FCF6EC seam white

@@ -143,7 +143,8 @@ function part(draw, note) {
 // Ziggy's stage, after the body: his lines are brought up to date, and the node itself is placed once and never
 // taken out, so his line, his place and focus on his bubble carry over a redraw. A throw leaves him as he was.
 // mi, stats, up: as ziggyLines() takes them. In the demo, ?ziggy=<mood> shows that mood with two lines and
-// &fidget=<name> makes every beat that fidget, &activity=<name> plays that activity every time (hooks for the checks).
+// &fidget=<name> makes every beat that fidget (for the ball: pounce, fetch or catch, the routine it plays), and
+// &activity=<name> plays that activity every time (hooks for the checks).
 function stage(box, mi, stats, up, runsLoaded) {
   try {
     const q = S.demo ? new URLSearchParams(location.search) : null;

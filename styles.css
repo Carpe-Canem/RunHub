@@ -236,6 +236,11 @@ button.zs-say { cursor: pointer; }
 .zs-tail { position: relative; z-index: 1; display: block; width: 12px; height: 12px; margin: -7px 0 5px -6px; background: var(--panel); border: solid var(--line); border-width: 0 1px 1px 0; transform: rotate(45deg); }
 .zs-strip { position: relative; height: 88px; }
 .zs-dog { position: absolute; left: 0; bottom: 0; }
+/* The ball: on the strip in a layer that clips at its ends (so it rolls in and out of sight), or in his mouth,
+   inside his sprite so it turns and leaves the ground with him. */
+.zs-props { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.zs-ball { position: absolute; left: 0; bottom: 0; }
+.zs-dog .zg-hub { position: relative; }
 .zs-more .zs-dog { cursor: pointer; }
 .zs-spark, .zs-z { position: absolute; display: none; font-style: normal; pointer-events: none; }
 /* Thrilled: an amber burst, zig-zagged at each end, and three sparks round him. The shape is on a layer behind
@@ -414,6 +419,7 @@ button.zs-say { cursor: pointer; }
 .zg { display: block; flex: none; background-repeat: no-repeat; image-rendering: pixelated; }
 .zg-side { width: 48px; height: 40px; }
 .zg-hub { width: 96px; height: 88px; }
+.zg-props { width: 16px; height: 16px; }
 /* The side trot: its second frame (--f2, set with the first) for half of each stride. */
 .zg-trot { animation: zg-trot .36s steps(1) infinite; }
 @keyframes zg-trot { 50%, 100% { background-position: var(--f2); } }

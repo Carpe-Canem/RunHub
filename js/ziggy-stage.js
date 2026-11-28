@@ -2,12 +2,12 @@
 // drives him. The rules (which line, how much is typed, where he stands) are pure functions of a small state; the
 // rest of this file turns that state into nodes. Nothing here is stored: a reload starts from the first line.
 import { h, motionOK } from './dom.js';
-import { SHEETS, headAt, facesLeft, liftOf } from './ziggy-frames.js';
+import { SHEETS, BALL_CENTRE, FRAME_MOUTH, framePos, headAt, facesLeft, liftOf } from './ziggy-frames.js';
 import { sprite, setFrame } from './ziggy.js';
 import {
   TYPE_MS, FIDGETS, steps, typedCount, carryTyped, splitParts, lengthOf, keepLine, canFidget,
 } from './ziggy-moves.js';
-import { ACTIVITIES, pickActivity, planActivity } from './ziggy-play.js';
+import { ACTIVITIES, BALL_ROUTINES, pickActivity, planActivity, propPath } from './ziggy-play.js';
 
 const CELL = SHEETS.hub.cell[0];   // his width on the strip
 const TICK = 40;                   // ms between looks at the clock while a line types
@@ -48,7 +48,7 @@ export function onPress(s, lines, motion) {
 }
 
 let el = null;      // the stage: made on the first call, the same node ever after
-let say; let on; let off; let tail; let strip; let dog; let pic;
+let say; let on; let off; let tail; let strip; let dog; let pic; let layer; let ball;
 let lines = [];
 let only = null;    // a fidget to make every beat (the checks' hook)
 let activity = null; // an activity to play every time (the checks' hook)
@@ -57,6 +57,10 @@ let aim = null;     // the pointer's offset from his left edge: the head of the 
 let s = START;
 let timer = null;   // the one timer
 let t0 = 0;         // when the line would have started typing, to have got as far as it has
+let shown = null;   // the frame he is showing
+let held = false;   // the ball is in his mouth (inside his sprite, so it flips and lifts with him)
+let loose = false;  // the ball is on the strip, rolling, flying or lying there
+let wide = null;    // the strip's width when last measured
 
 const mood = () => lines[s.i].mood;
 const after = (ms, fn) => { clearTimeout(timer); timer = setTimeout(fn, ms); };
@@ -79,7 +83,11 @@ function build() {
   pic = sprite('hub');
   dog = h('span', { class: 'zs-dog', onclick: press }, pic,
     [1, 2, 3].map(() => h('i', { class: 'zs-spark' })), [1, 2].map(() => h('i', { class: 'zs-z' }, 'z')));
-  strip = h('div', { class: 'zs-strip', 'aria-hidden': 'true' }, dog);
+  // The ball plays in a layer of its own that clips at the strip's ends, so it can roll in and out of sight.
+  ball = sprite('props');
+  ball.classList.add('zs-ball');
+  layer = h('span', { class: 'zs-props' });
+  strip = h('div', { class: 'zs-strip', 'aria-hidden': 'true' }, layer, dog);
   el = h('div', { id: 'ziggyStage', class: 'zs' }, say, tail, strip);
   // The strip is measured when it is first laid out, and again whenever its width changes.
   new ResizeObserver(fit).observe(strip);
@@ -89,7 +97,7 @@ function build() {
 // Everything the state decides, written to the page. The frame is not: whatever is moving him sets that.
 function draw() {
   const line = lines[s.i];
-  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '' });
+  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '', prop: held ? 'held' : loose ? 'ball' : '' });
   const { on: shown, off: hid } = splitParts(line.parts, s.typed);
   on.replaceChildren(...shown.map(part));
   off.replaceChildren(...hid.map(part));
@@ -102,16 +110,56 @@ function draw() {
 
 // Every frame he shows goes through here. Outside a trip the pointer follows his head at once; on a trip its
 // offset was fixed when the trip began, so its slide is never started again.
-function frame(name) {
+// up: px more off the ground than the frame's own lift (a pounce's arc).
+function frame(name, up = 0) {
+  shown = name;
   setFrame(pic, 'hub', name);
-  const lift = liftOf(name);
+  const lift = liftOf(name) + up;
   pic.style.transform = [s.flip ? 'scaleX(-1)' : '', lift ? `translateY(-${lift}px)` : ''].filter(Boolean).join(' ');
+  if (held) mouthBall(name);
   if (s.phase === 'wander') return;
   aim = headAt(name, s.flip);
   if (s.x !== null) tail.style.left = `${s.x + aim}px`;
 }
 
 const hold = () => frame(mood());
+
+// The ball in his mouth: placed in his cell, so his flip and lift carry it.
+function mouthBall(name) {
+  const [mx, my] = FRAME_MOUTH[name] ?? FRAME_MOUTH['happy-carry'];
+  Object.assign(ball.style, { left: `${mx - BALL_CENTRE[0]}px`, top: `${my - BALL_CENTRE[1]}px`, bottom: 'auto' });
+  setFrame(ball, 'props', 'ball-air');
+}
+
+// What the ball does from the start of a step: into his mouth, or along a path on the strip as one animation that
+// ends where the path does (the place is also written to its style, so it stays there once the animation is over).
+function prop(p) {
+  for (const a of ball.getAnimations()) a.cancel();
+  if (p.held) {
+    held = true; loose = false;
+    pic.append(ball);
+    mouthBall(shown);
+    return;
+  }
+  held = false; loose = true;
+  layer.append(ball);
+  const path = propPath(p);
+  const ms = path.at(-1).t;
+  const at = ({ x, h: up, frame: f }) => {
+    const { x: fx, y: fy } = framePos('props', f);
+    return { left: `${x - BALL_CENTRE[0]}px`, bottom: `${up}px`, backgroundPosition: `${-fx}px ${-fy}px` };
+  };
+  Object.assign(ball.style, { top: 'auto', ...at(path.at(-1)) });
+  ball.animate(path.map((pt) => ({ ...at(pt), offset: pt.t / ms, easing: 'steps(1, end)' })), { duration: ms });
+}
+
+// The ball goes: put away mid-play (he is interrupted) or between activities.
+function putAway() {
+  for (const a of ball.getAnimations()) a.cancel();
+  ball.remove();
+  held = false;
+  loose = false;
+}
 
 // May he play now? Not while the tab or the hub is out of sight, a line is typing, or motion is reduced.
 const may = () => s.x !== null
@@ -120,11 +168,17 @@ const may = () => s.x !== null
 // The strip's width is known, or has changed: he starts in the middle, and is never left off its end. When it
 // has width again after being out of sight, and nothing is running, he picks up with a fresh activity.
 function fit() {
-  const wide = strip.clientWidth;
+  const was = wide;
+  wide = strip.clientWidth;
   if (!wide || !lines.length) return;   // the hub is not the view on screen, or he has just been reset
   const r = room();
   s = { ...s, x: s.x === null ? Math.round(r / 2) : Math.min(s.x, r), to: s.to === null ? null : Math.min(s.to, r) };
   draw();
+  // The strip changed width under a ball in play: its path was planned for the old one, so he starts afresh.
+  if ((loose || held) && was !== null && was !== wide && timer !== null && s.phase !== 'typing') {
+    stop(); land(); next();
+    return;
+  }
   if (timer === null && motionOK() && !document.hidden && s.phase !== 'typing') { land(); next(); }
 }
 
@@ -138,6 +192,7 @@ function land() {
   }
   pic.style.transform = '';
   aim = null;
+  putAway();
   s = { ...s, flip: false, x: landed(s), to: null, phase: s.phase === 'wander' ? 'play' : s.phase };
 }
 
@@ -198,7 +253,9 @@ function next() {
   const asked = activity ?? (only === 'wander' ? 'stroll' : null);
   const name = asked !== null && Object.hasOwn(set, asked) ? asked : pickActivity(m, played);
   const beat = FIDGETS[m].includes(only) ? only : null;
-  const plan = planActivity(m, name, { x: s.x, room: room(), beat });
+  const routine = BALL_ROUTINES.includes(only) ? only : null;
+  putAway();
+  const plan = planActivity(m, name, { x: s.x, room: room(), beat, flip: s.flip, routine });
   played = name;
   s = { ...s, phase: 'play', act: name };
   draw();
@@ -210,13 +267,15 @@ function run(plan, k) {
   // At its end, or when he may no longer play, next() starts another or stops.
   if (k >= plan.length || !may()) { next(); return; }
   const step = plan[k];
+  if (step.flip !== undefined) s = { ...s, flip: step.flip };
+  if (step.prop) { prop(step.prop); draw(); }
   if (step.pose) pose(step.pose, () => run(plan, k + 1));
   else travel(step.travel, () => run(plan, k + 1));
 }
 
 // He trots to another spot. The dog and the pointer slide by one transition; the timer swaps his legs and ends
 // the trip by the clock (a transition's own end is never heard if the view is hidden part-way).
-function travel({ to: planned, ms, frames, frameMs }, done) {
+function travel({ to: planned, ms, frames, frameMs, arc = 0 }, done) {
   const to = Math.round(Math.min(planned, room()));
   const dx = to - s.x;
   if (!dx) { done(); return; }
@@ -244,7 +303,9 @@ function travel({ to: planned, ms, frames, frameMs }, done) {
       done();
       return;
     }
-    frame(frames[Math.floor(t / frameMs) % frames.length]);
+    // A pounce goes up and comes down on the way.
+    const k = Math.min(1, t / ms);
+    frame(frames[Math.floor(t / frameMs) % frames.length], Math.round(4 * arc * k * (1 - k)));
     after(Math.min(frameMs - (t % frameMs), ms + GRACE - t), trot);
   };
   trot();
