@@ -153,6 +153,9 @@ main { padding-top: 18px; padding-bottom: 28px; }
    (18px is main's top padding), so what ends it can stand on the tab bar. */
 @media (max-width: 859.98px) {
   #view-hub { display: flex; flex-direction: column; min-height: calc(100dvh - var(--topbar) - var(--sat) - var(--tab) - var(--sab) - 18px); }
+  /* ...and main's 28px bottom padding is taken back, so a hub that fits the screen is exactly the screen and
+     does not scroll. */
+  #view-hub:not([hidden]) { margin-bottom: -28px; }
 }
 .next-start { margin: 0 0 18px; text-align: center; }
 .next-start .label { margin: 0 0 8px; }
