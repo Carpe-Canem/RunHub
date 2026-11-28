@@ -287,14 +287,41 @@ Props colours: if a picked prop colour is not in `sprites/src/palette.txt`, prop
 
 ### Picks (filled in after Task 6.1)
 
+Owner's picks, 2026-11-28 (options page round 1, section 4): "Bubble look: C. Stickers: E. Wordings: every rule 1, 2, 3."
+
 | Choice | Pick |
 |--------|------|
-| Bubble look per mood (happy, thrilled, eager, curious, worried, asleep) | |
-| Sticker size and placement | |
-| Barks per mood, and per line where set | |
-| Stickers on activity beats too, or with lines only | |
-| Wordings per rule (2 or 3 each, as in the options page or as edited) | |
-| `NAME_MAX` | 28 unless picked |
+| Bubble look per mood (happy, thrilled, eager, curious, worried, asleep) | **C, comic balloon**, for all six: paper-white `#FCF6EC` balloon, ink `#1A1A1C` text, 2 px ink edge, highlight `#08663F`. Happy: round pill (radius 22 px) with a `#6A7995` drop shadow. Thrilled: amber starburst spiked all round (text `#1A1200`, highlight inherits). Eager: square balloon (radius 8 px) with a hard `4px 4px 0 #35A5EA` shadow, bounces in as he speaks. Curious: a cloud (scalloped edge) with thought-dot pointer. Worried: hand-drawn wavy edge on `#EDE7DC`. Asleep: faint dashed cloud, no fill, dim text, dotted pointer. CSS: `.fam-C` in `.claude/mockups/voice/build-options.mjs` (lines 106 to 127) |
+| Sticker size and placement | **E**: white barks (fill `#FCF6EC`, his `#6A7995` outline), one screen pixel to a pixel (not C's doubled ones), on the strip in front of his face: 22 px past his head point on the side he faces, 4 px below the strip's top; where that would leave the strip, behind his head instead (96 px frame, 4 px gap). `placeBark` `'mouth'` in `build-options.mjs` (lines 329 to 347) |
+| Barks per mood, and per line where set | The options page's set, no per-line barks: happy WOOF! ARF!; thrilled YIP YIP! AWOO! ZOOM!; eager RUFF! WOOF! BARK!; curious HMM? SNIFF? OOH?; worried HUFF... MM...; asleep none |
+| Stickers on activity beats too, or with lines only | With lines only (the page offered only this) |
+| Wordings per rule (2 or 3 each, as in the options page or as edited) | Every wording as on the options page, unedited, except `soon` 3 (see `NAME_MAX`): 38 wordings, listed below |
+| `NAME_MAX` | **28**, unchanged. `soon` 3 ("…on Wednesday! I'll stretch!") needs a 22-letter cut; every box on the page was ticked by default, so the cut was not picked. `soon` keeps wordings 1 and 2 |
+
+Rulings (controller, 2026-11-28):
+- `NAME_MAX` stays 28 and `soon` drops wording 3. Why: the plan says 28 unless picked, and the page ticked everything by default. If wrong: set `NAME_MAX = 22` and add `soon` 3 back; the cap test then covers it.
+- Stickers with lines only, the mood's barks, no per-line barks. Why: the page asked for neither. If wrong: `BARK_FOR` entries and a beat hook, no new art.
+- Mouth side from the frame actually shown (`facesLeft` and the flip), not from the mood as in the mock-up.
+- C's text box is 368 px (18 px padding plus a 2 px edge each side), not 376: one row is proven by the 44 px height check on the real CSS, not by the 52-grapheme test alone.
+- Built in place on `run-board` (no worktree): the mock-up scripts, glyphs and probes live only in this checkout's `.claude/mockups/`, and the owner named the branch.
+
+Picked wordings. `{name}` and `{name2}` are cut at `NAME_MAX`; `[…]` is the green `go` highlight; `{unit}` is `miles` or `km`; singulars as today's lines have them.
+
+| Rule (mood) | 1 | 2 | 3 |
+|------|---|---|---|
+| `fetching` (eager) | Fetch! Getting your runs from Strava! | Fetching your runs from Strava! Good boy! | Hang on, fetching your runs from Strava! |
+| `raceday` (thrilled) | Race day! {name} at {time}! | Race day!! {name}, {time}! | It's today! {name}, {time}! |
+| `record` (thrilled) | [{rt}!] New {cls} record! Good human! | [{rt}!] Your best {cls} ever! Zoomies! | [{rt}!] A {cls} record! So proud! |
+| `soon` (eager) | {name} is on {weekday}! Ooh! | {name}: {weekday}! So soon! | |
+| `weekover` (happy) | {week} {unit} this week, [{over} over] your usual! Wow! | [{over} over] your usual this week! {week} {unit}! | {week} {unit} this week! [{over} over] usual. Tail wags! |
+| `latest` (happy) | {name} in {rt}! Good run! | {name}, {rt}! You flew! | {name}: {rt}! Proud pup! |
+| `yearahead` (happy) | {ytd} {unit} this year! [{ahead} ahead] of last year! | [{ahead} ahead] of last year! {ytd} {unit} so far! | We're [{ahead} ahead] of last year! {ytd} {unit}! |
+| `weeklow` (worried) | {wk} {unit} so far this week. Usually {usual}. Walkies? | {wk} {unit} this week. We usually do {usual}. Run soon? | {wk} {unit} this week, {usual} usually. I'm ready! |
+| `yearbehind` (worried) | {behind} {unit} behind this date last year. Let's go! | {behind} {unit} behind this date last year. Catch up? | {behind} {unit} behind this date last year. Sniff… |
+| `norun` (eager) | No run yet today! Walkies? Please? | No run yet today. I'll get my leash! | No run yet today! Shoes on? Let's go! |
+| `after` (curious) | And then? {name2}, {date}! | Then: {name2}, {date}! Ooh? | After that? {name2}, {date}! |
+| `totals` (curious) | {count} races finished! {pod} on an age-group podium! | {count} races done, {pod} age-group podiums! Wow! | {count} races finished! {pod} age-group podiums, too! |
+| `quiet` (asleep) | All quiet. Nap time. | All quiet… zzz. | All quiet. Wake me for a run. |
 
 ### Task 6.1: Mock-up round (gate)
 
