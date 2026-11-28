@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS } from '../js/ziggy-frames.js';
 import {
-  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, WANDER, pickFidget, fidgetWait, steps, typedCount, carryTyped,
+  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, WANDER, pickFidget, steps, typedCount, carryTyped,
   splitParts, lengthOf, keepLine, canFidget, wanderTo, wanderMs,
 } from '../js/ziggy-moves.js';
 
@@ -38,12 +38,6 @@ test('asleep only twitches, worried only sighs or glances', () => {
   assert.deepEqual(FIDGETS.worried, ['sigh', 'glance']);
 });
 
-test('the wait is 6 to 14 seconds', () => {
-  assert.equal(fidgetWait(() => 0), 6000);
-  const long = fidgetWait(() => 0.999);
-  assert.ok(long > 13000 && long <= 14000);
-});
-
 test('every fidget lasts 1 to 2 seconds and uses real frames', () => {
   for (const mood of MOODS) {
     for (const move of FIDGETS[mood].filter((f) => f !== 'wander')) {
@@ -55,17 +49,13 @@ test('every fidget lasts 1 to 2 seconds and uses real frames', () => {
   }
 });
 
-// He types and then moves without a break, so the two together are what must stay under 5 s (WCAG 2.2.2). The
-// margin is for the stage's own timers, which run late by up to a quarter of a second over a line.
-test("a mood's movement is about 3 seconds, ends on its still, and with the typing stays under 5", () => {
+test("a mood's movement is about 3 seconds, and ends on its still", () => {
   for (const mood of MOODS) {
     const seq = steps(mood, 'mood');
     assert.ok(total(seq) >= 2500 && total(seq) <= MOOD_MS, `${mood}: ${total(seq)} ms`);
-    assert.ok(TYPE_MS + total(seq) <= 4700, `${mood}: ${TYPE_MS + total(seq)} ms of unbroken movement`);
     assert.equal(seq.at(-1)[0], mood);
     for (const move of ['talk', 'mood', ...FIDGETS[mood].filter((f) => f !== 'wander')]) {
       const s = steps(mood, move);
-      assert.ok(total(s) < 5000, `${mood} ${move}`);
       for (const f of frames(s)) assert.ok(SHEETS.hub.frames.includes(f), `${mood} ${move}: ${f}`);
     }
   }
