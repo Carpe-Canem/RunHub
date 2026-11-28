@@ -254,10 +254,10 @@ button.zs-say { cursor: pointer; }
 .zs[data-mood="asleep"] .zs-z { display: block; left: 46px; top: 26px; font: 800 11px/1 var(--f); color: var(--mut); }
 .zs[data-mood="asleep"] .zs-z + .zs-z { left: 56px; top: 12px; font-size: 14px; }
 /* Sparks and z's drift only while he is moving; otherwise they sit where they are. */
-.zs[data-state="moving"] .zs-spark, .zs[data-state="fidget"] .zs-spark, .zs[data-state="play"] .zs-spark, .zs[data-state="wander"] .zs-spark { animation: zs-spark .5s steps(2, jump-none) infinite alternate; }
-.zs[data-state="moving"] .zs-spark + .zs-spark, .zs[data-state="fidget"] .zs-spark + .zs-spark, .zs[data-state="play"] .zs-spark + .zs-spark, .zs[data-state="wander"] .zs-spark + .zs-spark { animation-delay: -.2s; }
-.zs[data-state="moving"] .zs-z, .zs[data-state="fidget"] .zs-z, .zs[data-state="play"] .zs-z, .zs[data-state="wander"] .zs-z { animation: zs-z 2s steps(4, jump-none) infinite; }
-.zs[data-state="moving"] .zs-z + .zs-z, .zs[data-state="fidget"] .zs-z + .zs-z, .zs[data-state="play"] .zs-z + .zs-z, .zs[data-state="wander"] .zs-z + .zs-z { animation-delay: -1s; }
+.zs[data-state="moving"] .zs-spark,.zs[data-state="play"] .zs-spark, .zs[data-state="wander"] .zs-spark { animation: zs-spark .5s steps(2, jump-none) infinite alternate; }
+.zs[data-state="moving"] .zs-spark + .zs-spark,.zs[data-state="play"] .zs-spark + .zs-spark, .zs[data-state="wander"] .zs-spark + .zs-spark { animation-delay: -.2s; }
+.zs[data-state="moving"] .zs-z,.zs[data-state="play"] .zs-z, .zs[data-state="wander"] .zs-z { animation: zs-z 2s steps(4, jump-none) infinite; }
+.zs[data-state="moving"] .zs-z + .zs-z,.zs[data-state="play"] .zs-z + .zs-z, .zs[data-state="wander"] .zs-z + .zs-z { animation-delay: -1s; }
 @keyframes zs-spark { to { transform: translateY(-4px); opacity: .3; } }
 @keyframes zs-z { from { transform: translate(-2px, 4px); opacity: .3; } to { transform: translate(2px, -4px); } }
 /* Wide screens: the clock on the left, everything else on the right. The right column spans both rows, so the

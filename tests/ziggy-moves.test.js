@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SHEETS } from '../js/ziggy-frames.js';
 import {
-  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, WANDER, pickFidget, steps, typedCount, carryTyped,
-  splitParts, lengthOf, keepLine, canFidget, wanderTo, wanderMs,
+  TYPE_MS, TALK_MS, MOOD_MS, FIDGETS, TROT, steps, typedCount, carryTyped,
+  splitParts, lengthOf, keepLine, canFidget, wanderTo,
 } from '../js/ziggy-moves.js';
 
 const MOODS = ['happy', 'thrilled', 'eager', 'curious', 'worried', 'asleep'];
@@ -15,22 +15,9 @@ test('the timings', () => {
   assert.deepEqual([TYPE_MS, TALK_MS, MOOD_MS], [1500, 130, 3200]);
 });
 
-test("a fidget is always from the mood's set and never the same twice running", () => {
+test('every mood has a set of fidgets, and each is a move it has', () => {
   assert.deepEqual(Object.keys(FIDGETS).sort(), [...MOODS].sort());
-  const rnd = seeded();
-  for (const mood of MOODS) {
-    let last = null;
-    const got = new Set();
-    for (let i = 0; i < 300; i++) {
-      const next = pickFidget(mood, last, rnd);
-      assert.ok(FIDGETS[mood].includes(next), `${mood}: ${next}`);
-      assert.notEqual(next, last);
-      got.add(next); last = next;
-    }
-    assert.equal(got.size, FIDGETS[mood].length, `${mood} plays its whole set`);
-    // The ends of the generator's range still give a name from the set.
-    for (const r of [0, 0.999999]) assert.ok(FIDGETS[mood].includes(pickFidget(mood, FIDGETS[mood][0], () => r)));
-  }
+  for (const mood of MOODS) for (const f of FIDGETS[mood].filter((n) => n !== 'wander')) assert.ok(steps(mood, f).length, `${mood} ${f}`);
 });
 
 test('asleep only twitches, worried only sighs or glances', () => {
@@ -85,10 +72,9 @@ test('a move a mood does not have is an error', () => {
   assert.throws(() => steps('cat', 'mood'), /cat/);
 });
 
-test("the wander's frames exist in its sheet and its scale is a whole number", () => {
-  assert.deepEqual(WANDER, { sheet: 'hub', frames: ['eager', 'eager-trot'], scale: 1 });
-  for (const f of WANDER.frames) assert.ok(SHEETS[WANDER.sheet].frames.includes(f));
-  assert.ok(Number.isInteger(WANDER.scale));
+test("the trot's frames exist in the hub sheet", () => {
+  assert.deepEqual(TROT, ['eager', 'eager-trot']);
+  for (const f of TROT) assert.ok(SHEETS.hub.frames.includes(f));
 });
 
 test('typing', () => {
@@ -145,14 +131,13 @@ test('no fidget while hidden, off screen, typing or with reduced motion', () => 
   }
 });
 
-test('a wander stays on the strip, goes somewhere else, and takes under 2 seconds', () => {
+test('a wander stays on the strip and goes somewhere else', () => {
   const rnd = seeded(11);
   let x = 0;
   for (let i = 0; i < 200; i++) {
     const to = wanderTo(x, 312, rnd);
     assert.ok(to >= 0 && to <= 312, `${to}`);
     assert.ok(Math.abs(to - x) >= 48, `${x} to ${to}`);
-    assert.ok(wanderMs(to - x) < 2000);
     x = to;
   }
   // The narrowest strip he walks on, from every kind of place, and a place the strip no longer reaches.
@@ -163,10 +148,6 @@ test('a wander stays on the strip, goes somewhere else, and takes under 2 second
     }
   }
   assert.equal(wanderTo(10, 60), 10);
-  assert.ok(wanderMs(312) < 2000);
-  assert.ok(wanderMs(-2000) < 2000);
-  assert.equal(wanderMs(-100), wanderMs(100));
-  assert.equal(wanderMs(0), 0);
 });
 
 test('happy sniffs with his mouth shut, looks back and scratches', () => {

@@ -16,9 +16,9 @@ const GRACE = 34;                  // ms a trip is given past its slide
 // key: the line showing. i: its place in the list. typed, len: characters shown, and in the whole line.
 // phase: 'typing', 'moving' (the mood's own movement), 'play' (a pose of an activity), 'wander' (a trip of one)
 // or 'still' (Reduce Motion). x: his left edge on the strip in px, null until the strip has been measured.
-// to: where a trip is taking him. last: the last fidget (data-fidget; activities leave it alone). flip: drawn mirrored, after a trip against the way his
-// frames face, until the next line. act: the activity he is playing.
-export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, last: null, flip: false, act: null };
+// to: where a trip is taking him. flip: drawn mirrored, after a trip against the way his frames face, until the
+// next line. act: the activity he is playing.
+export const START = { key: null, i: 0, typed: 0, len: 0, phase: 'still', x: null, to: null, flip: false, act: null };
 
 // Where he stands once a trip is cut short: at its end.
 const landed = (s) => (s.phase === 'wander' ? s.to : s.x);
@@ -89,7 +89,7 @@ function build() {
 // Everything the state decides, written to the page. The frame is not: whatever is moving him sets that.
 function draw() {
   const line = lines[s.i];
-  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, fidget: s.last || '', activity: s.act || '' });
+  Object.assign(el.dataset, { mood: line.mood, state: s.phase, line: s.key, typed: s.typed, activity: s.act || '' });
   const { on: shown, off: hid } = splitParts(line.parts, s.typed);
   on.replaceChildren(...shown.map(part));
   off.replaceChildren(...hid.map(part));
@@ -135,6 +135,7 @@ function land() {
     for (const a of moved.getAnimations()) a.cancel();
   }
   pic.style.transform = '';
+  aim = null;
   s = { ...s, flip: false, x: landed(s), to: null, phase: s.phase === 'wander' ? 'play' : s.phase };
 }
 

@@ -83,6 +83,42 @@ test('a beat hook makes every beat that fidget', () => {
   }
 });
 
+test('worried is never the same loop: the plans differ in their beats and in their length', () => {
+  for (const name of Object.keys(ACTIVITIES.worried)) {
+    const plans = Array.from({ length: 50 }, () => planActivity('worried', name, { x: 150, room: 312, rnd }));
+    assert.ok(new Set(plans.map((p) => JSON.stringify(p.map((s) => s.pose.map(([f]) => f))))).size > 1, `${name}: sequences`);
+    assert.ok(new Set(plans.map(planMs)).size > 1, `${name}: lengths`);
+  }
+});
+
+test('a beat is not played twice running where another is to be had', () => {
+  const moves = ['blink', 'ear', 'tail', 'yawn', 'shake', 'tilt', 'sniff', 'lookback', 'scratch'].map((m) => JSON.stringify(steps('happy', m)));
+  for (let i = 0; i < 100; i++) {
+    const poses = planActivity('happy', 'potter', { x: 150, room: 312, rnd }).filter((s) => s.pose).map((s) => JSON.stringify(s.pose));
+    for (let k = 1; k < poses.length; k++) {
+      if (moves.includes(poses[k])) assert.notEqual(poses[k], poses[k - 1], `plan ${i}, beat ${k}`);
+    }
+  }
+});
+
+test('a dash goes there and back', () => {
+  for (let i = 0; i < 50; i++) {
+    const travels = planActivity('happy', 'dash', { x: 100, room: 312, rnd }).filter((s) => s.travel);
+    assert.equal(travels.length, 2);
+    assert.equal(travels[1].travel.to, 100);
+  }
+});
+
+test('a plan never ends on a travel, even with the longest walks and the longest beats', () => {
+  for (const mood of ['happy', 'thrilled', 'eager', 'curious']) for (const name of Object.keys(ACTIVITIES[mood])) {
+    for (const [room, x] of [[5000, 0], [5000, 2500], [5000, 5000]]) for (const r of [0.999, 0.5, 0]) {
+      const plan = planActivity(mood, name, { x, room, rnd: () => r });
+      assert.ok(plan.at(-1).pose, `${mood} ${name} room ${room} x ${x} rnd ${r}`);
+      assert.ok(planMs(plan) <= ACT_MAX, `${mood} ${name}: ${planMs(plan)}`);
+    }
+  }
+});
+
 test('travel times', () => {
   assert.equal(travelMs(100, 'walk'), 550);
   assert.equal(travelMs(-100, 'run'), 240);

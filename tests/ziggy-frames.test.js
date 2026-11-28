@@ -78,6 +78,7 @@ test('a frame\'s head point: its own, else its mood\'s still, mirrored when flip
   assert.equal(headAt('eager-trot', false), FRAME_HEAD['eager-trot'] ?? HEAD.eager);
   assert.equal(headAt('happy', false), HEAD.happy);
   assert.equal(headAt('happy', true), 95 - HEAD.happy);
+  assert.equal(headAt('happy-look1', true), 40);
   for (const name of SHEETS.hub.frames) {
     const x = headAt(name, true);
     assert.ok(x >= 0 && x < 96, name);
@@ -86,4 +87,5 @@ test('a frame\'s head point: its own, else its mood\'s still, mirrored when flip
 
 test('worried and asleep frames face left, the rest right', () => {
   for (const name of SHEETS.hub.frames) assert.equal(facesLeft(name), /^(worried|asleep)/.test(name), name);
+  assert.deepEqual(['worried-glance', 'asleep-paw', 'eager-trot', 'happy-look1'].map(facesLeft), [true, true, false, false]);
 });

@@ -29,17 +29,17 @@ test('new words for the same line: a part-typed line carries on, a finished one 
   assert.deepEqual([grown.typed, grown.len, grown.phase], [4, 18, 'typing']);
   const cut = onLines({ ...typing, typed: 9 }, [line('a', 'First.'), two[1]], true);
   assert.deepEqual([cut.typed, cut.len], [6, 6]);
-  for (const phase of ['moving', 'still', 'fidget', 'play', 'wander']) {
+  for (const phase of ['moving', 'still', 'play', 'wander']) {
     const done = onLines({ ...typing, typed: 11, phase, to: 40 }, [line('a', 'First line, grown.'), two[1]], true);
     assert.deepEqual([done.typed, done.len, done.phase], [18, 18, phase], phase);
   }
 });
 
 test('a line that is gone: he starts again from the first line', () => {
-  const s = { ...onLines(START, two, true), typed: 11, phase: 'still', x: 120, last: 'ear' };
+  const s = { ...onLines(START, two, true), typed: 11, phase: 'still', x: 120 };
   const n = onLines(s, [line('c', 'New.'), line('d', 'Newer.')], true);
-  assert.deepEqual({ key: n.key, i: n.i, typed: n.typed, len: n.len, phase: n.phase, x: n.x, last: n.last },
-    { key: 'c', i: 0, typed: 0, len: 4, phase: 'typing', x: 120, last: 'ear' });
+  assert.deepEqual({ key: n.key, i: n.i, typed: n.typed, len: n.len, phase: n.phase, x: n.x },
+    { key: 'c', i: 0, typed: 0, len: 4, phase: 'typing', x: 120 });
 });
 
 test('a press shows the next line, wraps to the first, and does nothing with one line', () => {
@@ -53,7 +53,7 @@ test('a press shows the next line, wraps to the first, and does nothing with one
 });
 
 test('a press mid-wander puts him at his target at once, and the next line types', () => {
-  const s = { ...onLines(START, two, true), typed: 11, phase: 'wander', x: 30, to: 210, last: 'wander' };
+  const s = { ...onLines(START, two, true), typed: 11, phase: 'wander', x: 30, to: 210 };
   const n = onPress(s, two, true);
   assert.deepEqual({ key: n.key, typed: n.typed, phase: n.phase, x: n.x, to: n.to }, { key: 'b', typed: 0, phase: 'typing', x: 210, to: null });
 });

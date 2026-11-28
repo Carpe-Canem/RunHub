@@ -1,9 +1,9 @@
-// How Ziggy moves: the fidget picker, the frame sequences, and the arithmetic of typing and wandering.
+// How Ziggy moves: the frame sequences of his beats, and the arithmetic of typing and of where he walks.
 // Pure: no DOM, no timers. Frame names are those of the hub sheet in ziggy-frames.js.
 
 export const TYPE_MS = 1500;    // a line types out over this
 export const TALK_MS = 130;     // mouth open, mouth shut
-export const MOOD_MS = 3200;    // the mood's own movement after speaking, at most: with the typing, under 5 s
+export const MOOD_MS = 3200;    // the mood's own movement after speaking, at most
 
 export const FIDGETS = {
   happy:    ['blink', 'ear', 'tail', 'yawn', 'shake', 'tilt', 'sniff', 'lookback', 'scratch', 'wander'],
@@ -14,19 +14,11 @@ export const FIDGETS = {
   asleep:   ['ear', 'paw'],
 };
 
-// A wander is not a frame sequence: the stage moves him and swaps these two frames.
-export const WANDER = { sheet: 'hub', frames: ['eager', 'eager-trot'], scale: 1 };
-
-const MARGIN = 48;      // a wander goes at least this far
-const MIN_ROOM = 96;    // on a narrower strip he stays put
-const MS_PER_PX = 5.5;
-const WANDER_MAX = 1900;
-
-// rnd is a number from 0 up to 1, mapped straight onto the choices left, so there is no drawing again.
-export function pickFidget(mood, last, rnd = Math.random) {
-  const choices = FIDGETS[mood].filter((f) => f !== last);
-  return choices[Math.floor(rnd() * choices.length)];
-}
+// 'wander' is not a frame sequence: the activity planner moves him, swapping the trot frames.
+export const TROT = ['eager', 'eager-trot'];   // the two frames of every trip, walked or run
+export const MARGIN = 48;      // a trip goes at least this far
+export const MIN_ROOM = 96;    // on a narrower strip he stays put
+export const MS_PER_PX = 5.5;  // a walk's pace
 
 const times = (n, ...pair) => Array.from({ length: n }, () => pair).flat();
 const breathe = (ms) => times(2, ['asleep-breathe', ms], ['asleep', ms]);
@@ -37,7 +29,8 @@ const tail = (m) => times(4, [m === 'eager' ? 'eager-tail' : `${m}-wag`, 150], [
 const tilt = (m) => [[`${m}-tilt`, 1100], [m, 300]];
 
 // The sequences and timings the owner approved on the sprite sheets' review page, the mood movements since cut
-// shorter (fewer repeats, same rhythm) so that typing and movement together stay under 5 s.
+// shorter (fewer repeats, same rhythm). That was for a 5 s limit on typing and movement together, which the owner
+// dropped on 2026-11-28; the cuts stay.
 const MOVES = {
   happy: {
     talk: talk('happy'), mood: times(6, ['happy-wag', 250], ['happy', 250]),
@@ -118,8 +111,8 @@ export function keepLine(lines, key) {
 
 export const canFidget = ({ hidden, onScreen, typing, motion }) => !hidden && !!onScreen && !typing && !!motion;
 
-// A new left edge in 0..room, at least MARGIN from x. One draw is spread over the stretch left of him and the
-// stretch right of him.
+// A new left edge in 0..room, at least MARGIN from x (x itself when the strip is under MIN_ROOM). One draw is
+// spread over the stretch left of him and the stretch right of him.
 export function wanderTo(x, room, rnd = Math.random) {
   if (room < MIN_ROOM) return x;
   const from = Math.min(room, Math.max(0, x));   // the strip may have narrowed under him
@@ -132,6 +125,3 @@ export function wanderTo(x, room, rnd = Math.random) {
   const at = rnd() * (left + right);
   return hasLeft && (at < left || !hasRight) ? Math.min(at, left) : from + MARGIN + (at - left);
 }
-
-// ms to trot that far, under 2 s however wide the strip.
-export const wanderMs = (dx) => Math.min(WANDER_MAX, Math.round(Math.abs(dx) * MS_PER_PX));
